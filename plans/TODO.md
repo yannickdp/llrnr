@@ -11,22 +11,23 @@ slip behind Phase 4.
 
 ## Phase 0 — scaffolding
 
-- [ ] Create the folder layout of PLAN §6 (`css/`, `js/`, `js/roma/`, `data/`, `icons/`)
-- [ ] `index.html` shell: all screens as hidden `<section>`s, one visible at a time
-- [ ] `viewport-fit=cover` + `env(safe-area-inset-*)` padding (notch / home bar)
-- [ ] `100dvh` everywhere instead of `100vh`
-- [ ] Disable double-tap zoom and text selection on buttons
-- [ ] Local dev server documented (`npx serve` / `python -m http.server`)
-- [ ] Git repo + GitHub Pages remote ready to push
+- [x] Create the folder layout of PLAN §6 (`css/`, `js/`, `js/roma/`, `data/`, `icons/`)
+- [x] `index.html` shell: all screens as hidden `<section>`s, one visible at a time
+- [x] `viewport-fit=cover` + `env(safe-area-inset-*)` padding (notch / home bar)
+- [x] `100dvh` everywhere instead of `100vh`
+- [x] Disable double-tap zoom and text selection on buttons
+- [x] Local dev server documented (`npx serve` / `python -m http.server`)
+- [x] Git repo initialised, scaffolding committed on `main`
+- [ ] Add the GitHub `origin` remote and enable Pages *(needs the repo URL)*
 
 ---
 
 ## Phase 1 — walking skeleton (on her phone on day one)
 
 ### 1.1 CSS shell
-- [ ] `css/style.css`: mobile-first, CSS variables for theming
-- [ ] Bottom tab bar — Home / Words / Tests / Settings (PLAN §5)
-- [ ] Lesson flow styled as a modal over the tabs, not a tab
+- [x] `css/style.css`: mobile-first, CSS variables for theming
+- [x] Bottom tab bar — Home / Words / Tests / Settings (PLAN §5)
+- [x] Lesson flow styled as a modal over the tabs, not a tab
 
 ### 1.2 `parse.js` + a real chapter
 - [ ] Parse `term | form | translation`; 2-field lines read as `term | translation`

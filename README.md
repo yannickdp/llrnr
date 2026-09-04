@@ -47,3 +47,35 @@ Open the HTTPS URL in Safari → Share → **Add to Home Screen**. It then launc
 full-screen with its own icon. Installing properly also protects `localStorage` from
 Safari's 7-day eviction of unused sites — but export the progress JSON now and then
 anyway.
+
+## Checking the layout without a phone
+
+Headless Chrome ignores `--window-size` when taking a screenshot, so it lays the page
+out at 500px and then crops — which looks exactly like a horizontal-overflow bug and
+is not one. Render through a phone-sized iframe instead. Drop this next to
+`index.html` as `_shot.html` (it is deliberately not committed):
+
+```html
+<style>html,body{margin:0}iframe{width:390px;height:844px;border:0;display:block}</style>
+<iframe id="f" src="index.html"></iframe>
+<script>
+const target = new URLSearchParams(location.search).get('click');
+document.getElementById('f').addEventListener('load', e => {
+  if (!target) return;
+  const d = e.target.contentDocument;
+  for (const sel of target.split(',')) d.querySelector(sel)?.click();
+});
+</script>
+```
+
+Then, with the server running:
+
+```sh
+chrome --headless --disable-gpu --hide-scrollbars --force-prefers-reduced-motion \
+  --screenshot=lesson.png --window-size=390,844 \
+  'http://localhost:8000/_shot.html?click=[data-goto="start"],[data-goto="lesson"]'
+```
+
+The `click` parameter is a comma-separated list of selectors clicked in order, so any
+screen behind a tap is reachable. `--force-prefers-reduced-motion` freezes the sheet
+animation, which would otherwise be caught mid-slide.
