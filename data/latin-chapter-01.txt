@@ -1,0 +1,33 @@
+# Chapter 1 — Familia
+# STAND-IN LIST — invented for development, not her real chapter 1.
+# Replace the lines below with the real list and bump "rev" in index.json.
+# It deliberately contains the awkward cases: a homograph pair (liber), several
+# words sharing a translation (zeggen), accents (één), alternatives with "/",
+# a blank grammar form, a two-field line, and columns padded with spaces.
+
+pater    | patris, m.       | vader
+mater    | matris, f.       | moeder / mama
+filius   | filii, m.        | zoon
+filia    | filiae, f.       | dochter
+frater   | fratris, m.      | broer
+soror    | sororis, f.      | zus / zuster
+avus     | avi, m.          | grootvader / opa
+avia     | aviae, f.        | grootmoeder / oma
+puer     | pueri, m.        | jongen
+puella   | puellae, f.      | meisje
+vir      | viri, m.         | man
+femina   | feminae, f.      | vrouw
+domus    | domus, f.        | huis / thuis
+familia  | familiae, f.     | familie / gezin
+liber    | libri, m.        | boek
+liber    | libera, liberum  | vrij
+donum    | doni, n.         | geschenk / cadeau
+unus     | una, unum        | één
+magnus   | magna, magnum    | groot
+parvus   | parva, parvum    | klein
+amare    | amo, amavi       | houden van / liefhebben
+dicere   | dico, dixi       | zeggen / spreken
+narrare  | narro, narravi   | vertellen / zeggen
+ad       |                  | naar / bij / tot
+cum      | + abl.           | met / samen met
+sed      | maar

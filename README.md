@@ -28,6 +28,19 @@ with both on the same wifi. Good enough for layout and lesson-flow work, but a p
 and "Add to Home Screen" will not behave like the real thing.** For anything touching
 offline use or installation, deploy and test on the real HTTPS URL.
 
+## Tests
+
+```sh
+node --test test/
+```
+
+Node's built-in runner, so there is still nothing to install. `parse.js`, and the
+scheduler that follows it, are pure functions — they are the parts most likely to be
+tuned, and the only parts where a quiet mistake would corrupt her progress rather
+than just look wrong. `test/lists.test.mjs` stubs `fetch` with an in-memory set of
+files, so the cross-chapter cases (a word revisited, a homograph split over two
+chapters) are covered without a server.
+
 ## Deploy (GitHub Pages)
 
 1. Create an empty GitHub repo and add it as `origin`.

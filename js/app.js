@@ -7,6 +7,8 @@
    swipe, so there are no history entries to swipe through. Leaving a lesson
    goes through the X, which later phases guard with a confirmation. */
 
+import { loadCorpus } from './lists.js';
+
 const TABS = ['home', 'words', 'tests', 'settings'];
 const MODAL = ['start', 'lesson', 'results'];
 
@@ -91,4 +93,57 @@ document.addEventListener('click', e => {
 /* Nothing is submitted anywhere yet; stop the shell from reloading itself. */
 document.addEventListener('submit', e => e.preventDefault());
 
+/* ---------------------------------------------------------- chapters --- */
+
+/* A first, deliberately plain listing of what loaded: enough to prove the
+   whole path — index.json, cache-busted .txt, parser, corpus merge — works in
+   a real browser. Phase 3.4 adds pool toggles and Phase 4.3 the new -> learned
+   track; both replace this rendering, not the loading behind it.
+
+   Built with textContent throughout: chapter titles and terms are file
+   content, and innerHTML would make an editable word list an injection path. */
+
+const el = (tag, className, text) => {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+};
+
+function chapterCard(list) {
+  const card = el('div', 'card');
+  const head = el('div', 'chapter-head');
+  head.append(el('span', 'chapter-title', list.title ?? list.file));
+  head.append(el('span', 'caption', `${list.words.length} words`));
+  card.append(head);
+
+  const notes = el('div', 'tags');
+  for (const warning of list.warnings) {
+    notes.append(el('span', 'tag', warning.message));
+  }
+  for (const reject of list.rejects) {
+    notes.append(el('span', 'tag tag-bad', `line ${reject.line}: ${reject.reason}`));
+  }
+  if (notes.children.length) card.append(notes);
+
+  return card;
+}
+
+async function renderChapters() {
+  const host = document.getElementById('chapter-list');
+  try {
+    const { lists, words } = await loadCorpus();
+    host.replaceChildren(
+      ...lists.map(chapterCard),
+      el('p', 'caption', `${words.size} words in the pool`),
+    );
+  } catch (err) {
+    /* Say what broke and where. A silent empty list would be the worst
+       possible failure for a file the parent edits by hand. */
+    host.replaceChildren(el('p', 'tag tag-bad', `Could not load the lists — ${err.message}`));
+    console.error(err);
+  }
+}
+
 show(TABS[0]);
+renderChapters();

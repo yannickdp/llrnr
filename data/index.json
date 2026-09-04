@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "lists": [
+    { "id": "latin-ch01", "file": "latin-chapter-01.txt", "rev": 1 }
+  ]
+}

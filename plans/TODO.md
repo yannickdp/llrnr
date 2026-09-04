@@ -30,20 +30,21 @@ slip behind Phase 4.
 - [x] Lesson flow styled as a modal over the tabs, not a tab
 
 ### 1.2 `parse.js` + a real chapter
-- [ ] Parse `term | form | translation`; 2-field lines read as `term | translation`
-- [ ] `/` splits alternative translations; full string kept as canonical answer
-- [ ] `#` comments; first `#` line becomes the chapter title
-- [ ] Trim whitespace, ignore blank lines and stray `\r`, strip UTF-8 BOM
-- [ ] Fallback separator: `;` or tab if the first data line has no `|` (report which)
-- [ ] Rejected lines returned with line number + reason (never silently dropped)
-- [ ] `normalize()`: lowercase, trim, collapse whitespace, strip accents
-- [ ] FNV-1a hash → `id = hash(normalize(term))` (content-derived, not positional)
-- [ ] Homograph rule: on a duplicate normalised term, add the form's first word to the
+- [x] Parse `term | form | translation`; 2-field lines read as `term | translation`
+- [x] `/` splits alternative translations; full string kept as canonical answer
+- [x] `#` comments; first `#` line becomes the chapter title
+- [x] Trim whitespace, ignore blank lines and stray `\r`, strip UTF-8 BOM
+- [x] Fallback separator: `;` or tab if the first data line has no `|` (report which)
+- [x] Rejected lines returned with line number + reason (never silently dropped)
+- [x] `normalize()`: lowercase, trim, collapse whitespace, strip accents
+- [x] FNV-1a hash → `id = hash(normalize(term))` (content-derived, not positional)
+- [x] Homograph rule: on a duplicate normalised term, add the form's first word to the
       hash for the colliding cards, and flag the pair
-- [ ] Detect translations mapping to several terms; expose them as collision warnings
-- [ ] `data/latin-chapter-01.txt` — one real chapter with real accents and homographs
-- [ ] `data/index.json` — list `id`, `file`, `rev`
-- [ ] Fetch lists as `file.txt?v=<rev>` (cache busting)
+- [x] Detect translations mapping to several terms; expose them as collision warnings
+- [x] `data/latin-chapter-01.txt` — **stand-in** list carrying the awkward cases
+- [ ] Swap in her real chapter 1 and bump `rev` *(no real list available yet)*
+- [x] `data/index.json` — list `id`, `file`, `rev`
+- [x] Fetch lists as `file.txt?v=<rev>` (cache busting)
 
 ### 1.3 `schedule.js` — the heart
 - [ ] Phases `new → acquire → retain → learned` with transitions (PLAN §2)
