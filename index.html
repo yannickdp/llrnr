@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="llrnr">
+<meta name="theme-color" content="#1b1a17">
+<title>llrnr</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ===== Tab screens: exactly one visible, switched by app.js ===== -->
+<main id="screens">
+
+  <section class="screen" id="screen-home" data-screen="home" hidden>
+    <h1>Home</h1>
+    <p class="placeholder">City, XP bar, streak, daily ring, Start lesson, due counts.</p>
+    <button class="btn btn-primary" data-goto="start">Start lesson</button>
+  </section>
+
+  <section class="screen" id="screen-words" data-screen="words" hidden>
+    <h1>Words</h1>
+    <p class="placeholder">Chapters, new &rarr; learned spread, pool toggles, Add list.</p>
+  </section>
+
+  <section class="screen" id="screen-tests" data-screen="tests" hidden>
+    <h1>Tests</h1>
+    <p class="placeholder">Add or edit a test, readiness panel, minutes-a-day estimate.</p>
+  </section>
+
+  <section class="screen" id="screen-settings" data-screen="settings" hidden>
+    <h1>Settings</h1>
+    <p class="placeholder">Lesson length, new per lesson, anticipation gap, direction,
+      sound, export / import, reset a chapter.</p>
+  </section>
+
+</main>
+
+<!-- ===== Bottom tab bar (styled in Phase 1.1) ===== -->
+<nav id="tabbar">
+  <button class="tab" data-goto="home">Home</button>
+  <button class="tab" data-goto="words">Words</button>
+  <button class="tab" data-goto="tests">Tests</button>
+  <button class="tab" data-goto="settings">Settings</button>
+</nav>
+
+<!-- ===== Lesson flow: a modal layer over the tabs, never a tab itself,
+       so there is no way to wander out of a lesson by mistake. ===== -->
+<div id="modal" hidden>
+
+  <section class="screen" id="screen-start" data-screen="start" hidden>
+    <h1>Start lesson</h1>
+    <p class="placeholder">Direction picker (Latin&rarr;Dutch / Dutch&rarr;Latin / Both)
+      pre-selected with last time's choice, and Go.</p>
+    <button class="btn btn-primary" data-goto="lesson">Go</button>
+    <button class="btn" data-goto="home">Cancel</button>
+  </section>
+
+  <section class="screen" id="screen-lesson" data-screen="lesson" hidden>
+    <h1>Lesson</h1>
+    <p class="placeholder">Time remaining, direction marker, prompt, anticipation ring,
+      answer field, reveal.</p>
+    <button class="btn btn-primary" data-goto="results">Finish</button>
+  </section>
+
+  <section class="screen" id="screen-results" data-screen="results" hidden>
+    <h1>Results</h1>
+    <p class="placeholder">Graduated, boxes climbed, XP, badges, drop-backs.</p>
+    <button class="btn btn-primary" data-goto="home">Done</button>
+  </section>
+
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
