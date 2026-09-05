@@ -47,16 +47,16 @@ slip behind Phase 4.
 - [x] Fetch lists as `file.txt?v=<rev>` (cache busting)
 
 ### 1.3 `schedule.js` — the heart
-- [ ] Phases `new → acquire → retain → learned` with transitions (PLAN §2)
-- [ ] Acquire micro-ladder: 5s / 25s / 2m / 10m
-- [ ] Correct → next micro-step; wrong → back to micro-step 1
-- [ ] Clearing the 10m step graduates to retain, box 1, due tomorrow
-- [ ] Retain boxes: 1d / 3d / 7d / 21d / 60d → `learned`
-- [ ] Correct → up a box; almost → same box, due tomorrow
-- [ ] Wrong in retain → back to acquire micro-step 1 **in the current session**
-- [ ] All scheduling on absolute `dueAt` ISO timestamps vs `Date.now()` — never `setTimeout`
-- [ ] Pure module, injectable clock, readable on one screen
-- [ ] Throwaway fake-clock script: prove 5s / 25s / 2m / 10m / tomorrow
+- [x] Phases `new → acquire → retain → learned` with transitions (PLAN §2)
+- [x] Acquire micro-ladder: 5s / 25s / 2m / 10m
+- [x] Correct → next micro-step; wrong → back to micro-step 1
+- [x] Clearing the 10m step graduates to retain, box 1, due tomorrow
+- [x] Retain boxes: 1d / 3d / 7d / 21d / 60d → `learned`
+- [x] Correct → up a box; almost → same box, due tomorrow
+- [x] Wrong in retain → back to acquire micro-step 1 **in the current session**
+- [x] All scheduling on absolute `dueAt` ISO timestamps vs `Date.now()` — never `setTimeout`
+- [x] Pure module, injectable clock, readable on one screen
+- [x] Throwaway fake-clock script: prove 5s / 25s / 2m / 10m / tomorrow
 
 ### 1.4 `lesson.js` — the loop
 - [ ] Priority queue on `dueAt`, most overdue first
