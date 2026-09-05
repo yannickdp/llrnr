@@ -43,7 +43,7 @@ screen inherits this without saying so again.
 - [x] Loader and boot failures report in Dutch ("De lijsten konden niet geladen worden")
 - [x] Tests assert on `code`, not on the Dutch wording
 - [x] `<html lang="nl">`
-- [ ] Manifest `name` / `short_name` in Dutch *(with Phase 1.5)*
+- [x] Manifest `name` / `short_name` in Dutch
 - [ ] Dates and numbers formatted `nl-BE` *(nothing renders one yet — due with the
       streak, the heatmap and the test dates)*
 - [x] Check the Dutch copy still fits a 390px screen — it runs longer than the English
@@ -93,9 +93,12 @@ screen inherits this without saying so again.
 - [x] In-memory progress only at this stage
 
 ### 1.5 Ship it
-- [ ] `manifest.webmanifest` — name, icon, full-screen display
-- [ ] `icons/icon-180.png` (apple-touch-icon), `icon-192.png`, `icon-512.png`
-- [ ] Push to GitHub Pages over HTTPS
+- [x] `manifest.webmanifest` — Dutch name, icons, standalone, portrait, `nl-BE`
+- [x] `icons/icon-180.png` (apple-touch-icon), `icon-192.png`, `icon-512.png`,
+      drawn by `icons/make-icons.py` (stdlib only, re-run to redraw)
+- [x] `<link rel="manifest">` + `apple-touch-icon`, verified served and fetchable
+- [ ] Add the GitHub `origin` remote and push *(needs the repo URL)*
+- [ ] Turn on Pages: Settings → Pages → branch `main`, folder `/`
 - [ ] **Install on her iPhone from Safari and run one real lesson**
 
 ---
