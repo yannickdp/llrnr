@@ -128,14 +128,41 @@ export function rankKey(card, test, now = Date.now()) {
   };
 }
 
-/** Sort comparator built from rankKey: weakest-first, most overdue to break ties. */
-export function byWeakestFirst(test, now = Date.now()) {
+/**
+ * Directions of this word she has not managed *once* yet.
+ *
+ * The breadth-before-depth measure: on a vocabulary test, partial credit across
+ * forty words beats mastery of twenty, so when time runs short the goal drops
+ * from "three clean recalls each way" to "one clean recall each way, for
+ * everything" — and only then back to three.
+ */
+export function breadthNeeded(card, test) {
+  return directionsOf(test)
+    .filter(dir => card.cleanDays[dir].length === 0)
+    .length;
+}
+
+/**
+ * Sort comparator built from rankKey: weakest-first, most overdue to break ties.
+ *
+ * In `breadth` mode a word that has never been managed in some direction
+ * outranks one that is merely part-way to three — which is a different order
+ * from plain weakest-first, and the one that scores better when Friday is too
+ * close to finish properly.
+ */
+export function byWeakestFirst(test, now = Date.now(), { breadth = false } = {}) {
   return (a, b) => {
     const ka = rankKey(a, test, now);
     const kb = rankKey(b, test, now);
-    return (ka.inScope - kb.inScope)
-      || (ka.needed - kb.needed)
-      || (kb.overdue - ka.overdue);
+    if (ka.inScope !== kb.inScope) return ka.inScope - kb.inScope;
+
+    if (breadth) {
+      const ba = breadthNeeded(a, test);
+      const bb = breadthNeeded(b, test);
+      if (ba !== bb) return bb - ba;
+    }
+
+    return (ka.needed - kb.needed) || (kb.overdue - ka.overdue);
   };
 }
 
@@ -200,7 +227,8 @@ export function readiness(cards, words, test, now = Date.now()) {
     minutesPerDay: minutesPerDay(remaining.total, left),
     /* A word cannot earn two clean days in one day, so if any word still owes
        more clean days than there are days left, three-recall readiness is out
-       of reach however long she practises. That is what Phase 3.3 acts on. */
+       of reach however long she practises — and the lesson switches to breadth
+       before depth, saying so on screen rather than reordering in silence. */
     feasible: longestRun <= Math.max(0, left),
   };
 }

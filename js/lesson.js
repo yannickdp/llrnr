@@ -63,6 +63,9 @@ export function createLesson({
   /* The test the lesson is working towards, or null. It narrows what is
      introduced, reorders what is asked, and shortens what is scheduled. */
   test = null,
+  /* Set when there is no longer time to get everything to three clean recalls;
+     the queue then covers every word once each way first. */
+  breadth = false,
   now = Date.now(),
   random = Math.random,
 } = {}) {
@@ -133,7 +136,7 @@ export function createLesson({
         }
         /* During a test run-up the order is weakest-first over the chapters
            in scope; otherwise the shakiest box, then the longest-waiting. */
-        if (test) return byWeakestFirst(test, t)(a, b);
+        if (test) return byWeakestFirst(test, t, { breadth })(a, b);
         return (a.box - b.box) || (overdueBy(b, t) - overdueBy(a, t));
       });
   }

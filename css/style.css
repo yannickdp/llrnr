@@ -529,3 +529,11 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 .scope-list { display: flex; flex-direction: column; gap: 6px; }
 .scope-item { display: flex; align-items: center; gap: 10px; font-size: var(--t-caption); }
 .scope-item input { inline-size: 20px; block-size: 20px; padding: 0; flex: none; }
+
+.triage {
+  padding: 10px 12px;
+  background: var(--bg-sunken);
+  border-inline-start: 3px solid var(--almost);
+  border-radius: var(--radius-sm);
+}
+.triage-head { font-size: var(--t-caption); font-weight: 700; color: var(--almost); }

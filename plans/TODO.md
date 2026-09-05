@@ -180,9 +180,11 @@ screen inherits this without saying so again.
       *(not in the original checklist: the panel is unreachable without it)*
 
 ### 3.3 Breadth before depth
-- [ ] When required work exceeds time available: every word to one clean recall each
+- [x] When required work exceeds time available: every word to one clean recall each
       direction before pushing any word to three
-- [ ] Say so out loud on screen — no silent reordering
+- [x] Say so out loud on screen — no silent reordering
+- [x] Triggered by `feasible`: any word owing more clean days than there are days
+      left makes three-recall readiness arithmetically unreachable
 
 ### 3.4 Lists without a laptop
 - [ ] Remaining chapters added under `data/`

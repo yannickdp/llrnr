@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   makeTest, activeTest, isActive, daysLeft, inScope, recallsNeeded, isReady,
-  compress, byWeakestFirst, directionsOf, readiness, minutesPerDay,
+  compress, byWeakestFirst, breadthNeeded, directionsOf, readiness, minutesPerDay,
   DAY_MS, SAME_DAY_INTERVAL_MS,
 } from '../js/cram.js';
 import { newCard } from '../js/schedule.js';
@@ -275,4 +275,67 @@ test('readiness in three days is out of reach when three clean days are needed i
 test('minutesPerDay never claims zero work takes zero time', () => {
   assert.equal(minutesPerDay(0, 5), 0);
   assert.equal(minutesPerDay(1, 99), 1, 'anything owed is at least a minute');
+});
+
+/* =================================================== breadth or depth ==== */
+
+test('breadth counts the directions never once managed', () => {
+  assert.equal(breadthNeeded(card(), exam()), 2, 'neither way round yet');
+  assert.equal(breadthNeeded(card({ fwd: ['2026-09-01'] }), exam()), 1);
+  assert.equal(breadthNeeded(card({ fwd: THREE, rev: ['2026-09-01'] }), exam()), 0,
+    'once each way is the breadth goal, however far from three she is');
+});
+
+test('breadth mode covers the untouched side before topping anyone up', () => {
+  const now = AT('04');
+
+  /* Owes fewer recalls overall, but has never produced it in reverse. */
+  const halfDone = card({ fwd: THREE, rev: [] });
+  /* Owes more overall, but has managed both sides once already. */
+  const evenlyStarted = card({ fwd: ['2026-09-01'], rev: ['2026-09-01'] });
+
+  const depth = [halfDone, evenlyStarted].sort(byWeakestFirst(exam(), now));
+  assert.equal(depth[0], evenlyStarted, 'plain weakest-first tops up the shakier word');
+
+  const breadth = [evenlyStarted, halfDone].sort(byWeakestFirst(exam(), now, { breadth: true }));
+  assert.equal(breadth[0], halfDone,
+    'with no time left, a word she cannot write at all matters more');
+});
+
+test('breadth mode still keeps the test scope first', () => {
+  const now = AT('04');
+  const outside = card({ lists: ['latin-ch01'] });
+  const inside = card({ fwd: THREE, rev: THREE });
+
+  const sorted = [outside, inside].sort(byWeakestFirst(exam(), now, { breadth: true }));
+  assert.equal(inScope(sorted[0], exam()), true);
+});
+
+test('breadth mode falls back to weakest-first among equals', () => {
+  const now = AT('04');
+  const a = card({ fwd: ['2026-09-01'], rev: ['2026-09-01'] });
+  const b = card({ fwd: ['2026-09-01', '2026-09-02'], rev: ['2026-09-01', '2026-09-02'] });
+
+  const sorted = [b, a].sort(byWeakestFirst(exam(), now, { breadth: true }));
+  assert.equal(sorted[0], a, 'both are covered once each way, so the shakier goes first');
+});
+
+test('the panel knows when three recalls has become impossible', () => {
+  const words = scopeCorpus(5);
+  const cards = new Map([['w0', readyCard({ fwd: ['2026-09-01'], rev: ['2026-09-01'] })]]);
+
+  /* Four days out, three clean days still fit. Two days out, they cannot. */
+  assert.equal(readiness(cards, words, exam(), AT('07')).feasible, true);
+  assert.equal(readiness(cards, words, exam(), AT('09')).feasible, false);
+});
+
+test('a test she is ready for is never called infeasible', () => {
+  const words = scopeCorpus(2);
+  const cards = new Map([
+    ['w0', readyCard({ fwd: THREE, rev: THREE })],
+    ['w1', readyCard({ fwd: THREE, rev: THREE })],
+  ]);
+  const summary = readiness(cards, words, exam(), AT('11'));
+  assert.equal(summary.remaining.total, 0);
+  assert.equal(summary.feasible, true, 'nothing owed cannot be out of reach');
 });

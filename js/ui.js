@@ -96,6 +96,17 @@ export function readinessPanel(summary, { compact = false } = {}) {
       : 'Je bent klaar voor deze toets.'));
   }
 
+  /* Said out loud rather than quietly reordering behind her back: she is
+     entitled to know the app has changed what it is aiming for. */
+  if (!summary.feasible && summary.remaining.total > 0) {
+    const note = el('div', 'triage');
+    note.append(el('p', 'triage-head', 'Te weinig tijd voor alles'));
+    note.append(el('p', 'caption',
+      'We zorgen eerst dat je élk woord één keer goed hebt, in beide richtingen, '
+      + 'voor we er woorden helemaal instampen. Op een toets levert dat meer punten op.'));
+    panel.append(note);
+  }
+
   if (summary.weakest) {
     const practise = el('button', 'btn btn-primary',
       `${DIRECTION_LABEL[summary.weakest]} oefenen`);

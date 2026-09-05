@@ -312,7 +312,8 @@ function startLesson(only, focusIds = null) {
   /* Snapshot readiness so the results screen can lead with what changed —
      "+4 klaar voor de toets" is the line she actually wants after a lesson. */
   const test = focusIds ? null : activeTest(store.progress.tests, Date.now());
-  const readyBefore = test ? readiness(store.cards, corpus.words, test).ready : null;
+  const summary = test ? readiness(store.cards, corpus.words, test) : null;
+  const readyBefore = summary?.ready ?? null;
 
   const lesson = createLesson({
     words: corpus.words,
@@ -323,6 +324,9 @@ function startLesson(only, focusIds = null) {
        introduced, what order it is asked in, and how far ahead it is
        scheduled. Null when there is no test, and everything behaves normally. */
     test,
+    /* Too little time left to finish properly: cover everything once each way
+       before pushing any single word to three. */
+    breadth: summary ? !summary.feasible : false,
     minutes: store.settings.lessonMinutes,
     newPerLesson: store.settings.newPerLesson,
     now: Date.now(),
