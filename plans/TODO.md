@@ -229,11 +229,13 @@ screen inherits this without saying so again.
 - [x] One-way count per chapter with its fix-it button *(done in 2.3)*
 
 ### 4.4 Offline + backup
-- [ ] `service-worker.js` caching shell, CSS, JS, icons and `data/*.txt`
-- [ ] Cache-busting honours list `rev` so edited chapters actually update
-- [ ] Export progress + pasted lists as JSON
-- [ ] Import JSON back, with a confirm step
-- [ ] Reset a chapter from Settings
+- [x] `service-worker.js` caching shell, CSS, JS, icons and `data/*.txt`
+- [x] Cache-busting honours list `rev` so edited chapters actually update
+- [x] Export progress + pasted lists as JSON
+- [x] Import JSON back, with a preview naming what is in it *and* what it replaces;
+      the profile being overwritten is copied aside first
+- [x] Reset a chapter from Settings, behind a confirmation — a word shared with
+      another chapter is left alone, since the card is shared
 
 ### 4.5 Settings screen
 - [ ] Lesson length, new words per lesson, anticipation gap, default direction, sound

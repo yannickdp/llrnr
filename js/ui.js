@@ -342,7 +342,7 @@ export function runLesson(lesson, { anticipationSeconds = 4, onFinish } = {}) {
 
 /* ===================================================== the results ======= */
 
-const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+export const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 export function paintResults(results, { test = null, gained = 0, award = null, badges = [] } = {}) {
   const host = $('results-body');

@@ -8,7 +8,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  openStore, migrate, emptyProgress, DEFAULT_SETTINGS, KEY, BROKEN_KEY, VERSION,
+  openStore, migrate, emptyProgress, exportBackup, inspectBackup,
+  DEFAULT_SETTINGS, KEY, BROKEN_KEY, VERSION,
 } from '../js/store.js';
 import { newCard } from '../js/schedule.js';
 
@@ -204,4 +205,108 @@ test('the stored blob has the shape PLAN section 4 describes', () => {
     'badges', 'cards', 'roma', 'settings', 'stage', 'streak', 'tests',
     'typedAnswers', 'version', 'xp',
   ]);
+});
+
+/* ============================================================= backup ==== */
+
+test('a backup carries progress and pasted lists together', () => {
+  const storage = fakeStorage();
+  const store = openStore({ storage });
+  store.cards.set('h1', card('mater'));
+  store.progress.xp = 750;
+  store.addList({ title: 'Geplakt', text: 'pater | vader' });
+  store.save();
+
+  const backup = exportBackup(store);
+  assert.equal(backup.app, 'llrnr');
+  assert.equal(backup.progress.xp, 750);
+  assert.equal(Object.keys(backup.progress.cards).length, 1);
+  assert.equal(backup.lists.length, 1,
+    'a backup without her pasted chapters would restore progress on words that no longer exist');
+});
+
+test('a backup survives the round trip', () => {
+  const source = openStore({ storage: fakeStorage() });
+  source.cards.set('h1', card('mater'));
+  source.progress.xp = 750;
+  source.progress.badges.push('first-learned');
+  source.addList({ title: 'Geplakt', text: 'pater | vader' });
+  source.save();
+
+  const text = JSON.stringify(exportBackup(source));
+
+  const target = openStore({ storage: fakeStorage() });
+  const check = inspectBackup(text);
+  assert.equal(check.ok, true);
+  assert.equal(check.summary.cards, 1);
+  assert.equal(check.summary.xp, 750);
+
+  target.restore(check.backup);
+  assert.equal(target.progress.xp, 750);
+  assert.equal(target.cards.get('h1').term, 'mater');
+  assert.equal(target.pastedLists.length, 1);
+  assert.deepEqual(target.progress.badges, ['first-learned']);
+});
+
+test('a restore is written to storage, not just to memory', () => {
+  const source = openStore({ storage: fakeStorage() });
+  source.cards.set('h1', card('mater'));
+  source.progress.xp = 400;
+  source.save();
+
+  const storage = fakeStorage();
+  const target = openStore({ storage });
+  target.restore(inspectBackup(JSON.stringify(exportBackup(source))).backup);
+
+  assert.equal(openStore({ storage }).progress.xp, 400, 'and survives the next reload');
+});
+
+test('the profile being replaced is set aside first', () => {
+  const source = openStore({ storage: fakeStorage() });
+  source.progress.xp = 10;
+  source.save();
+
+  const storage = fakeStorage();
+  const target = openStore({ storage });
+  target.progress.xp = 9999;
+  target.save();
+  target.restore(inspectBackup(JSON.stringify(exportBackup(source))).backup);
+
+  assert.equal(JSON.parse(storage.peek(BROKEN_KEY)).xp, 9999,
+    'restoring the wrong file must not be the end of a month of practice');
+});
+
+test('rubbish is refused before anything is replaced', () => {
+  assert.equal(inspectBackup('not json').ok, false);
+  assert.match(inspectBackup('not json').reason, /geen geldige back-up/);
+
+  assert.equal(inspectBackup('{"hello":true}').ok, false);
+  assert.match(inspectBackup('{"hello":true}').reason, /llrnr/);
+
+  const wrongVersion = JSON.stringify({ app: 'llrnr', progress: { version: 99 } });
+  assert.equal(inspectBackup(wrongVersion).ok, false);
+});
+
+/* ====================================================== reset a chapter == */
+
+test('resetting a chapter forgets its cards', () => {
+  const store = openStore({ storage: fakeStorage() });
+  store.cards.set('h1', card('mater'));
+  store.cards.set('h2', card('pater'));
+
+  assert.equal(store.resetList('latin-ch01', ['h1', 'h2']), 2);
+  assert.equal(store.cards.size, 0);
+});
+
+test('a word shared with another chapter is left alone', () => {
+  const store = openStore({ storage: fakeStorage() });
+  const shared = card('pater');
+  shared.lists = ['latin-ch01', 'latin-ch07'];
+  store.cards.set('h1', card('mater'));
+  store.cards.set('h2', shared);
+
+  const removed = store.resetList('latin-ch01', ['h1', 'h2']);
+  assert.equal(removed, 1);
+  assert.ok(store.cards.has('h2'),
+    'the card is shared — wiping it would quietly reset chapter 7 as well');
 });

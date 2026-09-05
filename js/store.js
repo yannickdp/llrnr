@@ -157,6 +157,10 @@ class PersistentCards extends Map {
 
 /* ============================================================== store ==== */
 
+/* Map.prototype.set, reached past the write-through override so a restore
+   writes once at the end instead of once per card. */
+const super_set = (map, key, value) => Map.prototype.set.call(map, key, value);
+
 /** localStorage can throw merely on being touched; never let that reach a screen. */
 function safely(fn, fallback = null) {
   try {
@@ -255,7 +259,10 @@ export function openStore({ storage = globalThis.localStorage } = {}) {
   }
 
   return {
-    progress,
+    /* A getter, not a captured reference: restore() and reset() replace the
+       whole profile object, and a caller holding the old one would go on
+       reading a profile that is no longer the app's. */
+    get progress() { return progress; },
     cards,
     get settings() { return progress.settings; },
 
@@ -287,6 +294,46 @@ export function openStore({ storage = globalThis.localStorage } = {}) {
 
     saveLists,
 
+    /**
+     * Replace everything with a backup that inspectBackup() has already
+     * checked. The old profile is copied aside first: restoring the wrong file
+     * must not be the end of a month's practice.
+     */
+    restore(backup) {
+      safely(() => storage.setItem(BROKEN_KEY, JSON.stringify(progress)));
+
+      /* Read the cards out first: clear() writes through, and that write sets
+         progress.cards to {} — which by then is the backup's own object. */
+      const restored = Object.entries(backup.progress.cards);
+
+      progress = backup.progress;
+      cards.clear();
+      for (const [id, card] of restored) super_set(cards, id, card);
+
+      pastedLists = Array.isArray(backup.lists) ? backup.lists : [];
+      saveLists();
+      save();
+      return progress;
+    },
+
+    /**
+     * Forget her progress on one chapter's words.
+     *
+     * A word that also belongs to a chapter she is keeping is left alone: the
+     * card is shared, and wiping it would quietly reset the other chapter too.
+     */
+    resetList(listId, wordIds) {
+      let removed = 0;
+      for (const id of wordIds) {
+        const card = cards.get(id);
+        if (!card) continue;
+        if (card.lists.some(other => other !== listId)) continue;
+        cards.delete(id);
+        removed++;
+      }
+      return removed;
+    },
+
     /** Wipe the profile. Only ever from an explicit action in Settings. */
     reset() {
       progress = emptyProgress();
@@ -298,3 +345,62 @@ export function openStore({ storage = globalThis.localStorage } = {}) {
     get status() { return status; },
   };
 }
+
+/* ============================================================= backup ==== */
+
+export const BACKUP_VERSION = 1;
+
+/**
+ * Everything worth keeping, in one object.
+ *
+ * The pasted lists travel with the profile deliberately: they exist only in
+ * this browser, so a backup without them would restore her progress on words
+ * that no longer exist anywhere.
+ */
+export function exportBackup(store) {
+  return {
+    app: 'llrnr',
+    backupVersion: BACKUP_VERSION,
+    exportedAt: new Date().toISOString(),
+    progress: JSON.parse(JSON.stringify({ ...store.progress, cards: Object.fromEntries(store.cards) })),
+    lists: JSON.parse(JSON.stringify(store.pastedLists)),
+  };
+}
+
+/**
+ * Read a backup without applying it, so she can be told what she is about to
+ * replace before anything is overwritten.
+ *
+ * @returns {{ok: boolean, reason?: string, summary?: object, backup?: object}}
+ */
+export function inspectBackup(text) {
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return { ok: false, reason: 'Dit is geen geldige back-up (onleesbare tekst).' };
+  }
+
+  if (parsed?.app !== 'llrnr' || !parsed.progress) {
+    return { ok: false, reason: 'Dit lijkt geen back-up van llrnr te zijn.' };
+  }
+
+  const { progress } = migrate(parsed.progress);
+  if (!progress) {
+    return { ok: false, reason: 'De voortgang in deze back-up kan niet gelezen worden.' };
+  }
+
+  return {
+    ok: true,
+    backup: { ...parsed, progress },
+    summary: {
+      cards: Object.keys(progress.cards).length,
+      xp: progress.xp,
+      badges: progress.badges.length,
+      tests: progress.tests.length,
+      lists: Array.isArray(parsed.lists) ? parsed.lists.length : 0,
+      exportedAt: parsed.exportedAt ?? null,
+    },
+  };
+}
+

@@ -10,13 +10,13 @@
 import { loadCorpus } from './lists.js';
 import { parseList } from './parse.js';
 import { createLesson } from './lesson.js';
-import { openStore } from './store.js';
+import { exportBackup, inspectBackup, openStore } from './store.js';
 import { isDue, isOneWay, missingDirection } from './schedule.js';
 import { activeTest, makeTest, readiness } from './cram.js';
 import { awardLesson, goalMetToday, newBadges, stageFor } from './gamify.js';
 import { setSoundEnabled } from './sound.js';
 import {
-  $, DIRECTION_LABEL, el, importPreview, paintHome, paintResults, progressTrack,
+  $, DIRECTION_LABEL, el, importPreview, paintHome, paintResults, plural, progressTrack,
   readinessPanel, runLesson,
 } from './ui.js';
 
@@ -99,6 +99,12 @@ document.addEventListener('click', e => {
   const removeId = e.target.closest('[data-remove-test]')?.dataset.removeTest;
   if (removeId) {
     removeTest(removeId);
+    return;
+  }
+
+  const resetId = e.target.closest('[data-reset-list]')?.dataset.resetList;
+  if (resetId) {
+    resetChapter(resetId);
     return;
   }
 
@@ -517,8 +523,18 @@ function finishLesson(lesson, test, readyBefore) {
   show('results');
 }
 
-function askToQuit(onQuit) {
+/**
+ * The one confirmation dialog, reused. Nothing that forgets her work happens
+ * without passing through here.
+ */
+function askToConfirm(title, detail, onConfirm, opts = {}) {
+  const { confirmLabel = 'Doorgaan', cancelLabel = 'Annuleren' } = opts;
   const dialog = $('confirm');
+
+  $('confirm-title').textContent = title;
+  $('confirm-detail').textContent = detail;
+  $('confirm-stay').textContent = cancelLabel;
+  $('confirm-quit').textContent = confirmLabel;
   dialog.hidden = false;
 
   const close = () => {
@@ -529,10 +545,132 @@ function askToQuit(onQuit) {
   const onClick = e => {
     const action = e.target.closest('[data-action]')?.dataset.action;
     if (action === 'stay') close();
-    if (action === 'quit') { close(); onQuit(); }
+    if (action === 'quit') { close(); onConfirm(); }
   };
 
   dialog.addEventListener('click', onClick);
+}
+
+const askToQuit = onQuit => askToConfirm(
+  'Les stoppen?',
+  'Je bent nog bezig. Wat je al deed, telt mee in het resultaat.',
+  onQuit,
+  { confirmLabel: 'Stoppen', cancelLabel: 'Verdergaan' },
+);
+
+/* ------------------------------------------------------------ backup --- */
+
+const backupFilename = () => `llrnr-${new Date().toISOString().slice(0, 10)}.json`;
+
+const backupText = () => JSON.stringify(exportBackup(store), null, 2);
+
+function note(id, message) {
+  const slot = $(id);
+  slot.textContent = message;
+  slot.hidden = !message;
+}
+
+function downloadBackup() {
+  const blob = new Blob([backupText()], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = el('a');
+  link.href = url;
+  link.download = backupFilename();
+  link.click();
+  URL.revokeObjectURL(url);
+  note('export-note', `Bewaard als ${backupFilename()}.`);
+}
+
+async function copyBackup() {
+  /* Copying matters more than it looks on an installed iOS app, where a saved
+     file can be awkward to find again — the clipboard goes straight into a
+     note or an email to herself. */
+  try {
+    await navigator.clipboard.writeText(backupText());
+    note('export-note', 'Gekopieerd. Plak het ergens veilig, bijvoorbeeld in een mail aan jezelf.');
+  } catch {
+    note('export-note', 'Kopieren lukt niet in deze browser — gebruik "Bestand bewaren".');
+  }
+}
+
+let pendingRestore = null;
+
+function refreshRestorePreview() {
+  const text = $('restore-text').value.trim();
+  const host = $('restore-preview');
+  const apply = $('restore-apply');
+
+  pendingRestore = null;
+  apply.disabled = true;
+
+  if (!text) { host.replaceChildren(); return; }
+
+  const result = inspectBackup(text);
+  if (!result.ok) {
+    host.replaceChildren(el('p', 'tag tag-bad', result.reason));
+    return;
+  }
+
+  /* Say what is in it *and* what it costs, before anything is replaced. */
+  const { summary } = result;
+  const card = el('div', 'card');
+  card.append(el('p', 'result-line',
+    `${plural(summary.cards, 'woord', 'woorden')}, ${summary.xp} XP`));
+  card.append(el('p', 'caption', [
+    plural(summary.badges, 'badge', 'badges'),
+    plural(summary.tests, 'toets', 'toetsen'),
+    plural(summary.lists, 'geplakte lijst', 'geplakte lijsten'),
+    ...(summary.exportedAt ? [`bewaard op ${summary.exportedAt.slice(0, 10)}`] : []),
+  ].join(' · ')));
+  card.append(el('p', 'tag tag-bad',
+    `Dit vervangt je huidige voortgang (${plural(store.cards.size, 'woord', 'woorden')}, `
+    + `${store.progress.xp} XP).`));
+
+  host.replaceChildren(card);
+  pendingRestore = result.backup;
+  apply.disabled = false;
+}
+
+async function applyRestore(event) {
+  event.preventDefault();
+  if (!pendingRestore) return;
+
+  store.restore(pendingRestore);
+  $('restore-text').value = '';
+  refreshRestorePreview();
+  restoreDirection();
+  setSoundEnabled(store.settings.sound);
+  await reloadCorpus();
+  note('export-note', 'Terugzetten gelukt.');
+}
+
+/** One button per chapter, each asking before it forgets anything. */
+function renderResetList() {
+  if (!corpus) return;
+  $('reset-list').replaceChildren(...corpus.lists.map(list => {
+    const button = el('button', 'btn btn-small', `${list.title ?? list.file} opnieuw`);
+    button.dataset.resetList = list.id;
+    return button;
+  }));
+}
+
+function resetChapter(listId) {
+  const list = corpus.lists.find(entry => entry.id === listId);
+  if (!list) return;
+
+  askToConfirm(
+    `${list.title ?? list.file} opnieuw beginnen?`,
+    'Je voortgang voor dit hoofdstuk wordt gewist. De woorden blijven staan.',
+    () => {
+      const removed = store.resetList(listId, list.words.map(word => word.id));
+      store.save();
+      renderChapters();
+      refreshHome();
+      renderReadiness();
+      note('export-note', `${removed} woorden opnieuw op nul gezet.`);
+    },
+    { confirmLabel: 'Wissen' },
+  );
 }
 
 /* -------------------------------------------------------------- boot --- */
@@ -543,6 +681,7 @@ async function reloadCorpus() {
   renderChapters();
   renderScopeChoices();
   renderReadiness();
+  renderResetList();
   refreshHome();
 }
 
@@ -561,6 +700,17 @@ async function boot() {
 
   $('import-text').addEventListener('input', refreshPreview);
   $('import-save').addEventListener('click', saveImport);
+  $('export-download').addEventListener('click', downloadBackup);
+  $('export-copy').addEventListener('click', copyBackup);
+  $('restore-text').addEventListener('input', refreshRestorePreview);
+  $('import-form').addEventListener('submit', applyRestore);
+
+  /* Offline support, but only where a service worker is allowed to exist. */
+  if ('serviceWorker' in navigator
+      && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('service-worker.js')
+      .catch(err => console.warn('llrnr: service worker not registered', err));
+  }
 
   try {
     await reloadCorpus();

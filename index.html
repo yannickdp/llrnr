@@ -93,7 +93,34 @@
     <header class="screen-head"><h1>Instellingen</h1></header>
     <div class="card">
       <p class="placeholder">Lengte van een les, nieuwe woorden per les, denktijd,
-        vaste richting, geluid, bewaren / terugzetten, hoofdstuk opnieuw beginnen.</p>
+        vaste richting en geluid komen hier.</p>
+    </div>
+
+    <h2 class="section-head">Bewaren</h2>
+    <div class="card stack">
+      <p class="caption">Zet je voortgang veilig. Bewaar dit af en toe — een
+        telefoon die opnieuw wordt ingesteld vergeet alles.</p>
+      <button class="btn" id="export-download">Bestand bewaren</button>
+      <button class="btn" id="export-copy">Kopiëren</button>
+      <p class="caption" id="export-note" hidden></p>
+    </div>
+
+    <h2 class="section-head">Terugzetten</h2>
+    <form class="card stack" id="import-form">
+      <label class="field">
+        <span>Plak hier een eerder bewaarde back-up</span>
+        <textarea id="restore-text" rows="4" spellcheck="false"
+          placeholder="{ &quot;version&quot;: 1, … }"></textarea>
+      </label>
+      <div id="restore-preview" class="stack"></div>
+      <button class="btn" id="restore-apply" type="submit" disabled>Terugzetten</button>
+    </form>
+
+    <h2 class="section-head">Opnieuw beginnen</h2>
+    <div class="card stack">
+      <p class="caption">Wis je voortgang voor één hoofdstuk. De woorden zelf
+        blijven staan.</p>
+      <div id="reset-list" class="stack"></div>
     </div>
   </section>
 
@@ -190,9 +217,9 @@
 <div id="confirm" class="dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-title" hidden>
   <div class="dialog-box">
     <p class="lede" id="confirm-title">Les stoppen?</p>
-    <p class="caption">Je bent nog bezig. Wat je al deed, telt mee in het resultaat.</p>
-    <button class="btn btn-primary" data-action="stay">Verdergaan</button>
-    <button class="btn" data-action="quit">Stoppen</button>
+    <p class="caption" id="confirm-detail"></p>
+    <button class="btn btn-primary" id="confirm-stay" data-action="stay">Verdergaan</button>
+    <button class="btn" id="confirm-quit" data-action="quit">Stoppen</button>
   </div>
 </div>
 
