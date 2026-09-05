@@ -23,6 +23,27 @@ export function formatClock(ms) {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }
 
+/* ======================================================== the home ======= */
+
+/**
+ * The three numbers on Home, and the save warning if there is one.
+ *
+ * They are deliberately real or zero, never illustrative: the streak and XP
+ * stay at nought until Phase 4.1 actually awards them, because a made-up 5-day
+ * streak on a screen that also shows a real "te herhalen" count teaches her to
+ * distrust both.
+ */
+export function paintHome({ due, fresh, streak, xp, warning }) {
+  $('home-due').textContent = String(due);
+  $('home-new').textContent = String(fresh);
+  $('home-streak').textContent = String(streak);
+  $('home-xp').style.inlineSize = `${xp > 0 ? 100 : 0}%`;
+
+  const slot = $('home-warning');
+  slot.textContent = warning ?? '';
+  slot.hidden = !warning;
+}
+
 /* ====================================================== the lesson ======= */
 
 const DIRECTION_LABEL = {

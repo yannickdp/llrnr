@@ -106,11 +106,16 @@ screen inherits this without saying so again.
 ## Phase 2 — it teaches properly
 
 ### 2.1 `store.js`
-- [ ] `llrnr.progress.v1` single blob, shape per PLAN §4, `version: 1` from day one
-- [ ] Load / save on every change; migrate hook in place
-- [ ] Cards keyed by content hash, `term` stored alongside for readability
-- [ ] `lists[]` per card — union of chapters, keeps the card when a chapter leaves the pool
-- [ ] `settings` persisted (lessonMinutes, newPerLesson, anticipationSeconds, sound, lastDirection)
+- [x] `llrnr.progress.v1` single blob, shape per PLAN §4, `version: 1` from day one
+- [x] Load / save on every change; migrate hook in place
+- [x] Cards keyed by content hash, `term` stored alongside for readability
+- [x] `lists[]` per card — union of chapters, keeps the card when a chapter leaves the pool
+- [x] `settings` persisted (lessonMinutes, newPerLesson, anticipationSeconds, sound,
+      lastDirection) and honoured by the lesson *(the Settings screen to edit them
+      is Phase 4.5)*
+- [x] Unreadable or newer-version data is set aside under `.broken`, never overwritten
+- [x] A refused write (Safari private mode) is reported on Home, not swallowed
+- [x] Home shows real due / new counts instead of illustrative ones
 
 ### 2.2 `answer.js`
 - [ ] Case-insensitive, accent-stripped, whitespace-trimmed matching

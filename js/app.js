@@ -9,7 +9,9 @@
 
 import { loadCorpus } from './lists.js';
 import { createLesson } from './lesson.js';
-import { $, el, paintResults, runLesson } from './ui.js';
+import { openStore } from './store.js';
+import { isDue } from './schedule.js';
+import { $, el, paintHome, paintResults, runLesson } from './ui.js';
 
 const TABS = ['home', 'words', 'tests', 'settings'];
 const MODAL = ['start', 'lesson', 'results'];
@@ -135,10 +137,10 @@ function renderChapters(lists, wordCount) {
 
 /* ----------------------------------------------------------- lessons --- */
 
-/* Progress lives in memory only, so it survives moving between screens but not
-   a reload. Phase 2.1 swaps this one Map for store.js and localStorage, and
-   nothing else here has to change. */
-const progress = new Map();
+/* Progress is persistent from here on. The cards Map writes itself through to
+   localStorage on every set, so the lesson engine needs to know nothing about
+   any of it. */
+const store = openStore();
 
 let corpus = null;
 let running = null;
@@ -149,25 +151,60 @@ function chosenDirection() {
     ?.dataset.direction ?? 'both';
 }
 
+/** Pre-select the direction she chose last time, per PLAN section 2.4. */
+function restoreDirection() {
+  const picker = $('direction-picker');
+  if (!picker) return;
+  for (const choice of picker.querySelectorAll('.choice')) {
+    choice.setAttribute(
+      'aria-pressed', String(choice.dataset.direction === store.settings.lastDirection),
+    );
+  }
+}
+
+/** The honest numbers for the Home screen. */
+function refreshHome() {
+  if (!corpus) return;
+  const now = Date.now();
+  let due = 0;
+  for (const card of store.cards.values()) if (isDue(card, now)) due++;
+
+  paintHome({
+    due,
+    fresh: [...corpus.words.keys()].filter(id => !store.cards.has(id)).length,
+    streak: store.progress.streak.current,
+    xp: store.progress.xp,
+    warning: store.status.ok ? null : store.status.message,
+  });
+}
+
 function startLesson() {
   /* Guard rather than trust: the button is disabled until the corpus is in,
      so reaching here without one would be a bug. */
   if (!corpus?.words.size) return;
 
+  const direction = chosenDirection();
+  store.settings.lastDirection = direction;
+  store.save();
+
   const lesson = createLesson({
     words: corpus.words,
-    cards: progress,
-    direction: chosenDirection(),
+    cards: store.cards,
+    direction,
+    minutes: store.settings.lessonMinutes,
+    newPerLesson: store.settings.newPerLesson,
     now: Date.now(),
   });
 
   show('lesson');
 
   running = runLesson(lesson, {
+    anticipationSeconds: store.settings.anticipationSeconds,
     onFinish: () => {
       running = null;
       setExitGuard(null);
       paintResults(lesson.results());
+      refreshHome();
       show('results');
     },
   });
@@ -183,6 +220,7 @@ function startLesson() {
       setExitGuard(null);
       lesson.finish();
       paintResults(lesson.results());
+      refreshHome();
       show('results');
     });
     return false;
@@ -218,9 +256,12 @@ async function boot() {
   startButton.disabled = true;
   startButton.addEventListener('click', startLesson);
 
+  restoreDirection();
+
   try {
     corpus = await loadCorpus();
     renderChapters(corpus.lists, corpus.words.size);
+    refreshHome();
     startButton.disabled = corpus.words.size === 0;
     document.documentElement.dataset.corpus = 'ready';
   } catch (err) {
