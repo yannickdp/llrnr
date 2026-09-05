@@ -118,11 +118,14 @@ screen inherits this without saying so again.
 - [x] Home shows real due / new counts instead of illustrative ones
 
 ### 2.2 `answer.js`
-- [ ] Case-insensitive, accent-stripped, whitespace-trimmed matching
-- [ ] Any `/`-separated alternative accepted
-- [ ] Levenshtein distance 1 → **almost**, with "bijna! het is *mater*"
-- [ ] Clean recall = correct first attempt, no hint, no almost
-- [ ] Reverse mode: accept any word in the pool sharing that translation, credit the
+- [x] Case-insensitive, accent-stripped, whitespace-trimmed matching
+- [x] Any `/`-separated alternative accepted
+- [x] Levenshtein distance 1 → **almost**, with "bijna! het is *mater*"
+- [x] Clean recall = correct first attempt, no hint, no almost — and a slip that
+      day in that direction disqualifies the day, in either order
+- [x] Words shorter than 4 letters are never "almost" (ad/ab, et/ex are different
+      words, not typos)
+- [x] Reverse mode: accept any word in the pool sharing that translation, credit the
       card that was asked
 
 ### 2.3 Direction

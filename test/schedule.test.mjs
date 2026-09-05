@@ -252,9 +252,10 @@ test('overdueBy orders the queue by how late a card is', () => {
 test('a card carries the shape the store expects', () => {
   const card = newCard({ term: 'mater', lists: ['latin-ch01', 'latin-ch07'] });
   assert.deepEqual(Object.keys(card).sort(), [
-    'box', 'cleanDays', 'correct', 'dirOk', 'dueAt', 'lists',
+    'box', 'cleanDays', 'correct', 'dirOk', 'dueAt', 'lastSlip', 'lists',
     'micro', 'phase', 'seen', 'slips', 'term',
   ]);
   assert.deepEqual(card.cleanDays, { fwd: [], rev: [] });
   assert.deepEqual(card.dirOk, { fwd: false, rev: false });
+  assert.deepEqual(card.lastSlip, { fwd: null, rev: null });
 });

@@ -158,10 +158,17 @@ export function runLesson(lesson, { anticipationSeconds = 4, onFinish } = {}) {
   }
 
   function paintReveal(reveal) {
-    const verdict = { correct: 'Juist', wrong: 'Fout', almost: 'Bijna' }[reveal.grade];
+    const verdict = { correct: 'Juist', wrong: 'Fout', almost: 'Bijna!' }[reveal.grade];
     const card = el('div', `card reveal reveal-${reveal.grade}`);
     card.append(el('p', 'eyebrow', verdict));
     card.append(el('p', 'prompt reveal-answer', reveal.answer));
+
+    /* For an "almost" the headline word is already the spelling she nearly
+       had, so repeating it in a sentence says nothing. What she cannot see is
+       what she actually typed — and the spelling is the whole point. */
+    if (reveal.grade === 'almost' && reveal.nearest && reveal.nearest !== reveal.answer) {
+      card.append(el('p', 'lede reveal-answer', reveal.nearest));
+    }
 
     if (reveal.form) card.append(el('p', 'caption', reveal.form));
 
@@ -171,7 +178,7 @@ export function runLesson(lesson, { anticipationSeconds = 4, onFinish } = {}) {
     if (extras.length) {
       card.append(el('p', 'caption', `ook goed: ${extras.join(', ')}`));
     }
-    if (reveal.grade === 'wrong' && reveal.typed?.trim()) {
+    if (reveal.grade !== 'correct' && reveal.typed?.trim()) {
       card.append(el('p', 'caption typed-back', `jij typte: ${reveal.typed}`));
     }
 

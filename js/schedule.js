@@ -31,7 +31,27 @@ export const DAY_START_HOUR = 4;
 
 const GRADES = ['correct', 'almost', 'wrong'];
 
+/**
+ * How many clean days to keep per direction. PLAN caps this at the largest
+ * targetRecalls in use, which is 3 by default; a little headroom costs nothing
+ * and means raising a test's target does not discard evidence already earned.
+ */
+export const MAX_CLEAN_DAYS = 5;
+
 const iso = ms => new Date(ms).toISOString();
+
+/**
+ * Which study day a moment belongs to, as YYYY-MM-DD.
+ *
+ * The same 04:00 boundary the intervals use, so a session that runs past
+ * midnight counts as one day's practice rather than two — otherwise a late
+ * Sunday session would hand her two of her three clean days for free.
+ */
+export function studyDay(now) {
+  const d = new Date(now);
+  d.setHours(d.getHours() - DAY_START_HOUR);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 /** N days after `now`, at the day-start hour, local time. */
 function dayAfter(now, days) {
@@ -53,6 +73,9 @@ export function newCard(word, { now = Date.now() } = {}) {
     box: 0,
     dueAt: iso(now),
     cleanDays: { fwd: [], rev: [] },
+    /* The last day she slipped in each direction, which is what stops a wrong
+       answer from being erased by a correct one five seconds later. */
+    lastSlip: { fwd: null, rev: null },
     seen: 0,
     correct: 0,
     slips: 0,
@@ -74,6 +97,7 @@ const clone = card => ({
   ...card,
   lists: [...card.lists],
   cleanDays: { fwd: [...card.cleanDays.fwd], rev: [...card.cleanDays.rev] },
+  lastSlip: { ...(card.lastSlip ?? { fwd: null, rev: null }) },
   dirOk: { ...card.dirOk },
 });
 
@@ -100,12 +124,14 @@ export function present(card, { now = Date.now() } = {}) {
  * @param {object} card
  * @param {object} opts
  * @param {'correct'|'almost'|'wrong'} opts.grade
+ * @param {'fwd'|'rev'} [opts.direction]  which way round she was asked
+ * @param {boolean} [opts.hint]           whether she was helped
  * @param {number} [opts.now]
  * @returns {{card: object, outcome: string}} the outcome names the transition,
  *   which is what the results screen counts and what Phase 4.1 pays XP on:
  *   advanced | repeated | reset | graduated | promoted | held | learned | dropped
  */
-export function review(card, { grade, now = Date.now() } = {}) {
+export function review(card, { grade, direction = 'fwd', hint = false, now = Date.now() } = {}) {
   if (!GRADES.includes(grade)) throw new Error(`unknown grade: ${grade}`);
   if (card.phase === 'new') {
     throw new Error('a new word must be presented before it can be reviewed');
@@ -116,9 +142,41 @@ export function review(card, { grade, now = Date.now() } = {}) {
   if (grade === 'correct') next.correct++;
   if (grade === 'almost') next.slips++;
 
+  recordEvidence(next, grade, direction, hint, now);
+
   return next.phase === 'acquire'
     ? acquire(next, grade, now)
     : retain(next, grade, now);
+}
+
+/**
+ * Record what this answer proves about the word, per direction.
+ *
+ * A *clean recall* is correct first time, with no hint and no "almost" — PLAN
+ * section 2.6 is emphatic that this number has to mean something, because the
+ * whole readiness display is built on it. So a day only counts once she has
+ * managed it without slipping in that direction that day, and slipping later
+ * the same day takes the day back: a word she got wrong at eight in the
+ * evening is not one she reliably knew at nine in the morning.
+ */
+function recordEvidence(next, grade, direction, hint, now) {
+  const day = studyDay(now);
+  const days = next.cleanDays[direction];
+
+  if (grade !== 'correct') {
+    next.lastSlip[direction] = day;
+    const at = days.indexOf(day);
+    if (at !== -1) days.splice(at, 1);
+    return;
+  }
+
+  /* "Has she ever produced this, this way round?" — what gates `learned` and
+     drives the one-way marker (Phase 2.3). An almost does not count. */
+  next.dirOk[direction] = true;
+
+  if (hint || next.lastSlip[direction] === day) return;
+  if (!days.includes(day)) days.push(day);
+  if (days.length > MAX_CLEAN_DAYS) days.shift();
 }
 
 /* --- acquire: cheap, fast, and carrying no lasting penalty --------------- */

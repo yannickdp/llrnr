@@ -16,7 +16,8 @@
    reviews of other words, and with new words being introduced. */
 
 import { isDue, newCard, overdueBy, present, review } from './schedule.js';
-import { check, promptFor } from './answer.js';
+import { check, expectedFor, promptFor, withinOneEdit } from './answer.js';
+import { normalize } from './parse.js';
 
 const MINUTE = 60_000;
 
@@ -200,7 +201,9 @@ export function createLesson({
 
     const { id, word, direction: dir } = current;
     const grade = check({ typed, word, direction: dir, pool: words });
-    const { card, outcome } = review(cards.get(id), { grade, now: t });
+    /* The direction goes to the scheduler because the *evidence* is
+       per-direction even though the scheduling clock is shared. */
+    const { card, outcome } = review(cards.get(id), { grade, direction: dir, now: t });
     cards.set(id, card);
 
     firstContact.delete(id);
@@ -217,6 +220,9 @@ export function createLesson({
       grade, outcome,
       term: word.term,
       form: word.form,
+      /* For an "almost", which accepted spelling she nearly wrote — that is
+         the one worth showing back, not necessarily the canonical first one. */
+      nearest: grade === 'almost' ? nearestTo(typed, word, dir) : null,
       /* The canonical answer as written in the list, plus every alternative
          that would also have counted. */
       answer: dir === 'fwd' ? word.answer : word.term,
@@ -246,6 +252,12 @@ export function createLesson({
     /* Exposed for the UI and the tests; never written to from outside. */
     cards,
   };
+}
+
+/** Which accepted answer she came closest to. */
+function nearestTo(typed, word, direction) {
+  const accepted = expectedFor(word, direction);
+  return accepted.find(a => withinOneEdit(normalize(typed ?? ''), normalize(a))) ?? accepted[0];
 }
 
 /** Fisher-Yates, with the randomness injected so tests can pin it. */

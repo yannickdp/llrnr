@@ -1,15 +1,19 @@
 /* answer.js — is what she typed right?
 
-   Phase 1.4 needs only the honest core: case, accents and stray whitespace are
-   forgiven (they are not what she is marked on), any of the `/`-separated
-   alternatives counts, and reverse mode accepts any word in the pool that the
-   prompt genuinely means.
-
-   Phase 2.2 adds the rest — Levenshtein distance 1 as "almost", and the
-   clean-recall rule. Until then this returns only 'correct' or 'wrong', and
-   the scheduler never sees an 'almost'. */
+   Forgiving about what she is not marked on (case, accents, stray spaces) and
+   strict about what she is (the letters). A near miss is graded 'almost',
+   which costs her nothing in the boxes but does not count as a clean recall
+   either — see schedule.js, where the evidence is recorded. */
 
 import { normalize } from './parse.js';
+
+/**
+ * Below this length, a single edit is a different word rather than a typo:
+ * Latin is full of two- and three-letter words where one letter is the whole
+ * distinction — ad/ab, et/ex, sed/sub. Calling those "almost" would tell her
+ * she nearly had it when she had in fact written something else.
+ */
+export const MIN_ALMOST_LENGTH = 4;
 
 /** What she has to produce for a word, in one direction. */
 export function expectedFor(word, direction) {
@@ -22,6 +26,29 @@ export function promptFor(word, direction) {
 }
 
 /**
+ * Is `a` reachable from `b` by exactly one insertion, deletion or substitution?
+ *
+ * A bounded check rather than a full Levenshtein matrix: we only ever care
+ * whether the distance is 0 or 1, and this answers that in one pass.
+ */
+export function withinOneEdit(a, b) {
+  if (a === b) return true;
+
+  const [short, long] = a.length <= b.length ? [a, b] : [b, a];
+  if (long.length - short.length > 1) return false;
+
+  let i = 0, j = 0, edits = 0;
+  while (i < short.length && j < long.length) {
+    if (short[i] === long[j]) { i++; j++; continue; }
+    if (++edits > 1) return false;
+    /* Same length means a substitution; otherwise skip the extra letter. */
+    if (short.length === long.length) i++;
+    j++;
+  }
+  return true;
+}
+
+/**
  * Grade one typed answer.
  *
  * @param {object} opts
@@ -30,28 +57,32 @@ export function promptFor(word, direction) {
  * @param {'fwd'|'rev'} opts.direction
  * @param {Map<string,object>} [opts.pool]  every word in play, for the reverse
  *        collision rule below
- * @returns {'correct'|'wrong'}
+ * @returns {'correct'|'almost'|'wrong'}
  */
 export function check({ typed, word, direction, pool = null }) {
   const answer = normalize(typed ?? '');
   if (!answer) return 'wrong';
 
-  if (direction === 'fwd') {
-    return word.translations.some(t => normalize(t) === answer) ? 'correct' : 'wrong';
-  }
-
-  if (normalize(word.term) === answer) return 'correct';
+  const accepted = expectedFor(word, direction).map(normalize);
 
   /* Several Latin words can share a Dutch translation: prompt "zeggen" and
      both dicere and narrare are right. Marking one of them wrong is the
      fastest way to make her stop trusting the app, so any pool word that the
      prompt also means counts — and the card that was asked gets the credit. */
-  if (pool) {
+  if (direction === 'rev' && pool) {
     const prompt = normalize(promptFor(word, direction));
     for (const other of pool.values()) {
-      if (normalize(other.term) !== answer) continue;
-      if (other.translations.some(t => normalize(t) === prompt)) return 'correct';
+      if (other.translations.some(t => normalize(t) === prompt)) {
+        accepted.push(normalize(other.term));
+      }
     }
+  }
+
+  if (accepted.includes(answer)) return 'correct';
+
+  /* One letter out on a word long enough for that to be a slip of the thumb. */
+  if (accepted.some(a => a.length >= MIN_ALMOST_LENGTH && withinOneEdit(answer, a))) {
+    return 'almost';
   }
 
   return 'wrong';
