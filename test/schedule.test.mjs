@@ -8,6 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   newCard, present, review, isDue, overdueBy, isOneWay, missingDirection,
+  trackPosition, studyDay, TRACK_STOPS,
   MICRO_STEPS_MS, BOX_DAYS, DAY_START_HOUR,
 } from '../js/schedule.js';
 
@@ -262,7 +263,7 @@ test('a card carries the shape the store expects', () => {
   const card = newCard({ term: 'mater', lists: ['latin-ch01', 'latin-ch07'] });
   assert.deepEqual(Object.keys(card).sort(), [
     'box', 'cleanDays', 'correct', 'dirOk', 'dueAt', 'lastSlip', 'lists',
-    'micro', 'phase', 'seen', 'slips', 'term',
+    'micro', 'phase', 'seen', 'slips', 'term', 'touchedOn',
   ]);
   assert.deepEqual(card.cleanDays, { fwd: [], rev: [] });
   assert.deepEqual(card.dirOk, { fwd: false, rev: false });
@@ -330,4 +331,36 @@ test('isOneWay only marks words that have got all the way to box 5', () => {
   const clock = fakeClock();
   assert.equal(isOneWay(toBox(3, clock, { oneWay: true })), false,
     'a word still climbing is not "one-way", it is just unfinished');
+});
+
+/* ============================================================= track ===== */
+
+test('every state maps to a stop on the track', () => {
+  const clock = fakeClock();
+  assert.equal(trackPosition(null), 'new', 'a word she has never met');
+  assert.equal(trackPosition(newCard(word, { now: clock.now })), 'new');
+
+  const { card: presented } = present(newCard(word, { now: clock.now }), { now: clock.now });
+  assert.equal(trackPosition(presented), 'acquire');
+
+  for (let box = 1; box <= 5; box++) {
+    assert.equal(trackPosition(toBox(box, fakeClock())), box);
+  }
+
+  let learned = toBox(5, clock);
+  ({ card: learned } = answerWhenDue(learned, 'correct', clock, 'rev'));
+  assert.equal(trackPosition(learned), 'learned');
+});
+
+test('the track reads new -> acquire -> the boxes -> learned', () => {
+  assert.deepEqual(TRACK_STOPS, ['new', 'acquire', 1, 2, 3, 4, 5, 'learned']);
+});
+
+test('a word answered today is marked as touched today', () => {
+  const clock = fakeClock();
+  const card = toBox(2, clock);
+  assert.equal(card.touchedOn, studyDay(clock.now));
+
+  const untouched = newCard(word, { now: clock.now });
+  assert.equal(untouched.touchedOn, null, 'never answered, never touched');
 });

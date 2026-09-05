@@ -9,6 +9,7 @@
    Date.now() on every animation frame instead of counting ticks down. */
 
 import { fanfare, forGrade } from './sound.js';
+import { studyDay, trackPosition, TRACK_STOPS } from './schedule.js';
 
 export const el = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -505,5 +506,48 @@ export function importPreview(parsed, { max = 12 } = {}) {
   }
 
   return blocks;
+}
+
+/* ============================================================= track ===== */
+
+const STOP_LABEL = { new: 'nieuw', acquire: 'leren', learned: 'gekend' };
+
+/**
+ * A chapter's words as dots on the new -> acquire -> box 1-5 -> learned track.
+ *
+ * Position, not percentage, per PLAN section 3: a dot that moved one stop is
+ * something she can see happen. Words answered today are ringed, so the answer
+ * to "what did I actually do today" is on the screen rather than only in the
+ * results she has already dismissed.
+ */
+export function progressTrack(words, cards, now = Date.now()) {
+  const today = studyDay(now);
+  const byStop = new Map(TRACK_STOPS.map(stop => [stop, []]));
+
+  for (const word of words) {
+    const card = cards.get(word.id);
+    byStop.get(trackPosition(card)).push({ word, card });
+  }
+
+  const track = el('div', 'track');
+  for (const stop of TRACK_STOPS) {
+    const entries = byStop.get(stop);
+    const column = el('div', `track-stop track-stop-${typeof stop === 'number' ? 'box' : stop}`);
+
+    const dots = el('div', 'track-dots');
+    for (const { word, card } of entries) {
+      const dot = el('span', 'track-dot');
+      if (card?.touchedOn === today) dot.classList.add('track-dot-today');
+      /* The word itself on long-press or hover — no room for labels. */
+      dot.title = word.term;
+      dots.append(dot);
+    }
+    column.append(dots);
+    column.append(el('span', 'track-label', STOP_LABEL[stop] ?? String(stop)));
+    column.append(el('span', 'track-count', entries.length ? String(entries.length) : ''));
+    track.append(column);
+  }
+
+  return track;
 }
 

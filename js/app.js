@@ -16,7 +16,8 @@ import { activeTest, makeTest, readiness } from './cram.js';
 import { awardLesson, goalMetToday, newBadges, stageFor } from './gamify.js';
 import { setSoundEnabled } from './sound.js';
 import {
-  $, DIRECTION_LABEL, el, importPreview, paintHome, paintResults, readinessPanel, runLesson,
+  $, DIRECTION_LABEL, el, importPreview, paintHome, paintResults, progressTrack,
+  readinessPanel, runLesson,
 } from './ui.js';
 
 const TABS = ['home', 'words', 'tests', 'settings'];
@@ -176,6 +177,8 @@ function chapterCard(list) {
     remove.dataset.removeList = list.id;
     card.append(remove);
   }
+
+  card.append(progressTrack(list.words, store.cards));
 
   const missing = oneWayIn(list);
   const worst = missing.rev.length >= missing.fwd.length ? 'rev' : 'fwd';

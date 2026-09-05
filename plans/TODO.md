@@ -222,8 +222,10 @@ screen inherits this without saying so again.
       arrives with Settings in 4.5; heard-on-device still unverified)*
 
 ### 4.3 Words screen visualisation
-- [ ] new → acquire → box 1–5 → learned dot track per word (position, not percentage)
-- [ ] Per-chapter spread across the track
+- [x] new → acquire → box 1–5 → learned dot track per word (position, not percentage)
+- [x] Per-chapter spread across the track, with a count under each stop
+- [x] Words answered today are ringed, so "what moved today" is on the screen
+      and not only in a results panel she has dismissed
 - [x] One-way count per chapter with its fix-it button *(done in 2.3)*
 
 ### 4.4 Offline + backup

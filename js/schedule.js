@@ -76,6 +76,9 @@ export function newCard(word, { now = Date.now() } = {}) {
     /* The last day she slipped in each direction, which is what stops a wrong
        answer from being erased by a correct one five seconds later. */
     lastSlip: { fwd: null, rev: null },
+    /* The last day this word was answered at all, so the Words screen can show
+       what moved today rather than only where everything stands. */
+    touchedOn: null,
     seen: 0,
     correct: 0,
     slips: 0,
@@ -108,6 +111,21 @@ export function isOneWay(card) {
 export function missingDirection(card) {
   if (card.dirOk.fwd && card.dirOk.rev) return null;
   return card.dirOk.fwd ? 'rev' : 'fwd';
+}
+
+/**
+ * Where a word stands on the new -> acquire -> box 1-5 -> learned track.
+ *
+ * PLAN section 3 shows progress as *position*, not percentage: a dot that moved
+ * one stop is a thing she can see, where "68% complete" is not.
+ */
+export const TRACK_STOPS = ['new', 'acquire', 1, 2, 3, 4, 5, 'learned'];
+
+export function trackPosition(card) {
+  if (!card || card.phase === 'new') return 'new';
+  if (card.phase === 'acquire') return 'acquire';
+  if (card.phase === 'learned') return 'learned';
+  return Math.min(Math.max(card.box, 1), BOX_DAYS.length);
 }
 
 /** How overdue a card is, in ms — the lesson queue's sort key. */
@@ -166,6 +184,7 @@ export function review(card, {
 
   const next = clone(card);
   next.seen++;
+  next.touchedOn = studyDay(now);
   if (grade === 'correct') next.correct++;
   if (grade === 'almost') next.slips++;
 

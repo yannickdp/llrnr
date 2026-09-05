@@ -601,3 +601,54 @@ textarea { min-block-size: 9rem; font-family: ui-monospace, SFMono-Regular, Menl
   from { transform: scale(.9); opacity: 0; }
   to { transform: none; opacity: 1; }
 }
+
+/* =========================================================== the track === */
+
+.track {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 3px;
+  margin-block-start: 12px;
+}
+
+.track-stop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding-block-start: 4px;
+  border-block-start: 2px solid var(--line);
+}
+
+/* The two ends of the track are the meaningful ones: not started, and done. */
+.track-stop-learned { border-block-start-color: var(--ok); }
+.track-stop-box { border-block-start-color: var(--accent-dim); }
+.track-stop-acquire { border-block-start-color: var(--almost); }
+
+.track-dots {
+  display: flex;
+  flex-wrap: wrap-reverse;
+  justify-content: center;
+  align-content: flex-end;
+  gap: 2px;
+  min-block-size: 34px;
+}
+
+.track-dot {
+  inline-size: 6px;
+  block-size: 6px;
+  border-radius: 50%;
+  background: var(--fg-faint);
+}
+
+.track-stop-acquire .track-dot { background: var(--almost); }
+.track-stop-box .track-dot { background: var(--accent); }
+.track-stop-learned .track-dot { background: var(--ok); }
+
+/* Answered today: ringed, so what moved is visible at a glance. */
+.track-dot-today {
+  box-shadow: 0 0 0 2px var(--bg-raised), 0 0 0 3px var(--fg);
+}
+
+.track-label { font-size: 0.625rem; color: var(--fg-faint); }
+.track-count { font-size: 0.6875rem; font-weight: 700; color: var(--fg-dim); min-block-size: 1em; }
