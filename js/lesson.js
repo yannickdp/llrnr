@@ -18,6 +18,7 @@
 import { isDue, newCard, overdueBy, present, review } from './schedule.js';
 import { check, expectedFor, promptFor, withinOneEdit } from './answer.js';
 import { normalize } from './parse.js';
+import { byWeakestFirst, compress, inScope } from './cram.js';
 
 const MINUTE = 60_000;
 
@@ -59,6 +60,9 @@ export function createLesson({
      new words either — it is a targeted repair, not a normal session. */
   focusIds = null,
   reviewCap = REVIEW_CAP,
+  /* The test the lesson is working towards, or null. It narrows what is
+     introduced, reorders what is asked, and shortens what is scheduled. */
+  test = null,
   now = Date.now(),
   random = Math.random,
 } = {}) {
@@ -127,14 +131,23 @@ export function createLesson({
         if ((a.phase === 'acquire') !== (b.phase === 'acquire')) {
           return a.phase === 'acquire' ? -1 : 1;
         }
-        /* Then the shakiest word, and among equals the longest-waiting. */
+        /* During a test run-up the order is weakest-first over the chapters
+           in scope; otherwise the shakiest box, then the longest-waiting. */
+        if (test) return byWeakestFirst(test, t)(a, b);
         return (a.box - b.box) || (overdueBy(b, t) - overdueBy(a, t));
       });
   }
 
   const inFlight = () => live().filter(([, c]) => c.phase === 'acquire').length;
 
-  const unseen = () => [...words.keys()].filter(id => !cards.has(id));
+  /* While a test is running the pool narrows to its chapters: other chapters
+     stop introducing new words, though their genuinely overdue reviews are
+     still served if there is room for them. */
+  const unseen = () => [...words.keys()].filter(id => {
+    if (cards.has(id)) return false;
+    if (!test) return true;
+    return inScope({ lists: words.get(id).lists }, test);
+  });
 
   function canIntroduce(t) {
     if (focus.size) return false;
@@ -269,7 +282,11 @@ export function createLesson({
     const grade = check({ typed, word, direction: dir, pool: words });
     /* The direction goes to the scheduler because the *evidence* is
        per-direction even though the scheduling clock is shared. */
-    const { card, outcome } = review(cards.get(id), { grade, direction: dir, now: t });
+    const { card, outcome } = review(cards.get(id), {
+      grade, direction: dir, now: t,
+      /* No interval may reach past the test date. */
+      capInterval: test ? (ms, c) => compress(ms, c, test, t) : null,
+    });
     cards.set(id, card);
 
     firstContact.delete(id);

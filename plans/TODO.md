@@ -156,14 +156,16 @@ screen inherits this without saying so again.
 ## Phase 3 — it is useful for school *(the differentiator — do not defer)*
 
 ### 3.1 `cram.js`
-- [ ] Test objects: `id`, `title`, `date`, `lists[]`, `targetRecalls`, `directions`
-- [ ] Test-ready = 3 clean recalls on 3 separate days, **in each direction**
-- [ ] Pool narrows to chapters in scope; other chapters stop introducing new words
+- [x] Test objects: `id`, `title`, `date`, `lists[]`, `targetRecalls`, `directions`
+- [x] Test-ready = 3 clean recalls on 3 separate days, **in each direction**
+- [x] Pool narrows to chapters in scope; other chapters stop introducing new words
       but still serve genuinely overdue reviews if there is room
-- [ ] Interval compression: `clamp(floor(daysLeft / recallsStillNeeded), 1d, normal)`
-- [ ] Weakest-first ordering: fewest clean recalls, then most overdue, per direction
-- [ ] After the test date, words return to normal retain intervals from their box
-- [ ] Pure module, fake-clock tested, separate from the lesson loop
+- [x] Interval compression: `clamp(floor(daysLeft / recallsStillNeeded), 1d, normal)`
+- [x] Weakest-first ordering: fewest clean recalls, then most overdue, per direction
+- [x] After the test date, words return to normal retain intervals from their box
+- [x] Pure module, fake-clock tested, separate from the lesson loop — `schedule.js`
+      gained a `capInterval` seam so the exam logic stays out of the plain
+      interval arithmetic
 
 ### 3.2 Readiness panel
 - [ ] "N van de M woorden klaar in beide richtingen"

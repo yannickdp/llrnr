@@ -148,12 +148,17 @@ export function present(card, { now = Date.now() } = {}) {
  * @param {'correct'|'almost'|'wrong'} opts.grade
  * @param {'fwd'|'rev'} [opts.direction]  which way round she was asked
  * @param {boolean} [opts.hint]           whether she was helped
+ * @param {(ms: number, card: object) => number} [opts.capInterval]  a chance to
+ *        shorten a day-scale interval. This is the seam cram.js plugs into, so
+ *        the exam logic stays out of the plain interval arithmetic here.
  * @param {number} [opts.now]
  * @returns {{card: object, outcome: string}} the outcome names the transition,
  *   which is what the results screen counts and what Phase 4.1 pays XP on:
  *   advanced | repeated | reset | graduated | promoted | held | learned | dropped
  */
-export function review(card, { grade, direction = 'fwd', hint = false, now = Date.now() } = {}) {
+export function review(card, {
+  grade, direction = 'fwd', hint = false, capInterval = null, now = Date.now(),
+} = {}) {
   if (!GRADES.includes(grade)) throw new Error(`unknown grade: ${grade}`);
   if (card.phase === 'new') {
     throw new Error('a new word must be presented before it can be reviewed');
@@ -167,9 +172,28 @@ export function review(card, { grade, direction = 'fwd', hint = false, now = Dat
   recordEvidence(next, grade, direction, hint, now);
 
   return next.phase === 'acquire'
-    ? acquire(next, grade, now)
-    : retain(next, grade, now);
+    ? acquire(next, grade, now, capInterval)
+    : retain(next, grade, now, capInterval);
 }
+
+/**
+ * Apply a day-scale interval, giving `capInterval` the chance to shorten it.
+ *
+ * The result still lands on the 04:00 boundary of whichever day it falls in,
+ * so a compressed interval keeps the same "due tomorrow means tomorrow"
+ * property as an uncompressed one.
+ */
+function dueInDays(now, days, card, capInterval) {
+  const normal = dayAfter(now, days) - now;
+  const capped = capInterval ? capInterval(normal, card) : normal;
+  if (capped >= normal) return iso(dayAfter(now, days));
+
+  /* Under a day means the word must come back inside this session. */
+  if (capped < DAY_MS) return iso(now + capped);
+  return iso(dayAfter(now, Math.max(1, Math.round(capped / DAY_MS))));
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Record what this answer proves about the word, per direction.
@@ -203,7 +227,7 @@ function recordEvidence(next, grade, direction, hint, now) {
 
 /* --- acquire: cheap, fast, and carrying no lasting penalty --------------- */
 
-function acquire(next, grade, now) {
+function acquire(next, grade, now, capInterval) {
   if (grade === 'wrong') {
     next.micro = 0;
     next.dueAt = iso(now + MICRO_STEPS_MS[0]);
@@ -232,13 +256,13 @@ function acquire(next, grade, now) {
   next.phase = 'retain';
   next.micro = 0;
   next.box = 1;
-  next.dueAt = iso(dayAfter(now, BOX_DAYS[0]));
+  next.dueAt = dueInDays(now, BOX_DAYS[0], next, capInterval);
   return { card: next, outcome: 'graduated' };
 }
 
 /* --- retain: day-scale boxes -------------------------------------------- */
 
-function retain(next, grade, now) {
+function retain(next, grade, now, capInterval) {
   if (grade === 'wrong') {
     /* The point of the two-phase design: a forgotten word is repaired in the
        next few minutes, not merely rescheduled for tomorrow. */
@@ -249,13 +273,13 @@ function retain(next, grade, now) {
   }
 
   if (grade === 'almost') {
-    next.dueAt = iso(dayAfter(now, 1));
+    next.dueAt = dueInDays(now, 1, next, capInterval);
     return { card: next, outcome: 'held' };
   }
 
   if (next.box < BOX_DAYS.length) {
     next.box++;
-    next.dueAt = iso(dayAfter(now, BOX_DAYS[next.box - 1]));
+    next.dueAt = dueInDays(now, BOX_DAYS[next.box - 1], next, capInterval);
     return { card: next, outcome: 'promoted' };
   }
 
@@ -263,7 +287,7 @@ function retain(next, grade, now) {
      that is how she is examined. A word proven only one way round parks here
      and keeps coming back occasionally, with a marker saying why. */
   if (!next.dirOk.fwd || !next.dirOk.rev) {
-    next.dueAt = iso(dayAfter(now, BOX_DAYS.at(-1)));
+    next.dueAt = dueInDays(now, BOX_DAYS.at(-1), next, capInterval);
     return { card: next, outcome: 'parked' };
   }
 

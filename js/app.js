@@ -11,9 +11,11 @@ import { loadCorpus } from './lists.js';
 import { createLesson } from './lesson.js';
 import { openStore } from './store.js';
 import { isDue, isOneWay, missingDirection } from './schedule.js';
+import { activeTest } from './cram.js';
 import { $, DIRECTION_LABEL, el, paintHome, paintResults, runLesson } from './ui.js';
 
 const TABS = ['home', 'words', 'tests', 'settings'];
+const DIRECTIONS = ['fwd', 'rev', 'both'];
 const MODAL = ['start', 'lesson', 'results'];
 
 const screens = new Map(
@@ -216,14 +218,17 @@ function refreshHome() {
 
 /**
  * @param {'fwd'|'rev'|'both'} [only]  overrides the picker — this is how the
- *   Words screen's "practise the missing side" button works.
+ *   Words screen's "practise the missing side" button works. Anything else is
+ *   ignored rather than trusted: passing this straight to an event listener
+ *   hands it a MouseEvent, which is exactly the bug this guard exists for.
+ * @param {string[]|null} [focusIds]
  */
 function startLesson(only, focusIds = null) {
   /* Guard rather than trust: the button is disabled until the corpus is in,
      so reaching here without one would be a bug. */
   if (!corpus?.words.size) return;
 
-  const direction = only ?? chosenDirection();
+  const direction = DIRECTIONS.includes(only) ? only : chosenDirection();
   store.settings.lastDirection = direction;
   store.save();
 
@@ -232,6 +237,10 @@ function startLesson(only, focusIds = null) {
     cards: store.cards,
     direction,
     focusIds,
+    /* The nearest deadline still ahead shapes the whole lesson: what is
+       introduced, what order it is asked in, and how far ahead it is
+       scheduled. Null when there is no test, and everything behaves normally. */
+    test: focusIds ? null : activeTest(store.progress.tests, Date.now()),
     minutes: store.settings.lessonMinutes,
     newPerLesson: store.settings.newPerLesson,
     now: Date.now(),
@@ -297,7 +306,7 @@ async function boot() {
      ready and does nothing is worse than one that is visibly not ready yet. */
   const startButton = $('start-lesson');
   startButton.disabled = true;
-  startButton.addEventListener('click', startLesson);
+  startButton.addEventListener('click', () => startLesson());
 
   restoreDirection();
 

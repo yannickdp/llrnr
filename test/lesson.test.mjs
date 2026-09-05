@@ -723,3 +723,125 @@ test('a card whose chapter was removed is skipped, not crashed on', () => {
   assert.ok(asked.length > 0, 'the rest of the lesson still runs');
   assert.ok(cards.has('h-gone'), 'and the card is kept, in case the chapter returns');
 });
+
+/* ================================================= working to a date ==== */
+
+const examList = [
+  'quattuor | vier',
+  'quinque  | vijf',
+  'sex      | zes',
+].join(NEWLINE);
+
+const scoped = () => new Map(parseList(examList, { listId: 'latin-ch04' }).words.map(w => [w.id, w]));
+
+/** A corpus split over two chapters, only one of which is examined. */
+function mixedCorpus() {
+  const inScopeWords = parseList(examList, { listId: 'latin-ch04' }).words;
+  const outWords = parseList(LIST, { listId: 'latin-ch01' }).words;
+  return new Map([...inScopeWords, ...outWords].map(w => [w.id, w]));
+}
+
+const EXAM = {
+  id: 't1', title: 'toets', date: '2026-09-11',
+  lists: ['latin-ch04'], targetRecalls: 3, directions: 'both',
+};
+
+test('during a run-up only the chapters in scope introduce new words', () => {
+  const words = mixedCorpus();
+  const l = createLesson({
+    words, cards: new Map(), direction: 'fwd', test: EXAM,
+    now: START, random: () => 0.5,
+  });
+
+  const introduced = [];
+  let t = START;
+  for (let i = 0; i < 200; i++) {
+    const step = l.next(t);
+    if (step.kind === 'done') break;
+    if (step.kind === 'wait') { t = step.untilMs; continue; }
+    if (step.kind === 'present') { introduced.push(step.word.lists); l.acknowledge(t); continue; }
+    l.answer(step.direction === 'fwd' ? step.word.translations[0] : step.word.term, t);
+    t += 2 * S;
+  }
+
+  assert.ok(introduced.length > 0);
+  assert.ok(introduced.every(lists => lists.includes('latin-ch04')),
+    'a chapter outside the test must not start teaching new words now');
+});
+
+test('but an overdue review outside the scope is still served', () => {
+  const words = mixedCorpus();
+  const outsideId = [...words.entries()].find(([, w]) => w.lists.includes('latin-ch01'))[0];
+  const cards = new Map([[outsideId, {
+    term: words.get(outsideId).term, lists: ['latin-ch01'], phase: 'retain', micro: 0, box: 2,
+    dueAt: new Date(START - 9 * 24 * 60 * MIN).toISOString(),
+    cleanDays: { fwd: [], rev: [] }, lastSlip: { fwd: null, rev: null },
+    seen: 5, correct: 4, slips: 0, dirOk: { fwd: true, rev: false },
+  }]]);
+
+  const l = createLesson({
+    words, cards, direction: 'fwd', test: EXAM, now: START, random: () => 0.5,
+  });
+
+  const asked = [];
+  let t = START;
+  for (let i = 0; i < 40; i++) {
+    const step = l.next(t);
+    if (step.kind === 'done') break;
+    if (step.kind === 'wait') { t = step.untilMs; continue; }
+    if (step.kind === 'present') { l.acknowledge(t); continue; }
+    asked.push(step.id);
+    l.answer(step.direction === 'fwd' ? step.word.translations[0] : step.word.term, t);
+    t += 2 * S;
+  }
+  assert.ok(asked.includes(outsideId), 'genuinely overdue work does not vanish');
+});
+
+test('intervals are compressed so nothing is scheduled past the test', () => {
+  const words = scoped();
+  const [id] = [...words.keys()];
+  const cards = new Map([[id, {
+    term: words.get(id).term, lists: ['latin-ch04'], phase: 'retain', micro: 0, box: 3,
+    dueAt: new Date(START - MIN).toISOString(),
+    cleanDays: { fwd: [], rev: [] }, lastSlip: { fwd: null, rev: null },
+    seen: 6, correct: 6, slips: 0, dirOk: { fwd: true, rev: true },
+  }]]);
+
+  const l = createLesson({
+    words, cards, direction: 'fwd', test: EXAM, now: START, random: () => 0.5,
+  });
+  l.next(START);
+  l.answer(words.get(id).translations[0], START);
+
+  /* Box 4 would normally be 21 days away — well past the eleventh. */
+  const due = Date.parse(cards.get(id).dueAt);
+  const testDay = new Date('2026-09-11T23:59:59').getTime();
+  assert.ok(due <= testDay, 'a review after the exam is a review that never happened');
+});
+
+test('the weakest word in scope is asked first', () => {
+  const words = scoped();
+  const ids = [...words.keys()];
+  const clean = ['2026-09-01', '2026-09-02'];
+  const cards = new Map(ids.map((id, n) => [id, {
+    term: words.get(id).term, lists: ['latin-ch04'], phase: 'retain', micro: 0, box: 2,
+    /* The best-known word is also the most overdue, so only the readiness
+       rule can put the weakest first. */
+    dueAt: new Date(START - (n === 0 ? 9 : 1) * 24 * 60 * MIN).toISOString(),
+    cleanDays: n === 0 ? { fwd: [...clean], rev: [...clean] } : { fwd: [], rev: [] },
+    lastSlip: { fwd: null, rev: null },
+    seen: 5, correct: 5, slips: 0, dirOk: { fwd: true, rev: true },
+  }]));
+
+  const l = createLesson({
+    words, cards, direction: 'fwd', test: EXAM, now: START, random: () => 0.5,
+  });
+  assert.notEqual(l.next(START).id, ids[0], 'polishing the solid word is the wrong use of the time');
+});
+
+test('with no test the lesson behaves exactly as before', () => {
+  const words = mixedCorpus();
+  const l = createLesson({ words, cards: new Map(), direction: 'fwd', now: START, random: () => 0.5 });
+  const step = l.next(START);
+  assert.equal(step.kind, 'present', 'every chapter is fair game again');
+});
