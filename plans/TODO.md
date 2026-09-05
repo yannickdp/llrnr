@@ -202,14 +202,15 @@ screen inherits this without saying so again.
 ## Phase 4 — it is fun and durable
 
 ### 4.1 `gamify.js`
-- [ ] XP for lasting progress only: 25 graduate acquire, 15 box promotion, 50 learned,
+- [x] XP for lasting progress only: 25 graduate acquire, 15 box promotion, 50 learned,
       small flat lesson-finish bonus — never per answer
-- [ ] First lesson of the day worth double
-- [ ] Stages, not levels: Roma Quadrata → Regnum → Res Publica → Imperium → Roma Aeterna
-- [ ] Streak: consecutive days with a finished lesson; one freeze per week
-- [ ] Daily goal ring (one lesson a day)
-- [ ] Readiness ring replaces the daily ring during exam week
-- [ ] Never lose XP for a wrong answer
+- [x] First lesson of the day worth double
+- [x] Stages, not levels: Roma Quadrata → Regnum → Res Publica → Imperium → Roma Aeterna
+- [x] Streak: consecutive days with a finished lesson; one freeze per week,
+      refilled at the start of each new week
+- [x] Daily goal ring (one lesson a day)
+- [x] Readiness ring replaces the daily ring during exam week
+- [x] Never lose XP for a wrong answer
 
 ### 4.2 Badges + celebration
 - [ ] Badges: first word learned, ten learned, chapter fully learned, 7-day streak,

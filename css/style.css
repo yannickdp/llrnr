@@ -558,3 +558,30 @@ textarea { min-block-size: 9rem; font-family: ui-monospace, SFMono-Regular, Menl
 
 .chapter-off { opacity: .55; }
 .chapter-off .chapter-title { text-decoration: line-through; }
+
+/* ===================================================== the daily ring ==== */
+
+.row-goal { align-items: center; gap: var(--gap); }
+
+.goal-ring {
+  flex: none;
+  display: grid;
+  place-items: center;
+  inline-size: 52px;
+  block-size: 52px;
+  border-radius: 50%;
+  background: conic-gradient(var(--accent) calc(var(--pct, 0) * 1%), var(--bg-sunken) 0);
+  transition: background .4s ease;
+}
+
+.goal-ring > span {
+  display: grid;
+  place-items: center;
+  inline-size: 40px;
+  block-size: 40px;
+  border-radius: 50%;
+  background: var(--bg);
+  font-size: var(--t-caption);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}

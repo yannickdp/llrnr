@@ -21,7 +21,7 @@
 
   <section class="screen" id="screen-home" data-screen="home" hidden>
     <header class="screen-head">
-      <p class="eyebrow">Roma Quadrata</p>
+      <p class="eyebrow" id="home-stage">Roma Quadrata</p>
       <h1>llrnr</h1>
     </header>
 
@@ -35,7 +35,7 @@
     <div class="meter" role="presentation">
       <div class="meter-fill" id="home-xp" style="inline-size: 0%"></div>
     </div>
-    <p class="caption">XP tot het volgende gebouw</p>
+    <p class="caption" id="home-xp-caption"></p>
 
     <p class="tag tag-bad" id="home-warning" hidden></p>
 
@@ -43,6 +43,11 @@
       <div class="stat"><span class="stat-value" id="home-streak">0</span><span class="stat-label">dagen op rij</span></div>
       <div class="stat"><span class="stat-value" id="home-due">0</span><span class="stat-label">te herhalen</span></div>
       <div class="stat"><span class="stat-value" id="home-new">0</span><span class="stat-label">nieuwe woorden</span></div>
+    </div>
+
+    <div class="row row-goal">
+      <div class="goal-ring" id="daily-ring"><span id="daily-ring-text"></span></div>
+      <p class="caption" id="daily-goal-label"></p>
     </div>
 
     <button class="btn btn-primary btn-lg" data-goto="start">Les starten</button>

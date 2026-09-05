@@ -13,6 +13,7 @@ import { createLesson } from './lesson.js';
 import { openStore } from './store.js';
 import { isDue, isOneWay, missingDirection } from './schedule.js';
 import { activeTest, makeTest, readiness } from './cram.js';
+import { awardLesson, goalMetToday, stageFor } from './gamify.js';
 import {
   $, DIRECTION_LABEL, el, importPreview, paintHome, paintResults, readinessPanel, runLesson,
 } from './ui.js';
@@ -372,12 +373,33 @@ function refreshHome() {
   for (const card of store.cards.values()) if (isDue(card, now)) due++;
 
   const active = activeWords();
+  const test = activeTest(store.progress.tests, now);
+
+  /* During a run-up the ring shows readiness rather than the daily goal:
+     progress toward Friday outranks an abstract daily tick that week. */
+  let ring;
+  if (test) {
+    const summary = readiness(store.cards, active, test, now);
+    ring = {
+      fraction: summary.total ? summary.ready / summary.total : 0,
+      text: `${summary.ready}/${summary.total}`,
+      label: 'klaar voor de toets',
+    };
+  } else {
+    const met = goalMetToday(store.progress.streak, now);
+    ring = {
+      fraction: met ? 1 : 0,
+      text: met ? '✓' : '0/1',
+      label: met ? 'dagdoel gehaald' : 'nog geen les vandaag',
+    };
+  }
 
   paintHome({
     due,
     fresh: [...active.keys()].filter(id => !store.cards.has(id)).length,
     streak: store.progress.streak.current,
-    xp: store.progress.xp,
+    stage: stageFor(store.progress.xp),
+    ring,
     warning: store.status.ok ? null : store.status.message,
   });
 
@@ -453,11 +475,19 @@ function startLesson(only, focusIds = null) {
 }
 
 function finishLesson(lesson, test, readyBefore) {
+  const results = lesson.results();
   const gained = test
     ? readiness(store.cards, activeWords(), test).ready - readyBefore
     : 0;
 
-  paintResults(lesson.results(), { test, gained });
+  /* XP is paid on transitions, so this is the one place it can be awarded:
+     when the lesson is over and its tally is final. */
+  const award = awardLesson(store.progress, results, Date.now());
+  store.progress.xp = award.xp;
+  store.progress.streak = award.streak;
+  store.save();
+
+  paintResults(results, { test, gained, award });
   refreshHome();
   renderChapters();
   renderReadiness();

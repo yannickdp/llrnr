@@ -48,7 +48,7 @@ export function emptyProgress() {
     version: VERSION,
     xp: 0,
     stage: 0,
-    streak: { current: 0, best: 0, lastDay: null, freezes: 1 },
+    streak: { current: 0, best: 0, lastDay: null, freezes: 1, freezeWeek: null },
     badges: [],
     roma: { unlocked: [], seenXp: 0 },
     settings: { ...DEFAULT_SETTINGS },

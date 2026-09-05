@@ -33,11 +33,26 @@ export function formatClock(ms) {
  * streak on a screen that also shows a real "te herhalen" count teaches her to
  * distrust both.
  */
-export function paintHome({ due, fresh, streak, xp, warning }) {
+export function paintHome({ due, fresh, streak, warning, stage, ring }) {
   $('home-due').textContent = String(due);
   $('home-new').textContent = String(fresh);
   $('home-streak').textContent = String(streak);
-  $('home-xp').style.inlineSize = `${xp > 0 ? 100 : 0}%`;
+
+  /* The bar is progress through the current growth stage. PLAN has it doubling
+     as progress toward the next building; the buildings arrive in Phase 4b,
+     and until they do the caption says what it actually measures. */
+  $('home-stage').textContent = stage.stage.name;
+  $('home-xp').style.inlineSize = `${Math.round(stage.fraction * 100)}%`;
+  $('home-xp-caption').textContent = stage.next
+    ? `nog ${stage.xpToNext} XP tot ${stage.next.name}`
+    : 'Roma Aeterna — alles bereikt';
+
+  /* One ring, two jobs: the daily goal normally, and readiness during a test
+     run-up, because that week progress toward Friday is the thing she cares
+     about. */
+  $('daily-ring').style.setProperty('--pct', String(Math.round(ring.fraction * 100)));
+  $('daily-ring-text').textContent = ring.text;
+  $('daily-goal-label').textContent = ring.label;
 
   const slot = $('home-warning');
   slot.textContent = warning ?? '';
@@ -325,9 +340,13 @@ export function runLesson(lesson, { anticipationSeconds = 4, onFinish } = {}) {
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-export function paintResults(results, { test = null, gained = 0 } = {}) {
+export function paintResults(results, { test = null, gained = 0, award = null } = {}) {
   const host = $('results-body');
   const lines = [];
+
+  if (award?.gained) {
+    lines.push([`+${award.gained} XP`, award.doubled ? 'eerste les van vandaag — dubbel' : '']);
+  }
 
   /* During a run-up the change in readiness is the top line: progress toward
      Friday is what she cares about that week, not the abstract totals. */
@@ -369,6 +388,18 @@ export function paintResults(results, { test = null, gained = 0 } = {}) {
 
   /* A count, never a list. After a holiday the honest answer is "hundreds",
      and hundreds of words on a results screen is what makes her stop. */
+  if (award?.extended) {
+    const card = el('div', 'card');
+    card.append(el('p', 'result-line',
+      award.streak.current === 1
+        ? 'Nieuwe reeks begonnen'
+        : `${award.streak.current} dagen op rij`));
+    if (award.frozen) {
+      card.append(el('p', 'caption', 'Gisteren overgeslagen — dat mag één keer per week.'));
+    }
+    cards.push(card);
+  }
+
   if (results.heldBack) {
     const card = el('div', 'card');
     card.append(el('p', 'result-line', `Nog ${results.heldBack} woorden te herhalen`));
