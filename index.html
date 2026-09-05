@@ -25,6 +25,9 @@
       <h1>llrnr</h1>
     </header>
 
+    <!-- Friday outranks the reward: this pushes above the city (PLAN 5.1). -->
+    <div id="readiness-home"></div>
+
     <div class="card card-hero">
       <p class="placeholder">Hier komt de pixelstad.</p>
     </div>
@@ -60,11 +63,25 @@
 
   <section class="screen" id="screen-tests" data-screen="tests" hidden>
     <header class="screen-head"><h1>Toetsen</h1></header>
-    <div class="card">
-      <p class="placeholder">Hoe klaar je bent, per richting, en hoeveel minuten per dag
-        je nog nodig hebt.</p>
-    </div>
-    <button class="btn">Toets toevoegen</button>
+
+    <div id="test-list" class="stack"></div>
+
+    <h2 class="section-head">Nieuwe toets</h2>
+    <form class="card test-form" id="test-form">
+      <label class="field">
+        <span>Titel</span>
+        <input type="text" id="test-title" placeholder="Latijn h. 4–5" required>
+      </label>
+      <label class="field">
+        <span>Datum</span>
+        <input type="date" id="test-date" required>
+      </label>
+      <div class="field">
+        <span>Welke hoofdstukken?</span>
+        <div class="scope-list" id="test-scope"></div>
+      </div>
+      <button class="btn btn-primary" type="submit">Toets bewaren</button>
+    </form>
   </section>
 
   <section class="screen" id="screen-settings" data-screen="settings" hidden>

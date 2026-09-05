@@ -515,3 +515,17 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 
 .one-way { color: var(--almost); margin-block-start: 10px; }
 .btn-small { margin-block-start: 8px; padding: 10px var(--pad); font-size: var(--t-caption); }
+
+/* ======================================================= readiness ======= */
+
+.readiness { display: flex; flex-direction: column; gap: 10px; border-color: var(--accent-dim); }
+.readiness-headline { font-size: var(--t-lede); font-weight: 700; }
+.readiness-gap { font-size: var(--t-caption); color: var(--almost); }
+.readiness-estimate { font-size: var(--t-caption); color: var(--fg-dim); }
+
+.test-form { display: flex; flex-direction: column; gap: 10px; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field > span { font-size: var(--t-caption); color: var(--fg-dim); }
+.scope-list { display: flex; flex-direction: column; gap: 6px; }
+.scope-item { display: flex; align-items: center; gap: 10px; font-size: var(--t-caption); }
+.scope-item input { inline-size: 20px; block-size: 20px; padding: 0; flex: none; }

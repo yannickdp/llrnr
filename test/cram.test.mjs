@@ -5,7 +5,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   makeTest, activeTest, isActive, daysLeft, inScope, recallsNeeded, isReady,
-  compress, byWeakestFirst, directionsOf, DAY_MS, SAME_DAY_INTERVAL_MS,
+  compress, byWeakestFirst, directionsOf, readiness, minutesPerDay,
+  DAY_MS, SAME_DAY_INTERVAL_MS,
 } from '../js/cram.js';
 import { newCard } from '../js/schedule.js';
 
@@ -175,4 +176,103 @@ test('among equals, the longest-waiting goes first', () => {
 
   const sorted = [late, early].sort(byWeakestFirst(exam(), now));
   assert.equal(sorted[0].dueAt, early.dueAt);
+});
+
+/* ============================================================== panel ==== */
+
+const THREE = ['2026-09-01', '2026-09-02', '2026-09-03'];
+
+/** A corpus of n in-scope words, plus one word outside the test. */
+function scopeCorpus(n) {
+  const words = new Map();
+  for (let i = 0; i < n; i++) {
+    words.set(`w${i}`, { term: `term${i}`, translations: [`vert${i}`], lists: ['latin-ch04'] });
+  }
+  words.set('outside', { term: 'buiten', translations: ['erbuiten'], lists: ['latin-ch01'] });
+  return words;
+}
+
+const readyCard = (over = {}) => ({
+  ...card(over), lists: ['latin-ch04'],
+});
+
+test('readiness counts only the chapters in scope', () => {
+  const words = scopeCorpus(4);
+  const summary = readiness(new Map(), words, exam(), AT('04'));
+  assert.equal(summary.total, 4, 'the word from another chapter is not in this test');
+  assert.equal(summary.notStarted, 4);
+});
+
+test('a word is ready only when both directions are done', () => {
+  const words = scopeCorpus(3);
+  const cards = new Map([
+    ['w0', readyCard({ fwd: THREE, rev: THREE })],
+    ['w1', readyCard({ fwd: THREE })],
+    ['w2', readyCard({ fwd: ['2026-09-01'] })],
+  ]);
+
+  const summary = readiness(cards, words, exam(), AT('04'));
+  assert.equal(summary.ready, 1);
+  assert.equal(summary.solidFwdOnly, 1, 'the diagnostic that names the marks she loses');
+  assert.equal(summary.shaky, 1);
+  assert.equal(summary.notStarted, 0);
+});
+
+test('the one-way diagnostic works in both directions', () => {
+  const words = scopeCorpus(1);
+  const cards = new Map([['w0', readyCard({ rev: THREE })]]);
+  const summary = readiness(cards, words, exam(), AT('04'));
+  assert.equal(summary.solidRevOnly, 1);
+  assert.equal(summary.solidFwdOnly, 0);
+});
+
+test('the remaining work is counted across both directions', () => {
+  const words = scopeCorpus(2);
+  const cards = new Map([['w0', readyCard({ fwd: THREE, rev: ['2026-09-01'] })]]);
+
+  const summary = readiness(cards, words, exam(), AT('04'));
+  /* w0 owes 2 reverse; w1 has never been seen, so owes 3 + 3. */
+  assert.deepEqual(summary.remaining, { fwd: 3, rev: 5, total: 8 });
+  assert.equal(summary.weakest, 'rev', 'production lags recognition, as it always does');
+});
+
+test('the estimate is per day, not a total', () => {
+  const words = scopeCorpus(10);
+  const summary = readiness(new Map(), words, exam(), AT('04'));
+
+  /* 60 recalls owed with 7 days left is 8.6 a day, not 60 today. */
+  assert.equal(summary.remaining.total, 60);
+  assert.equal(summary.minutesPerDay, minutesPerDay(60, 7));
+  assert.ok(summary.minutesPerDay >= 1 && summary.minutesPerDay < 60);
+});
+
+test('a finished test asks for no minutes at all', () => {
+  const words = scopeCorpus(2);
+  const cards = new Map([
+    ['w0', readyCard({ fwd: THREE, rev: THREE })],
+    ['w1', readyCard({ fwd: THREE, rev: THREE })],
+  ]);
+  const summary = readiness(cards, words, exam(), AT('04'));
+  assert.equal(summary.ready, 2);
+  assert.equal(summary.minutesPerDay, 0);
+  assert.equal(summary.weakest, null, 'nothing left to recommend');
+});
+
+test('the estimate rises as the deadline closes', () => {
+  const words = scopeCorpus(10);
+  const early = readiness(new Map(), words, exam(), AT('04')).minutesPerDay;
+  const late = readiness(new Map(), words, exam(), AT('09')).minutesPerDay;
+  assert.ok(late > early, `${late} should be more than ${early}`);
+});
+
+test('readiness in three days is out of reach when three clean days are needed in two', () => {
+  const words = scopeCorpus(5);
+  assert.equal(readiness(new Map(), words, exam(), AT('04')).feasible, true);
+  assert.equal(readiness(new Map(), words, exam(), AT('10')).feasible, false,
+    'a word cannot earn two clean days in one day — Phase 3.3 acts on this');
+});
+
+test('minutesPerDay never claims zero work takes zero time', () => {
+  assert.equal(minutesPerDay(0, 5), 0);
+  assert.equal(minutesPerDay(1, 99), 1, 'anything owed is at least a minute');
 });

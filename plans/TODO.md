@@ -168,14 +168,16 @@ screen inherits this without saying so again.
       interval arithmetic
 
 ### 3.2 Readiness panel
-- [ ] "N van de M woorden klaar in beide richtingen"
-- [ ] "K woorden zitten goed van Latijn naar Nederlands, nog niet omgekeerd"
+- [x] "N van de M woorden klaar in beide richtingen"
+- [x] "K woorden zitten goed van Latijn naar Nederlands, nog niet omgekeerd"
       (the key diagnostic)
-- [ ] Shaky count and not-started count ("wankel", "nog niet begonnen")
-- [ ] Minutes-a-day estimate from **remaining clean recalls across both directions**
-- [ ] [ Nederlands → Latijn oefenen ] button starting a lesson in that direction
-- [ ] Panel pushes above the city on Home while a test is in its run-up
-- [ ] Results screen leads with the readiness change ("+4 test-ready today")
+- [x] Shaky count and not-started count ("wankel", "nog niet begonnen")
+- [x] Minutes-a-day estimate from **remaining clean recalls across both directions**
+- [x] [ Nederlands → Latijn oefenen ] button starting a lesson in that direction
+- [x] Panel pushes above the city on Home while a test is in its run-up
+- [x] Results screen leads with the readiness change ("+4 klaar voor de toets")
+- [x] **A Tests screen that can create one** — title, date, chapters, and remove
+      *(not in the original checklist: the panel is unreachable without it)*
 
 ### 3.3 Breadth before depth
 - [ ] When required work exceeds time available: every word to one clean recall each

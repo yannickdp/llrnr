@@ -11,8 +11,8 @@ import { loadCorpus } from './lists.js';
 import { createLesson } from './lesson.js';
 import { openStore } from './store.js';
 import { isDue, isOneWay, missingDirection } from './schedule.js';
-import { activeTest } from './cram.js';
-import { $, DIRECTION_LABEL, el, paintHome, paintResults, runLesson } from './ui.js';
+import { activeTest, makeTest, readiness } from './cram.js';
+import { $, DIRECTION_LABEL, el, paintHome, paintResults, readinessPanel, runLesson } from './ui.js';
 
 const TABS = ['home', 'words', 'tests', 'settings'];
 const DIRECTIONS = ['fwd', 'rev', 'both'];
@@ -83,7 +83,16 @@ document.addEventListener('click', e => {
   /* "Practise the side you are missing" — the fix attached to the marker. */
   const practise = e.target.closest('[data-practise]');
   if (practise) {
-    startLesson(practise.dataset.practise, practise.dataset.focus.split(' ').filter(Boolean));
+    /* The Words screen button names specific words to repair; the readiness
+       panel's button just names a direction. */
+    const focus = practise.dataset.focus?.split(' ').filter(Boolean) ?? null;
+    startLesson(practise.dataset.practise, focus?.length ? focus : null);
+    return;
+  }
+
+  const removeId = e.target.closest('[data-remove-test]')?.dataset.removeTest;
+  if (removeId) {
+    removeTest(removeId);
     return;
   }
 
@@ -173,6 +182,74 @@ function renderChapters() {
   );
 }
 
+/* ------------------------------------------------------------- tests --- */
+
+/** The readiness panel, on Home and on the Tests screen. */
+function renderReadiness() {
+  const home = $('readiness-home');
+  const list = $('test-list');
+  if (!corpus) return;
+
+  const now = Date.now();
+  const active = activeTest(store.progress.tests, now);
+
+  home.replaceChildren(
+    ...(active ? [readinessPanel(readiness(store.cards, corpus.words, active, now), { compact: true })] : []),
+  );
+
+  const upcoming = [...store.progress.tests]
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  list.replaceChildren(...(upcoming.length
+    ? upcoming.map(test => {
+      const panel = readinessPanel(readiness(store.cards, corpus.words, test, now));
+      const remove = el('button', 'btn btn-small', 'Toets verwijderen');
+      remove.dataset.removeTest = test.id;
+      panel.append(remove);
+      return panel;
+    })
+    : [el('p', 'placeholder', 'Nog geen toets. Voeg er hieronder een toe.')]));
+}
+
+/** The chapter checkboxes on the new-test form. */
+function renderScopeChoices() {
+  if (!corpus) return;
+  $('test-scope').replaceChildren(...corpus.lists.map(list => {
+    const label = el('label', 'scope-item');
+    const box = el('input');
+    box.type = 'checkbox';
+    box.value = list.id;
+    label.append(box, el('span', null, list.title ?? list.file));
+    return label;
+  }));
+}
+
+function saveTest(event) {
+  event.preventDefault();
+  const lists = [...$('test-scope').querySelectorAll('input:checked')].map(box => box.value);
+  const date = $('test-date').value;
+  if (!date || !lists.length) return;
+
+  store.progress.tests.push(makeTest({
+    id: `t${Date.now().toString(36)}`,
+    title: $('test-title').value.trim() || 'Toets',
+    date,
+    lists,
+  }));
+  store.save();
+
+  $('test-form').reset();
+  renderReadiness();
+  refreshHome();
+}
+
+function removeTest(id) {
+  store.progress.tests = store.progress.tests.filter(test => test.id !== id);
+  store.save();
+  renderReadiness();
+  refreshHome();
+}
+
 /* ----------------------------------------------------------- lessons --- */
 
 /* Progress is persistent from here on. The cards Map writes itself through to
@@ -232,6 +309,11 @@ function startLesson(only, focusIds = null) {
   store.settings.lastDirection = direction;
   store.save();
 
+  /* Snapshot readiness so the results screen can lead with what changed —
+     "+4 klaar voor de toets" is the line she actually wants after a lesson. */
+  const test = focusIds ? null : activeTest(store.progress.tests, Date.now());
+  const readyBefore = test ? readiness(store.cards, corpus.words, test).ready : null;
+
   const lesson = createLesson({
     words: corpus.words,
     cards: store.cards,
@@ -240,7 +322,7 @@ function startLesson(only, focusIds = null) {
     /* The nearest deadline still ahead shapes the whole lesson: what is
        introduced, what order it is asked in, and how far ahead it is
        scheduled. Null when there is no test, and everything behaves normally. */
-    test: focusIds ? null : activeTest(store.progress.tests, Date.now()),
+    test,
     minutes: store.settings.lessonMinutes,
     newPerLesson: store.settings.newPerLesson,
     now: Date.now(),
@@ -253,10 +335,7 @@ function startLesson(only, focusIds = null) {
     onFinish: () => {
       running = null;
       setExitGuard(null);
-      paintResults(lesson.results());
-      refreshHome();
-      renderChapters();
-      show('results');
+      finishLesson(lesson, test, readyBefore);
     },
   });
 
@@ -270,13 +349,22 @@ function startLesson(only, focusIds = null) {
       running = null;
       setExitGuard(null);
       lesson.finish();
-      paintResults(lesson.results());
-      refreshHome();
-      renderChapters();
-      show('results');
+      finishLesson(lesson, test, readyBefore);
     });
     return false;
   });
+}
+
+function finishLesson(lesson, test, readyBefore) {
+  const gained = test
+    ? readiness(store.cards, corpus.words, test).ready - readyBefore
+    : 0;
+
+  paintResults(lesson.results(), { test, gained });
+  refreshHome();
+  renderChapters();
+  renderReadiness();
+  show('results');
 }
 
 function askToQuit(onQuit) {
@@ -309,10 +397,13 @@ async function boot() {
   startButton.addEventListener('click', () => startLesson());
 
   restoreDirection();
+  $('test-form').addEventListener('submit', saveTest);
 
   try {
     corpus = await loadCorpus();
     renderChapters();
+    renderScopeChoices();
+    renderReadiness();
     refreshHome();
     startButton.disabled = corpus.words.size === 0;
     document.documentElement.dataset.corpus = 'ready';

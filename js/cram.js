@@ -138,3 +138,84 @@ export function byWeakestFirst(test, now = Date.now()) {
       || (kb.overdue - ka.overdue);
   };
 }
+
+/* ========================================================== readiness ==== */
+
+/**
+ * How long one retrieval costs her, in seconds: the anticipation gap, typing an
+ * answer, and reading the reveal. A tunable guess rather than a measurement —
+ * PLAN section 8 expects the readiness numbers to be retuned against a real
+ * mark, and this is the constant to turn.
+ */
+export const SECONDS_PER_RECALL = 12;
+
+/**
+ * Everything the readiness panel needs, for one test.
+ *
+ * @param {Map<string,object>} cards   the profile
+ * @param {Map<string,object>} words   the corpus
+ * @param {object} test
+ * @param {number} [now]
+ */
+export function readiness(cards, words, test, now = Date.now()) {
+  const scope = [...words.entries()].filter(([, word]) => inScope(word, test));
+  const dirs = directionsOf(test);
+
+  const counts = { total: scope.length, ready: 0, solidFwdOnly: 0, solidRevOnly: 0, shaky: 0, notStarted: 0 };
+  const remaining = { fwd: 0, rev: 0, total: 0 };
+  let longestRun = 0;   // the most clean days any single word still owes
+
+  for (const [id] of scope) {
+    const card = cards.get(id);
+
+    if (!card) {
+      counts.notStarted++;
+      for (const dir of dirs) remaining[dir] += test.targetRecalls;
+      remaining.total += dirs.length * test.targetRecalls;
+      longestRun = Math.max(longestRun, test.targetRecalls);
+      continue;
+    }
+
+    const needed = recallsNeeded(card, test);
+    for (const dir of dirs) remaining[dir] += needed[dir];
+    remaining.total += needed.total;
+    longestRun = Math.max(longestRun, ...dirs.map(dir => needed[dir]));
+
+    if (needed.total === 0) counts.ready++;
+    else if (needed.fwd === 0 && needed.rev > 0) counts.solidFwdOnly++;
+    else if (needed.rev === 0 && needed.fwd > 0) counts.solidRevOnly++;
+    else counts.shaky++;
+  }
+
+  const left = daysLeft(test, now);
+
+  return {
+    test,
+    ...counts,
+    remaining,
+    daysLeft: left,
+    /* Which side is further behind, and so what the panel should offer to
+       practise. Null when the two are level or nothing is owed. */
+    weakest: remaining.fwd === remaining.rev ? null : (remaining.fwd > remaining.rev ? 'fwd' : 'rev'),
+    minutesPerDay: minutesPerDay(remaining.total, left),
+    /* A word cannot earn two clean days in one day, so if any word still owes
+       more clean days than there are days left, three-recall readiness is out
+       of reach however long she practises. That is what Phase 3.3 acts on. */
+    feasible: longestRun <= Math.max(0, left),
+  };
+}
+
+/**
+ * Minutes a day to be ready in time.
+ *
+ * The load is *recalls per day*, not recalls: a word can earn only one clean
+ * day per direction per day, so six recalls owed over six days is one touch a
+ * day, not six today. An estimate that ignored that would tell her she is fine
+ * three days before she is.
+ */
+export function minutesPerDay(remainingRecalls, left) {
+  if (remainingRecalls <= 0) return 0;
+  const days = Math.max(1, left);
+  return Math.max(1, Math.round((remainingRecalls / days) * SECONDS_PER_RECALL / 60));
+}
+

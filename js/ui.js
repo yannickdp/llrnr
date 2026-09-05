@@ -44,6 +44,68 @@ export function paintHome({ due, fresh, streak, xp, warning }) {
   slot.hidden = !warning;
 }
 
+/* ==================================================== the readiness ====== */
+
+const DAYS_LEFT_LABEL = left => {
+  if (left === 0) return 'toets is vandaag';
+  if (left === 1) return 'toets is morgen';
+  return `toets over ${left} dagen`;
+};
+
+/**
+ * The readiness panel — PLAN section 2.6 calls it the whole point.
+ *
+ * The middle line is the most useful diagnostic in the app: it names the exact
+ * gap that loses marks, because recognition always runs ahead of production.
+ * The button under it practises precisely that side.
+ */
+export function readinessPanel(summary, { compact = false } = {}) {
+  const { test, ready, total, solidFwdOnly, solidRevOnly, shaky, notStarted } = summary;
+
+  const panel = el('div', 'card readiness');
+  const head = el('div', 'chapter-head');
+  head.append(el('span', 'chapter-title', test.title || 'Toets'));
+  head.append(el('span', 'caption', DAYS_LEFT_LABEL(summary.daysLeft)));
+  panel.append(head);
+
+  panel.append(el('p', 'readiness-headline',
+    `${ready} van de ${total} woorden klaar in beide richtingen`));
+
+  const bar = el('div', 'meter');
+  const fill = el('div', 'meter-fill');
+  fill.style.inlineSize = `${total ? Math.round((ready / total) * 100) : 0}%`;
+  bar.append(fill);
+  panel.append(bar);
+
+  /* The gap that loses marks, named in full rather than averaged away. */
+  if (solidFwdOnly) {
+    panel.append(el('p', 'readiness-gap',
+      `${solidFwdOnly} ${solidFwdOnly === 1 ? 'woord zit' : 'woorden zitten'} goed van Latijn naar Nederlands, nog niet omgekeerd`));
+  }
+  if (solidRevOnly) {
+    panel.append(el('p', 'readiness-gap',
+      `${solidRevOnly} ${solidRevOnly === 1 ? 'woord zit' : 'woorden zitten'} goed van Nederlands naar Latijn, nog niet omgekeerd`));
+  }
+
+  if (!compact) {
+    panel.append(el('p', 'caption',
+      `${shaky} nog wankel · ${notStarted} nog niet begonnen`));
+
+    panel.append(el('p', 'readiness-estimate', summary.minutesPerDay
+      ? `≈ ${summary.minutesPerDay} minuten per dag om op tijd klaar te zijn`
+      : 'Je bent klaar voor deze toets.'));
+  }
+
+  if (summary.weakest) {
+    const practise = el('button', 'btn btn-primary',
+      `${DIRECTION_LABEL[summary.weakest]} oefenen`);
+    practise.dataset.practise = summary.weakest;
+    panel.append(practise);
+  }
+
+  return panel;
+}
+
 /* ====================================================== the lesson ======= */
 
 export const DIRECTION_LABEL = {
@@ -252,9 +314,15 @@ export function runLesson(lesson, { anticipationSeconds = 4, onFinish } = {}) {
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-export function paintResults(results) {
+export function paintResults(results, { test = null, gained = 0 } = {}) {
   const host = $('results-body');
   const lines = [];
+
+  /* During a run-up the change in readiness is the top line: progress toward
+     Friday is what she cares about that week, not the abstract totals. */
+  if (test && gained > 0) {
+    lines.push([`+${gained} klaar voor de toets`, test.title || '']);
+  }
 
   if (results.learned) {
     lines.push([plural(results.learned, 'woord helemaal gekend', 'woorden helemaal gekend'),
