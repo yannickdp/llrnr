@@ -78,18 +78,19 @@ screen inherits this without saying so again.
 - [x] Throwaway fake-clock script: prove 5s / 25s / 2m / 10m / tomorrow
 
 ### 1.4 `lesson.js` — the loop
-- [ ] Priority queue on `dueAt`, most overdue first
-- [ ] Time-boxed lesson, default 10 min (5/10/15)
-- [ ] Presentation card for brand-new words (see it, form, tap on)
-- [ ] New-word presentations spread through the lesson, not front-loaded
-- [ ] Multiple choice on a presentation card's first check only, never again
-- [ ] Prompt → anticipation gap (countdown ring, default 4s) → type → reveal
-- [ ] Reveal shows correct answer, all accepted alternatives, grammar form
-- [ ] Micro-ladder repeats win on priority; interleave retain reviews into the gaps
-- [ ] ~8–10 new words per session in practice
-- [ ] X button with confirm; no back button mid-lesson
-- [ ] Results screen: graduated, boxes climbed, drop-backs
-- [ ] In-memory progress only at this stage
+- [x] Priority queue on `dueAt`, most overdue first
+- [x] Time-boxed lesson, default 10 min *(5/10/15 is a parameter; the Settings
+      control for it is Phase 4.5)*
+- [x] Presentation card for brand-new words (see it, form, tap on)
+- [x] New-word presentations spread through the lesson, not front-loaded
+- [x] Multiple choice on a presentation card's first check only, never again
+- [x] Prompt → anticipation gap (countdown ring, default 4s) → type → reveal
+- [x] Reveal shows correct answer, all accepted alternatives, grammar form
+- [x] Micro-ladder repeats win on priority; interleave retain reviews into the gaps
+- [x] ~8–10 new words per session in practice
+- [x] X button with confirm; no back button mid-lesson
+- [x] Results screen: graduated, boxes climbed, drop-backs
+- [x] In-memory progress only at this stage
 
 ### 1.5 Ship it
 - [ ] `manifest.webmanifest` — name, icon, full-screen display

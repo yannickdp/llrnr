@@ -105,54 +105,48 @@
 
     <section class="screen" id="screen-start" data-screen="start" data-title="Les starten" hidden>
       <p class="lede">Welke richting?</p>
-      <div class="choices">
-        <button class="choice" aria-pressed="false">
+      <div class="choices" id="direction-picker">
+        <button class="choice" data-direction="fwd" aria-pressed="false">
           <span class="choice-title">Latijn &rarr; Nederlands</span>
           <span class="choice-note">Begrijpen. De makkelijkste richting.</span>
         </button>
-        <button class="choice" aria-pressed="false">
+        <button class="choice" data-direction="rev" aria-pressed="false">
           <span class="choice-title">Nederlands &rarr; Latijn</span>
           <span class="choice-note">Zelf schrijven en spellen. Hier verlies je punten.</span>
         </button>
-        <button class="choice" aria-pressed="true">
+        <button class="choice" data-direction="both" aria-pressed="true">
           <span class="choice-title">Beide</span>
           <span class="choice-note">Door elkaar, je zwakste richting eerst. Zoals op de toets.</span>
         </button>
       </div>
-      <button class="btn btn-primary btn-lg" data-goto="lesson">Start</button>
+      <button class="btn btn-primary btn-lg" id="start-lesson">Start</button>
     </section>
 
     <section class="screen screen-lesson" id="screen-lesson" data-screen="lesson" data-title="Les" hidden>
       <div class="lesson-bar">
-        <div class="meter meter-thin"><div class="meter-fill" style="inline-size: 62%"></div></div>
-        <span class="caption lesson-clock">nog 6:12</span>
+        <div class="meter meter-thin"><div class="meter-fill" id="lesson-progress"></div></div>
+        <span class="caption lesson-clock" id="lesson-clock"></span>
       </div>
-
-      <div class="prompt-area">
-        <p class="direction-marker">Nederlands &rarr; Latijn</p>
-        <p class="prompt">moeder</p>
-        <div class="ring" role="presentation"><span class="ring-count">4</span></div>
-      </div>
-
-      <form class="answer-form" autocomplete="off">
-        <input class="answer-input" type="text" inputmode="text"
-               autocapitalize="off" autocorrect="off" spellcheck="false"
-               placeholder="Typ het Latijnse woord" aria-label="Jouw antwoord">
-        <button class="btn btn-primary" type="submit">Nakijken</button>
-      </form>
-
-      <p class="placeholder">Antwoord — het juiste woord, andere vertalingen, de vorm.</p>
-      <button class="btn" data-goto="results">Stoppen (tijdelijk)</button>
+      <!-- filled by ui.js: presentation, question, reveal or wait -->
+      <div id="lesson-body"></div>
     </section>
 
     <section class="screen" id="screen-results" data-screen="results" data-title="Resultaat" hidden>
-      <p class="lede">Goed gedaan.</p>
-      <div class="card">
-        <p class="placeholder">Gekende woorden, doosjes omhoog, XP, badges, teruggevallen woorden.</p>
-      </div>
+      <p class="lede" id="results-lede"></p>
+      <div class="stack" id="results-body"></div>
       <button class="btn btn-primary btn-lg" data-goto="home">Klaar</button>
     </section>
 
+  </div>
+</div>
+
+<!-- The X mid-lesson asks first; there is no back button to escape with. -->
+<div id="confirm" class="dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-title" hidden>
+  <div class="dialog-box">
+    <p class="lede" id="confirm-title">Les stoppen?</p>
+    <p class="caption">Je bent nog bezig. Wat je al deed, telt mee in het resultaat.</p>
+    <button class="btn btn-primary" data-action="stay">Verdergaan</button>
+    <button class="btn" data-action="quit">Stoppen</button>
   </div>
 </div>
 

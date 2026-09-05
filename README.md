@@ -63,32 +63,38 @@ anyway.
 
 ## Checking the layout without a phone
 
-Headless Chrome ignores `--window-size` when taking a screenshot, so it lays the page
-out at 500px and then crops — which looks exactly like a horizontal-overflow bug and
-is not one. Render through a phone-sized iframe instead. Drop this next to
-`index.html` as `_shot.html` (it is deliberately not committed):
+Two traps make headless Chrome lie about this app:
 
-```html
-<style>html,body{margin:0}iframe{width:390px;height:844px;border:0;display:block}</style>
-<iframe id="f" src="index.html"></iframe>
-<script>
-const target = new URLSearchParams(location.search).get('click');
-document.getElementById('f').addEventListener('load', e => {
-  if (!target) return;
-  const d = e.target.contentDocument;
-  for (const sel of target.split(',')) d.querySelector(sel)?.click();
-});
-</script>
-```
+1. It **ignores `--window-size` when screenshotting** — it lays the page out at
+   500px and crops to whatever you asked for, which looks exactly like a
+   horizontal-overflow bug and is not one. Render through a phone-sized iframe.
+2. It **takes the screenshot when `load` fires**, and virtual time (`--virtual-time-budget`)
+   stops advancing once the lesson's `requestAnimationFrame` loop starts. So a
+   lesson never gets past its first five-second step. The fix is to hold `load`
+   open with a deliberately slow image, which buys real wall-clock time.
 
-Then, with the server running:
+`scratchpad/serve.py` (a `SimpleHTTPRequestHandler` with one extra route,
+`/__slow?ms=N`, that sleeps before replying) plus a `_shot.html` harness beside
+`index.html` cover both. The harness loads `index.html` in a 390x844 iframe,
+holds `load` open for `?hold=`ms, and then walks a comma-separated `?click=`
+list of steps against the iframe document:
+
+| Step | Does |
+|---|---|
+| `<css selector>` | waits for it, then clicks it |
+| `until:<selector>` | waits for it to appear |
+| `wait:<ms>` | sleeps |
+| `type:<text>` | fills the answer field and submits it |
+
+Neither file is committed; both are a few lines to retype.
 
 ```sh
-chrome --headless --disable-gpu --hide-scrollbars --force-prefers-reduced-motion \
-  --screenshot=lesson.png --window-size=390,844 \
-  'http://localhost:8000/_shot.html?click=[data-goto="start"],[data-goto="lesson"]'
+chrome --headless --disable-gpu --hide-scrollbars --force-prefers-reduced-motion   --screenshot=lesson.png --window-size=390,844   'http://localhost:8124/_shot.html?hold=14000&click=[data-goto="start"],%23start-lesson'
 ```
 
-The `click` parameter is a comma-separated list of selectors clicked in order, so any
-screen behind a tap is reachable. `--force-prefers-reduced-motion` freezes the sheet
-animation, which would otherwise be caught mid-slide.
+Escape `#` as `%23` in that URL, or everything after it is parsed as a fragment
+and the rest of the click list is silently dropped. Attach the harness to the
+**iframe's** load event, not the parent's `DOMContentLoaded`: at that point the
+iframe is still `about:blank`, and the steps race the real document.
+`--force-prefers-reduced-motion` freezes the sheet animation, which would
+otherwise be caught mid-slide.

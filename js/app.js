@@ -5,9 +5,11 @@
 
    Deliberately no History API: the lesson must not be escapable with a back
    swipe, so there are no history entries to swipe through. Leaving a lesson
-   goes through the X, which later phases guard with a confirmation. */
+   goes through the X, which asks first. */
 
 import { loadCorpus } from './lists.js';
+import { createLesson } from './lesson.js';
+import { $, el, paintResults, runLesson } from './ui.js';
 
 const TABS = ['home', 'words', 'tests', 'settings'];
 const MODAL = ['start', 'lesson', 'results'];
@@ -15,8 +17,8 @@ const MODAL = ['start', 'lesson', 'results'];
 const screens = new Map(
   [...document.querySelectorAll('[data-screen]')].map(el => [el.dataset.screen, el])
 );
-const modal = document.getElementById('modal');
-const modalTitle = document.getElementById('modal-title');
+const modal = $('modal');
+const modalTitle = $('modal-title');
 const tabs = [...document.querySelectorAll('.tab')];
 
 let current = null;
@@ -58,8 +60,8 @@ export function closeModal() {
 
 /**
  * Install a veto on the modal X. `fn` runs on every close attempt and returns
- * false to keep the sheet up — which is how lesson.js will ask "really quit?"
- * without app.js knowing anything about lessons. Pass null to clear it.
+ * false to keep the sheet up — which is how a running lesson asks "really
+ * quit?" without app.js knowing anything about lessons. Pass null to clear it.
  */
 export function setExitGuard(fn) {
   exitGuard = fn;
@@ -81,16 +83,18 @@ document.addEventListener('click', e => {
     return;
   }
 
-  /* .choices behaves as a radio group: one pressed option per group. */
+  /* .choices behaves as a radio group: one pressed option per group. The
+     lesson's own multiple-choice buttons are excluded — those are answers, not
+     a setting, and grade themselves on the first tap. */
   const choice = e.target.closest('.choice');
-  if (choice) {
+  if (choice && !choice.classList.contains('choice-option')) {
     for (const sibling of choice.parentElement.querySelectorAll('.choice')) {
       sibling.setAttribute('aria-pressed', String(sibling === choice));
     }
   }
 });
 
-/* Nothing is submitted anywhere yet; stop the shell from reloading itself. */
+/* Nothing outside the lesson submits anywhere; stop stray forms reloading. */
 document.addEventListener('submit', e => e.preventDefault());
 
 /* ---------------------------------------------------------- chapters --- */
@@ -102,13 +106,6 @@ document.addEventListener('submit', e => e.preventDefault());
 
    Built with textContent throughout: chapter titles and terms are file
    content, and innerHTML would make an editable word list an injection path. */
-
-const el = (tag, className, text) => {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-};
 
 function chapterCard(list) {
   const card = el('div', 'card');
@@ -129,21 +126,111 @@ function chapterCard(list) {
   return card;
 }
 
-async function renderChapters() {
-  const host = document.getElementById('chapter-list');
+function renderChapters(lists, wordCount) {
+  $('chapter-list').replaceChildren(
+    ...lists.map(chapterCard),
+    el('p', 'caption', `${wordCount} woorden in totaal`),
+  );
+}
+
+/* ----------------------------------------------------------- lessons --- */
+
+/* Progress lives in memory only, so it survives moving between screens but not
+   a reload. Phase 2.1 swaps this one Map for store.js and localStorage, and
+   nothing else here has to change. */
+const progress = new Map();
+
+let corpus = null;
+let running = null;
+
+function chosenDirection() {
+  return $('direction-picker')
+    ?.querySelector('.choice[aria-pressed="true"]')
+    ?.dataset.direction ?? 'both';
+}
+
+function startLesson() {
+  /* Guard rather than trust: the button is disabled until the corpus is in,
+     so reaching here without one would be a bug. */
+  if (!corpus?.words.size) return;
+
+  const lesson = createLesson({
+    words: corpus.words,
+    cards: progress,
+    direction: chosenDirection(),
+    now: Date.now(),
+  });
+
+  show('lesson');
+
+  running = runLesson(lesson, {
+    onFinish: () => {
+      running = null;
+      setExitGuard(null);
+      paintResults(lesson.results());
+      show('results');
+    },
+  });
+
+  /* Mid-lesson the X asks first. Answering "stop" ends the lesson properly —
+     through the results screen — rather than dropping her back on Home with
+     the work she just did unaccounted for. */
+  setExitGuard(() => {
+    if (!running) return true;
+    askToQuit(() => {
+      running.stop();
+      running = null;
+      setExitGuard(null);
+      lesson.finish();
+      paintResults(lesson.results());
+      show('results');
+    });
+    return false;
+  });
+}
+
+function askToQuit(onQuit) {
+  const dialog = $('confirm');
+  dialog.hidden = false;
+
+  const close = () => {
+    dialog.hidden = true;
+    dialog.removeEventListener('click', onClick);
+  };
+
+  const onClick = e => {
+    const action = e.target.closest('[data-action]')?.dataset.action;
+    if (action === 'stay') close();
+    if (action === 'quit') { close(); onQuit(); }
+  };
+
+  dialog.addEventListener('click', onClick);
+}
+
+/* -------------------------------------------------------------- boot --- */
+
+async function boot() {
+  show(TABS[0]);
+
+  /* Start stays disabled until there are words to teach. A button that looks
+     ready and does nothing is worse than one that is visibly not ready yet. */
+  const startButton = $('start-lesson');
+  startButton.disabled = true;
+  startButton.addEventListener('click', startLesson);
+
   try {
-    const { lists, words } = await loadCorpus();
-    host.replaceChildren(
-      ...lists.map(chapterCard),
-      el('p', 'caption', `${words.size} woorden in totaal`),
-    );
+    corpus = await loadCorpus();
+    renderChapters(corpus.lists, corpus.words.size);
+    startButton.disabled = corpus.words.size === 0;
+    document.documentElement.dataset.corpus = 'ready';
   } catch (err) {
     /* Say what broke and where. A silent empty list would be the worst
        possible failure for a file the parent edits by hand. */
-    host.replaceChildren(el('p', 'tag tag-bad', `De lijsten konden niet geladen worden — ${err.message}`));
+    $('chapter-list').replaceChildren(
+      el('p', 'tag tag-bad', `De lijsten konden niet geladen worden — ${err.message}`),
+    );
     console.error(err);
   }
 }
 
-show(TABS[0]);
-renderChapters();
+boot();

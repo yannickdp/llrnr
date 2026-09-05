@@ -441,3 +441,74 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 }
 
 .tag-bad { border-inline-start-color: var(--wrong); color: var(--fg); }
+
+/* ===================================================== lesson screen ===== */
+
+#lesson-body { display: flex; flex-direction: column; gap: var(--gap); }
+
+.presentation { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.presentation .prompt { margin-block: 4px; }
+
+.reveal-answer { color: var(--accent); overflow-wrap: anywhere; }
+
+.reveal { display: flex; flex-direction: column; gap: 6px; text-align: center; }
+.reveal-correct { border-color: var(--ok); }
+.reveal-wrong { border-color: var(--wrong); }
+.reveal-almost { border-color: var(--almost); }
+.reveal-correct .eyebrow { color: var(--ok); }
+.reveal-wrong .eyebrow { color: var(--wrong); }
+.reveal-almost .eyebrow { color: var(--almost); }
+.typed-back { color: var(--fg-faint); }
+
+/* the anticipation gap — tappable, because sometimes she already knows */
+.ring {
+  display: grid;
+  place-items: center;
+  inline-size: 56px;
+  block-size: 56px;
+  padding: 0;
+  background: none;
+  border: 3px solid var(--accent-dim);
+  border-radius: 50%;
+  font-size: var(--t-lede);
+  font-weight: 700;
+  color: var(--fg-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.answer-input:disabled { opacity: .45; }
+
+.waiting { text-align: center; color: var(--fg-dim); }
+
+.result-line { font-weight: 600; }
+
+/* ========================================================== dialog ======= */
+
+.dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: var(--pad);
+  background: rgba(0, 0, 0, .6);
+}
+
+.dialog-box {
+  inline-size: 100%;
+  max-inline-size: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: var(--pad);
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.btn:disabled, .btn[disabled] {
+  opacity: .4;
+  cursor: default;
+  filter: none;
+}
