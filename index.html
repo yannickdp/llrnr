@@ -58,7 +58,7 @@
     <div id="chapter-list" class="stack">
       <p class="placeholder">Hoofdstukken laden&hellip;</p>
     </div>
-    <button class="btn">Lijst toevoegen</button>
+    <button class="btn" data-goto="import">Lijst toevoegen</button>
   </section>
 
   <section class="screen" id="screen-tests" data-screen="tests" hidden>
@@ -152,6 +152,24 @@
       </div>
       <!-- filled by ui.js: presentation, question, reveal or wait -->
       <div id="lesson-body"></div>
+    </section>
+
+    <section class="screen" id="screen-import" data-screen="import" data-title="Lijst toevoegen" hidden>
+      <label class="field">
+        <span>Titel (of laat leeg — de eerste #-regel telt ook)</span>
+        <input type="text" id="import-title" placeholder="Hoofdstuk 4 — Forum">
+      </label>
+      <label class="field">
+        <span>Plak hier de woordenlijst</span>
+        <textarea id="import-text" rows="8" spellcheck="false"
+          placeholder="pater | patris, m. | vader&#10;mater | matris, f. | moeder / mama"></textarea>
+      </label>
+
+      <!-- The preview is not optional: a silent parse failure on a malformed
+           list is the single most maddening bug this app could have. -->
+      <div id="import-preview" class="stack"></div>
+
+      <button class="btn btn-primary btn-lg" id="import-save" disabled>Lijst bewaren</button>
     </section>
 
     <section class="screen" id="screen-results" data-screen="results" data-title="Resultaat" hidden>

@@ -166,3 +166,60 @@ test('the committed data/ loads and parses with nothing rejected', async () => {
   }
   assert.ok(words.size > 20);
 });
+
+/* ====================================================== pasted lists ===== */
+
+test('a pasted chapter joins the corpus on equal terms', async () => {
+  serve({
+    'data/index.json': index({ id: 'ch01', file: 'c1.txt', rev: 1 }),
+    'data/c1.txt': 'pater | patris, m. | vader',
+  });
+
+  const { lists, words } = await loadCorpus('data/', {
+    pasted: [{ id: 'paste-1', title: 'Geplakt', text: 'mater | matris, f. | moeder', rev: 1 }],
+  });
+
+  assert.equal(lists.length, 2);
+  assert.equal(words.size, 2);
+  assert.ok(lists.some(l => l.pasted), 'and is marked as pasted');
+});
+
+test('a pasted chapter takes part in the homograph rule', async () => {
+  serve({
+    'data/index.json': index({ id: 'ch01', file: 'c1.txt', rev: 1 }),
+    'data/c1.txt': 'liber | libri, m. | boek',
+  });
+
+  const { words } = await loadCorpus('data/', {
+    pasted: [{ id: 'paste-1', title: 'Geplakt', text: 'liber | libera, liberum | vrij', rev: 1 }],
+  });
+
+  assert.equal(words.size, 2, 'book and free must not collide across the two sources');
+});
+
+test('a word pasted again is the same card, not a second one', async () => {
+  serve({
+    'data/index.json': index({ id: 'ch01', file: 'c1.txt', rev: 1 }),
+    'data/c1.txt': 'pater | patris, m. | vader',
+  });
+
+  const { words } = await loadCorpus('data/', {
+    pasted: [{ id: 'paste-1', title: 'Geplakt', text: 'pater | patris, m. | vader / papa', rev: 1 }],
+  });
+
+  assert.equal(words.size, 1);
+  const [card] = [...words.values()];
+  assert.deepEqual(card.lists, ['ch01', 'paste-1']);
+  assert.deepEqual(card.translations, ['vader', 'papa']);
+});
+
+test('a pasted list that cannot be parsed reports rather than vanishing', async () => {
+  serve({ 'data/index.json': index() });
+  const { lists } = await loadCorpus('data/', {
+    pasted: [{ id: 'paste-1', title: 'Rommel', text: 'geen scheidingsteken hier', rev: 1 }],
+  });
+
+  assert.equal(lists[0].words.length, 0);
+  assert.equal(lists[0].rejects.length, 1);
+  assert.equal(lists[0].rejects[0].code, 'no-separator');
+});

@@ -537,3 +537,24 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   border-radius: var(--radius-sm);
 }
 .triage-head { font-size: var(--t-caption); font-weight: 700; color: var(--almost); }
+
+/* ========================================================== importer ===== */
+
+textarea { min-block-size: 9rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+.preview-table { display: flex; flex-direction: column; gap: 2px; }
+.preview-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.2fr;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: var(--t-caption);
+  border-block-end: 1px solid var(--line);
+}
+.preview-row > :nth-child(1) { font-weight: 600; }
+.preview-row > :nth-child(2) { color: var(--fg-dim); }
+.preview-more { font-size: var(--t-caption); color: var(--fg-faint); padding-block-start: 6px; }
+.preview-ok { color: var(--ok); font-weight: 600; }
+
+.chapter-off { opacity: .55; }
+.chapter-off .chapter-title { text-decoration: line-through; }

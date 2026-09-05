@@ -48,12 +48,18 @@ async function fetchText(base, list) {
  *   appearing in several chapters is one entry whose `lists` names them all and
  *   whose accepted translations are the union across them.
  */
-export async function loadCorpus(base = BASE) {
+export async function loadCorpus(base = BASE, { pasted = [] } = {}) {
   const index = await loadIndex(base);
 
-  const texts = await Promise.all(
-    index.lists.map(async list => ({ list, text: await fetchText(base, list) }))
-  );
+  /* Committed files and pasted text meet here and are treated identically from
+     this point on — same parser, same homograph passes, same merge. There is
+     deliberately no second code path for "her" chapters. */
+  const texts = [
+    ...await Promise.all(
+      index.lists.map(async list => ({ list, text: await fetchText(base, list) }))
+    ),
+    ...pasted.map(list => ({ list: { ...list, pasted: true }, text: list.text })),
+  ];
 
   /* Pass 1: which normalised terms appear in more than one place, counting
      across all chapters as well as within each one. */

@@ -8,15 +8,18 @@
    goes through the X, which asks first. */
 
 import { loadCorpus } from './lists.js';
+import { parseList } from './parse.js';
 import { createLesson } from './lesson.js';
 import { openStore } from './store.js';
 import { isDue, isOneWay, missingDirection } from './schedule.js';
 import { activeTest, makeTest, readiness } from './cram.js';
-import { $, DIRECTION_LABEL, el, paintHome, paintResults, readinessPanel, runLesson } from './ui.js';
+import {
+  $, DIRECTION_LABEL, el, importPreview, paintHome, paintResults, readinessPanel, runLesson,
+} from './ui.js';
 
 const TABS = ['home', 'words', 'tests', 'settings'];
 const DIRECTIONS = ['fwd', 'rev', 'both'];
-const MODAL = ['start', 'lesson', 'results'];
+const MODAL = ['start', 'lesson', 'results', 'import'];
 
 const screens = new Map(
   [...document.querySelectorAll('[data-screen]')].map(el => [el.dataset.screen, el])
@@ -96,6 +99,15 @@ document.addEventListener('click', e => {
     return;
   }
 
+  const listId = e.target.closest('[data-remove-list]')?.dataset.removeList;
+  if (listId) {
+    /* The pasted text goes; her cards for those words deliberately stay, in
+       case the same chapter comes back. */
+    store.removeList(listId);
+    reloadCorpus();
+    return;
+  }
+
   const action = e.target.closest('[data-action]');
   if (action?.dataset.action === 'close-modal') {
     if (exitGuard && exitGuard() === false) return;
@@ -144,11 +156,24 @@ function oneWayIn(list) {
 }
 
 function chapterCard(list) {
-  const card = el('div', 'card');
-  const head = el('div', 'chapter-head');
+  const included = !isExcluded(list.id);
+  const card = el('div', `card${included ? '' : ' chapter-off'}`);
+
+  const head = el('label', 'chapter-head scope-item');
+  const toggle = el('input');
+  toggle.type = 'checkbox';
+  toggle.checked = included;
+  toggle.addEventListener('change', () => toggleList(list.id, toggle.checked));
+  head.append(toggle);
   head.append(el('span', 'chapter-title', list.title ?? list.file));
   head.append(el('span', 'caption', `${list.words.length} woorden`));
   card.append(head);
+
+  if (list.pasted) {
+    const remove = el('button', 'btn btn-small', 'Geplakte lijst verwijderen');
+    remove.dataset.removeList = list.id;
+    card.append(remove);
+  }
 
   const missing = oneWayIn(list);
   const worst = missing.rev.length >= missing.fwd.length ? 'rev' : 'fwd';
@@ -182,6 +207,40 @@ function renderChapters() {
   );
 }
 
+/* ---------------------------------------------------------- importing --- */
+
+/* Parsed live as she types, so the preview is never out of step with the text
+   in front of her, and "bewaren" is only enabled once there is something to
+   save. */
+function refreshPreview() {
+  const text = $('import-text').value;
+  const host = $('import-preview');
+  const save = $('import-save');
+
+  if (!text.trim()) {
+    host.replaceChildren();
+    save.disabled = true;
+    return;
+  }
+
+  const parsed = parseList(text);
+  host.replaceChildren(...importPreview(parsed));
+  save.disabled = parsed.words.length === 0;
+}
+
+async function saveImport() {
+  const text = $('import-text').value;
+  if (!text.trim()) return;
+
+  store.addList({ title: $('import-title').value.trim(), text });
+  $('import-text').value = '';
+  $('import-title').value = '';
+  refreshPreview();
+
+  await reloadCorpus();
+  closeModal();
+}
+
 /* ------------------------------------------------------------- tests --- */
 
 /** The readiness panel, on Home and on the Tests screen. */
@@ -194,7 +253,7 @@ function renderReadiness() {
   const active = activeTest(store.progress.tests, now);
 
   home.replaceChildren(
-    ...(active ? [readinessPanel(readiness(store.cards, corpus.words, active, now), { compact: true })] : []),
+    ...(active ? [readinessPanel(readiness(store.cards, activeWords(), active, now), { compact: true })] : []),
   );
 
   const upcoming = [...store.progress.tests]
@@ -202,7 +261,7 @@ function renderReadiness() {
 
   list.replaceChildren(...(upcoming.length
     ? upcoming.map(test => {
-      const panel = readinessPanel(readiness(store.cards, corpus.words, test, now));
+      const panel = readinessPanel(readiness(store.cards, activeWords(), test, now));
       const remove = el('button', 'btn btn-small', 'Toets verwijderen');
       remove.dataset.removeTest = test.id;
       panel.append(remove);
@@ -250,6 +309,34 @@ function removeTest(id) {
   refreshHome();
 }
 
+/* -------------------------------------------------------------- pool --- */
+
+/** Chapters she has switched off are out of the pool — their cards are kept. */
+function isExcluded(listId) {
+  return store.settings.excludedLists.includes(listId);
+}
+
+function toggleList(listId, include) {
+  const excluded = new Set(store.settings.excludedLists);
+  if (include) excluded.delete(listId);
+  else excluded.add(listId);
+  store.settings.excludedLists = [...excluded];
+  store.save();
+
+  renderChapters();
+  refreshHome();
+}
+
+/** The corpus minus the chapters she has switched off. */
+function activeWords() {
+  const words = new Map();
+  for (const [id, word] of corpus.words) {
+    if (word.lists.every(isExcluded)) continue;
+    words.set(id, word);
+  }
+  return words;
+}
+
 /* ----------------------------------------------------------- lessons --- */
 
 /* Progress is persistent from here on. The cards Map writes itself through to
@@ -284,13 +371,19 @@ function refreshHome() {
   let due = 0;
   for (const card of store.cards.values()) if (isDue(card, now)) due++;
 
+  const active = activeWords();
+
   paintHome({
     due,
-    fresh: [...corpus.words.keys()].filter(id => !store.cards.has(id)).length,
+    fresh: [...active.keys()].filter(id => !store.cards.has(id)).length,
     streak: store.progress.streak.current,
     xp: store.progress.xp,
     warning: store.status.ok ? null : store.status.message,
   });
+
+  /* Switching every chapter off leaves nothing to teach, so Start goes dead
+     rather than opening a lesson that ends the moment it begins. */
+  $('start-lesson').disabled = active.size === 0;
 }
 
 /**
@@ -312,11 +405,11 @@ function startLesson(only, focusIds = null) {
   /* Snapshot readiness so the results screen can lead with what changed —
      "+4 klaar voor de toets" is the line she actually wants after a lesson. */
   const test = focusIds ? null : activeTest(store.progress.tests, Date.now());
-  const summary = test ? readiness(store.cards, corpus.words, test) : null;
+  const summary = test ? readiness(store.cards, activeWords(), test) : null;
   const readyBefore = summary?.ready ?? null;
 
   const lesson = createLesson({
-    words: corpus.words,
+    words: activeWords(),
     cards: store.cards,
     direction,
     focusIds,
@@ -361,7 +454,7 @@ function startLesson(only, focusIds = null) {
 
 function finishLesson(lesson, test, readyBefore) {
   const gained = test
-    ? readiness(store.cards, corpus.words, test).ready - readyBefore
+    ? readiness(store.cards, activeWords(), test).ready - readyBefore
     : 0;
 
   paintResults(lesson.results(), { test, gained });
@@ -391,6 +484,15 @@ function askToQuit(onQuit) {
 
 /* -------------------------------------------------------------- boot --- */
 
+/** Re-read every source, committed and pasted, and repaint what depends on it. */
+async function reloadCorpus() {
+  corpus = await loadCorpus('data/', { pasted: store.pastedLists });
+  renderChapters();
+  renderScopeChoices();
+  renderReadiness();
+  refreshHome();
+}
+
 async function boot() {
   show(TABS[0]);
 
@@ -403,13 +505,11 @@ async function boot() {
   restoreDirection();
   $('test-form').addEventListener('submit', saveTest);
 
+  $('import-text').addEventListener('input', refreshPreview);
+  $('import-save').addEventListener('click', saveImport);
+
   try {
-    corpus = await loadCorpus();
-    renderChapters();
-    renderScopeChoices();
-    renderReadiness();
-    refreshHome();
-    startButton.disabled = corpus.words.size === 0;
+    await reloadCorpus();
     document.documentElement.dataset.corpus = 'ready';
   } catch (err) {
     /* Say what broke and where. A silent empty list would be the worst

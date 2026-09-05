@@ -20,12 +20,26 @@ export const KEY = 'llrnr.progress.v1';
 export const BROKEN_KEY = `${KEY}.broken`;
 export const VERSION = 1;
 
+/**
+ * Chapters pasted into the app rather than committed to data/.
+ *
+ * Kept under their own key, and holding the raw text rather than parsed words:
+ * the text is what she pasted and what she would edit, and parsing it with the
+ * same parse.js as the committed files means there is no second code path to
+ * keep in sync.
+ */
+export const LISTS_KEY = 'llrnr.lists.v1';
+export const LISTS_BROKEN_KEY = `${LISTS_KEY}.broken`;
+
 export const DEFAULT_SETTINGS = {
   lessonMinutes: 10,
   newPerLesson: 8,
   anticipationSeconds: 4,
   sound: true,
   lastDirection: 'both',
+  /* Chapters switched off on the Words screen. Their cards are kept — dropping
+     a chapter from the pool must never lose her progress on it. */
+  excludedLists: [],
 };
 
 /** A profile for someone who has never opened the app. */
@@ -92,7 +106,12 @@ function fill(progress) {
     roma: { ...base.roma, ...progress.roma },
     /* Settings merge rather than replace, so adding one later cannot leave an
        existing profile with an undefined lesson length. */
-    settings: { ...base.settings, ...progress.settings },
+    settings: {
+      ...base.settings,
+      ...progress.settings,
+      excludedLists: Array.isArray(progress.settings?.excludedLists)
+        ? progress.settings.excludedLists : [],
+    },
     badges: Array.isArray(progress.badges) ? progress.badges : [],
     tests: Array.isArray(progress.tests) ? progress.tests : [],
     cards: progress.cards && typeof progress.cards === 'object' ? progress.cards : {},
@@ -181,6 +200,36 @@ export function openStore({ storage = globalThis.localStorage } = {}) {
 
   progress ??= emptyProgress();
 
+  /* --- pasted chapters, same never-destroy discipline as the profile ----- */
+
+  let pastedLists = [];
+  const rawLists = safely(() => storage?.getItem(LISTS_KEY) ?? null);
+  if (rawLists !== null) {
+    try {
+      const parsed = JSON.parse(rawLists);
+      if (Array.isArray(parsed?.lists)) pastedLists = parsed.lists;
+      else throw new Error('no lists array');
+    } catch {
+      safely(() => storage.setItem(LISTS_BROKEN_KEY, rawLists));
+      status = {
+        ok: false,
+        message: 'De geplakte lijsten konden niet gelezen worden. '
+          + 'De oude gegevens zijn bewaard.',
+      };
+    }
+  }
+
+  function saveLists() {
+    try {
+      storage.setItem(LISTS_KEY, JSON.stringify({ version: 1, lists: pastedLists }));
+      return true;
+    } catch (err) {
+      status = { ok: false, message: 'Opslaan lukt niet — de lijst blijft niet bewaard.' };
+      console.error('llrnr: could not save lists', err);
+      return false;
+    }
+  }
+
   const cards = new PersistentCards(Object.entries(progress.cards), () => save());
 
   function save() {
@@ -208,6 +257,31 @@ export function openStore({ storage = globalThis.localStorage } = {}) {
 
     /** Persist a change made outside the cards Map (a setting, say). */
     save,
+
+    /** Chapters she pasted in, newest last. */
+    get pastedLists() { return pastedLists; },
+
+    /** Add one, returning it. The raw text is kept, not the parsed words. */
+    addList({ title, text }) {
+      const list = {
+        id: `paste-${Date.now().toString(36)}`,
+        title: title || 'Geplakte lijst',
+        text,
+        rev: 1,
+        addedAt: new Date().toISOString(),
+      };
+      pastedLists.push(list);
+      saveLists();
+      return list;
+    },
+
+    /** Remove one. Her cards for those words are deliberately left alone. */
+    removeList(id) {
+      pastedLists = pastedLists.filter(list => list.id !== id);
+      saveLists();
+    },
+
+    saveLists,
 
     /** Wipe the profile. Only ever from an explicit action in Settings. */
     reset() {

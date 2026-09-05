@@ -390,3 +390,73 @@ export function paintResults(results, { test = null, gained = 0 } = {}) {
     ? 'Goed gedaan.'
     : 'Tot de volgende keer.';
 }
+
+/* ========================================================== importer ===== */
+
+const SEPARATOR_NAME = { '|': 'een |', tab: 'een tab', ';': 'een puntkomma' };
+
+/**
+ * What the parser made of what she pasted, shown before anything is saved.
+ *
+ * PLAN section 4 is firm that this is not optional. A list arrives every couple
+ * of weeks, gets pasted from a phone, and the one unacceptable outcome is
+ * silently dropping half of it — so every rejected line is named with its
+ * number and its reason, and the separator that was guessed is stated.
+ */
+export function importPreview(parsed, { max = 12 } = {}) {
+  const blocks = [];
+
+  const summary = el('div', 'card');
+  summary.append(el('p', 'result-line',
+    `${parsed.words.length} ${parsed.words.length === 1 ? 'woord' : 'woorden'} gelezen`));
+  summary.append(el('p', 'caption',
+    `Velden gescheiden door ${SEPARATOR_NAME[parsed.separator] ?? parsed.separator}`
+    + (parsed.title ? ` · titel: ${parsed.title}` : '')));
+
+  if (parsed.words.length) {
+    const table = el('div', 'preview-table');
+    for (const word of parsed.words.slice(0, max)) {
+      const row = el('div', 'preview-row');
+      row.append(el('span', null, word.term));
+      row.append(el('span', null, word.form || '—'));
+      row.append(el('span', null, word.answer));
+      table.append(row);
+    }
+    summary.append(table);
+    if (parsed.words.length > max) {
+      summary.append(el('p', 'preview-more', `… en nog ${parsed.words.length - max}`));
+    }
+  }
+  blocks.push(summary);
+
+  /* Never silently dropped: every line that could not be read, with why. */
+  if (parsed.rejects.length) {
+    const bad = el('div', 'card');
+    bad.append(el('p', 'result-line',
+      `${parsed.rejects.length} ${parsed.rejects.length === 1 ? 'regel' : 'regels'} niet gelezen`));
+    const notes = el('div', 'tags');
+    for (const reject of parsed.rejects) {
+      notes.append(el('span', 'tag tag-bad', `regel ${reject.line}: ${reject.reason}`));
+    }
+    bad.append(notes);
+    blocks.push(bad);
+  }
+
+  if (parsed.warnings.length) {
+    const flagged = el('div', 'card');
+    flagged.append(el('p', 'result-line', 'Even nakijken'));
+    const notes = el('div', 'tags');
+    for (const warning of parsed.warnings) notes.append(el('span', 'tag', warning.message));
+    flagged.append(notes);
+    blocks.push(flagged);
+  }
+
+  if (!parsed.rejects.length && parsed.words.length) {
+    const ok = el('div', 'card');
+    ok.append(el('p', 'preview-ok', 'Alles gelezen, niets overgeslagen.'));
+    blocks.push(ok);
+  }
+
+  return blocks;
+}
+

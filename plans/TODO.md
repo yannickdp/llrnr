@@ -187,12 +187,15 @@ screen inherits this without saying so again.
       left makes three-recall readiness arithmetically unreachable
 
 ### 3.4 Lists without a laptop
-- [ ] Remaining chapters added under `data/`
-- [ ] Paste-in importer (textarea) using the same `parse.js`
-- [ ] Pasted lists stored under `llrnr.lists.v1`, same shape as committed lists
-- [ ] **Import preview before saving**: parsed table, count, separator used, every
+- [ ] Remaining chapters added under `data/` *(blocked: no real lists yet — and
+      the paste-in importer below means they never strictly need a laptop)*
+- [x] Paste-in importer (textarea) using the same `parse.js`
+- [x] Pasted lists stored under `llrnr.lists.v1`, same shape as committed lists
+- [x] **Import preview before saving**: parsed table, count, separator used, every
       rejected line with number and reason, homograph + collision flags
-- [ ] Pool toggle per chapter on the Words screen
+- [x] Pool toggle per chapter on the Words screen — excluded chapters keep their
+      cards, and Start goes dead if every chapter is switched off
+- [x] Remove a pasted list again, leaving its cards in place
 
 ---
 
