@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  newCard, present, review, isDue, overdueBy,
+  newCard, present, review, isDue, overdueBy, isOneWay, missingDirection,
   MICRO_STEPS_MS, BOX_DAYS, DAY_START_HOUR,
 } from '../js/schedule.js';
 
@@ -25,12 +25,12 @@ const S = 1000, MIN = 60 * S, DAY = 24 * 60 * MIN;
 const word = { term: 'mater', lists: ['latin-ch01'] };
 
 /** Wait exactly as long as the card asks, then answer. */
-function answerWhenDue(card, grade, clock) {
+function answerWhenDue(card, grade, clock, direction = 'fwd') {
   const due = Date.parse(card.dueAt);
   assert.ok(due >= clock.now, 'a card must never be scheduled into the past');
   clock.advance(due - clock.now);
   assert.ok(isDue(card, clock.now));
-  return review(card, { grade, now: clock.now });
+  return review(card, { grade, direction, now: clock.now });
 }
 
 /* ===================================================== the ladder ======== */
@@ -99,13 +99,20 @@ test('an almost in acquire repeats the same step', () => {
 
 /* ======================================================= the boxes ======= */
 
-/** Walk a word from new to a given box, answering everything correctly. */
-function toBox(box, clock) {
+/**
+ * Walk a word from new to a given box, answering everything correctly.
+ * Alternating direction by default, so it arrives proven both ways round —
+ * `oneWay` keeps it to a single direction, which is the interesting case.
+ */
+function toBox(box, clock, { oneWay = false } = {}) {
+  let asked = 0;
+  const dir = () => (oneWay ? 'fwd' : (asked++ % 2 ? 'rev' : 'fwd'));
+
   let { card } = present(newCard(word, { now: clock.now }), { now: clock.now });
   for (let i = 0; i < MICRO_STEPS_MS.length; i++) {
-    ({ card } = answerWhenDue(card, 'correct', clock));
+    ({ card } = answerWhenDue(card, 'correct', clock, dir()));
   }
-  while (card.box < box) ({ card } = answerWhenDue(card, 'correct', clock));
+  while (card.box < box) ({ card } = answerWhenDue(card, 'correct', clock, dir()));
   return card;
 }
 
@@ -128,7 +135,9 @@ test('the boxes are 1, 3, 7, 21 and 60 days', () => {
 test('clearing box 5 marks the word learned and stops scheduling it', () => {
   const clock = fakeClock();
   const card = toBox(5, clock);
-  const { card: after, outcome } = answerWhenDue(card, 'correct', clock);
+  assert.deepEqual(card.dirOk, { fwd: true, rev: true }, 'proven both ways round');
+
+  const { card: after, outcome } = answerWhenDue(card, 'correct', clock, 'rev');
 
   assert.equal(outcome, 'learned');
   assert.equal(after.phase, 'learned');
@@ -258,4 +267,67 @@ test('a card carries the shape the store expects', () => {
   assert.deepEqual(card.cleanDays, { fwd: [], rev: [] });
   assert.deepEqual(card.dirOk, { fwd: false, rev: false });
   assert.deepEqual(card.lastSlip, { fwd: null, rev: null });
+});
+
+/* ==================================================== both directions ==== */
+
+test('boxes climb on whatever direction was tested — no stalling at box 2', () => {
+  /* The trap PLAN section 2.4 names: a run of one-way lessons must never leave
+     every word stuck mid-ladder with no visible cause. */
+  const clock = fakeClock();
+  const card = toBox(5, clock, { oneWay: true });
+
+  assert.equal(card.box, 5);
+  assert.deepEqual(card.dirOk, { fwd: true, rev: false });
+});
+
+test('a word proven only one way parks at box 5 instead of being learned', () => {
+  const clock = fakeClock();
+  const card = toBox(5, clock, { oneWay: true });
+  const { card: after, outcome } = answerWhenDue(card, 'correct', clock, 'fwd');
+
+  assert.equal(outcome, 'parked');
+  assert.equal(after.phase, 'retain', 'not learned — she cannot produce it yet');
+  assert.equal(after.box, 5);
+  assert.equal(isOneWay(after), true);
+  assert.equal(missingDirection(after), 'rev');
+});
+
+test('a parked word keeps coming back rather than going quiet', () => {
+  const clock = fakeClock();
+  let card = toBox(5, clock, { oneWay: true });
+  ({ card } = answerWhenDue(card, 'correct', clock, 'fwd'));
+
+  assert.notEqual(card.dueAt, null);
+  const days = (Date.parse(card.dueAt) - clock.now) / DAY;
+  assert.ok(days > 30 && days < 70, `parked words return occasionally, not in ${days} days`);
+});
+
+test('the missing direction is what releases a parked word', () => {
+  const clock = fakeClock();
+  let card = toBox(5, clock, { oneWay: true });
+  ({ card } = answerWhenDue(card, 'correct', clock, 'fwd'));
+  assert.equal(isOneWay(card), true);
+
+  const { card: after, outcome } = answerWhenDue(card, 'correct', clock, 'rev');
+  assert.equal(outcome, 'learned');
+  assert.equal(after.phase, 'learned');
+  assert.equal(isOneWay(after), false);
+  assert.equal(missingDirection(after), null);
+});
+
+test('an almost does not release a parked word', () => {
+  const clock = fakeClock();
+  let card = toBox(5, clock, { oneWay: true });
+  ({ card } = answerWhenDue(card, 'correct', clock, 'fwd'));
+
+  const { card: after } = answerWhenDue(card, 'almost', clock, 'rev');
+  assert.equal(after.dirOk.rev, false, 'a near miss is not proof she can produce it');
+  assert.equal(isOneWay(after), true);
+});
+
+test('isOneWay only marks words that have got all the way to box 5', () => {
+  const clock = fakeClock();
+  assert.equal(isOneWay(toBox(3, clock, { oneWay: true })), false,
+    'a word still climbing is not "one-way", it is just unfinished');
 });

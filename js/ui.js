@@ -46,7 +46,7 @@ export function paintHome({ due, fresh, streak, xp, warning }) {
 
 /* ====================================================== the lesson ======= */
 
-const DIRECTION_LABEL = {
+export const DIRECTION_LABEL = {
   fwd: 'Latijn → Nederlands',
   rev: 'Nederlands → Latijn',
 };
@@ -256,6 +256,10 @@ export function paintResults(results) {
   const host = $('results-body');
   const lines = [];
 
+  if (results.learned) {
+    lines.push([plural(results.learned, 'woord helemaal gekend', 'woorden helemaal gekend'),
+      results.learnedWords.join(', ')]);
+  }
   if (results.graduated) {
     lines.push([plural(results.graduated, 'woord geleerd', 'woorden geleerd'),
       results.graduatedWords.join(', ')]);
@@ -274,6 +278,15 @@ export function paintResults(results) {
     if (detail) card.append(el('p', 'caption', detail));
     return card;
   });
+
+  if (results.parked) {
+    const card = el('div', 'card');
+    card.append(el('p', 'result-line',
+      plural(results.parked, 'woord ken je maar één richting', 'woorden ken je maar één richting')));
+    card.append(el('p', 'caption',
+      'Ze blijven af en toe terugkomen tot je ze ook de andere kant op kent.'));
+    cards.push(card);
+  }
 
   if (results.droppedWords.length) {
     const card = el('div', 'card');

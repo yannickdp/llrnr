@@ -129,15 +129,18 @@ screen inherits this without saying so again.
       card that was asked
 
 ### 2.3 Direction
-- [ ] Three-way picker on Start lesson: Latin→Dutch / Dutch→Latin / Both
-- [ ] Pre-select `lastDirection`; remember the choice
-- [ ] Per-direction `dirOk.{fwd,rev}` and `cleanDays.{fwd,rev}` (cap at max `targetRecalls`)
-- [ ] Both mode picks the weaker-record direction, alternating on a tie
-- [ ] Boxes climb on whatever direction was tested — no stalling at box 2, ever
-- [ ] `learned` gated on a clean recall **both** ways; otherwise park at box 5
-- [ ] **one-way** marker on parked cards, and they keep returning occasionally
-- [ ] Only the headword is typed in reverse (`mater`, not `mater, matris, f.`)
-- [ ] Small marker in-lesson showing which way round the question is
+- [x] Three-way picker on Start lesson: Latin→Dutch / Dutch→Latin / Both
+- [x] Pre-select `lastDirection`; remember the choice
+- [x] Per-direction `dirOk.{fwd,rev}` and `cleanDays.{fwd,rev}` (cap at max `targetRecalls`)
+- [x] Both mode picks the weaker-record direction, alternating on a tie
+- [x] Boxes climb on whatever direction was tested — no stalling at box 2, ever
+- [x] `learned` gated on a clean recall **both** ways; otherwise park at box 5
+- [x] **one-way** marker on parked cards, and they keep returning occasionally
+- [x] Words screen shows the one-way count per chapter with a button that drills
+      exactly those words in the missing direction *(a focused lesson: it serves
+      them even though a parked word is not due for 60 days)*
+- [x] Only the headword is typed in reverse (`mater`, not `mater, matris, f.`)
+- [x] Small marker in-lesson showing which way round the question is
 
 ### 2.4 Backlog protection
 - [ ] Cap review load at ~40 items per lesson
@@ -205,7 +208,7 @@ screen inherits this without saying so again.
 ### 4.3 Words screen visualisation
 - [ ] new → acquire → box 1–5 → learned dot track per word (position, not percentage)
 - [ ] Per-chapter spread across the track
-- [ ] One-way count per chapter with its fix-it button
+- [x] One-way count per chapter with its fix-it button *(done in 2.3)*
 
 ### 4.4 Offline + backup
 - [ ] `service-worker.js` caching shell, CSS, JS, icons and `data/*.txt`

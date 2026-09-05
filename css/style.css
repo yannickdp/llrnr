@@ -512,3 +512,6 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   cursor: default;
   filter: none;
 }
+
+.one-way { color: var(--almost); margin-block-start: 10px; }
+.btn-small { margin-block-start: 8px; padding: 10px var(--pad); font-size: var(--t-caption); }

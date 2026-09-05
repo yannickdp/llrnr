@@ -88,6 +88,28 @@ export function isDue(card, now = Date.now()) {
   return card.dueAt !== null && Date.parse(card.dueAt) <= now;
 }
 
+/**
+ * A word she can recognise but not produce — or the other way round.
+ *
+ * PLAN section 2.4 moves the both-directions requirement to the *top* of the
+ * ladder rather than the middle. An earlier draft blocked a word from leaving
+ * box 2 until both directions were proven, which becomes a trap once she can
+ * pick a direction: a run of Latin -> Dutch lessons would leave every word
+ * stuck at box 2 with no visible cause. So boxes climb on whatever direction
+ * was actually tested, and only `learned` is gated.
+ */
+export function isOneWay(card) {
+  return card.phase === 'retain'
+    && card.box >= BOX_DAYS.length
+    && !(card.dirOk.fwd && card.dirOk.rev);
+}
+
+/** The direction a parked card still owes, or null if it owes neither. */
+export function missingDirection(card) {
+  if (card.dirOk.fwd && card.dirOk.rev) return null;
+  return card.dirOk.fwd ? 'rev' : 'fwd';
+}
+
 /** How overdue a card is, in ms — the lesson queue's sort key. */
 export function overdueBy(card, now = Date.now()) {
   return card.dueAt === null ? -Infinity : now - Date.parse(card.dueAt);
@@ -237,9 +259,14 @@ function retain(next, grade, now) {
     return { card: next, outcome: 'promoted' };
   }
 
-  /* Cleared box 5.
-     Phase 2.3 gates this on a clean recall in *both* directions; until then a
-     word that has served its 60 days is simply learned. */
+  /* Cleared box 5 — but knowing a word means knowing it both ways, because
+     that is how she is examined. A word proven only one way round parks here
+     and keeps coming back occasionally, with a marker saying why. */
+  if (!next.dirOk.fwd || !next.dirOk.rev) {
+    next.dueAt = iso(dayAfter(now, BOX_DAYS.at(-1)));
+    return { card: next, outcome: 'parked' };
+  }
+
   next.phase = 'learned';
   next.dueAt = null;
   return { card: next, outcome: 'learned' };

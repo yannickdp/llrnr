@@ -42,9 +42,16 @@ export function createLesson({
      ten-minute lesson every word introduced is still running when it ends.
      Capping below the new-word budget would therefore cap the budget itself. */
   maxInFlight = newPerLesson,
+  /* Cards to drill regardless of when they are next due. This is what makes
+     "practise the side you are missing" mean something: a word parked at box 5
+     is not due for sixty days, so without this the button would start a lesson
+     that never asks any of the words it named. A focused lesson introduces no
+     new words either — it is a targeted repair, not a normal session. */
+  focusIds = null,
   now = Date.now(),
   random = Math.random,
 } = {}) {
+  const focus = new Set(focusIds ?? []);
   const startedAt = now;
   const endsAt = now + minutes * MINUTE;
 
@@ -64,8 +71,8 @@ export function createLesson({
 
   const tally = {
     presented: 0, answered: 0, correct: 0,
-    graduated: 0, promoted: 0, held: 0, dropped: 0, learned: 0,
-    droppedWords: [], graduatedWords: [],
+    graduated: 0, promoted: 0, held: 0, dropped: 0, learned: 0, parked: 0,
+    droppedWords: [], graduatedWords: [], learnedWords: [],
   };
 
   /* ------------------------------------------------------------ queue --- */
@@ -74,7 +81,7 @@ export function createLesson({
 
   function dueNow(t) {
     return live()
-      .filter(([, c]) => isDue(c, t))
+      .filter(([id, c]) => isDue(c, t) || focus.has(id))
       .sort(([, a], [, b]) => {
         /* A ladder repeat always wins: its interval is the exercise. */
         if ((a.phase === 'acquire') !== (b.phase === 'acquire')) {
@@ -89,6 +96,7 @@ export function createLesson({
   const unseen = () => [...words.keys()].filter(id => !cards.has(id));
 
   function canIntroduce(t) {
+    if (focus.size) return false;
     if (introduced >= newPerLesson || !unseen().length) return false;
     if (inFlight() >= maxInFlight) return false;
     /* Wait out the pacing gap, unless there is genuinely nothing else to do. */
@@ -102,6 +110,7 @@ export function createLesson({
 
   /** When the next new word may be introduced, or Infinity if none is left. */
   function nextIntroAt() {
+    if (focus.size) return Infinity;
     if (introduced >= newPerLesson || !unseen().length) return Infinity;
     if (inFlight() >= maxInFlight) return Infinity;
     return lastNewAt + newGapMs;
@@ -109,10 +118,23 @@ export function createLesson({
 
   /* -------------------------------------------------------- direction --- */
 
-  function pickDirection() {
+  /**
+   * In Both mode the direction is not random: for each word it is the side
+   * with the weaker record, alternating on a tie. That is the whole point of
+   * Both — it quietly spends more time on whichever way round she is worse at,
+   * which is almost always Dutch -> Latin, and that is where the marks go.
+   */
+  function pickDirection(card) {
     if (direction !== 'both') return direction;
-    /* Alternating for now. Phase 2.3 makes this pick the weaker side per word,
-       which is the whole point of Both mode. */
+    if (!card) return asked % 2 === 0 ? 'fwd' : 'rev';
+
+    /* Clean days are the real evidence; dirOk breaks ties between two words
+       with none yet, since "has produced it once" still beats "never has". */
+    const score = dir => card.cleanDays[dir].length * 2 + (card.dirOk[dir] ? 1 : 0);
+    const fwd = score('fwd');
+    const rev = score('rev');
+
+    if (fwd !== rev) return fwd < rev ? 'fwd' : 'rev';
     return asked % 2 === 0 ? 'fwd' : 'rev';
   }
 
@@ -143,7 +165,7 @@ export function createLesson({
     if (due.length) {
       const [id, card] = due[0];
       const word = words.get(id);
-      const dir = pickDirection();
+      const dir = pickDirection(card);
       const mode = firstContact.has(id) ? 'choice' : 'typed';
 
       current = {
@@ -213,6 +235,7 @@ export function createLesson({
     if (outcome in tally) tally[outcome]++;
     if (outcome === 'dropped') tally.droppedWords.push(word.term);
     if (outcome === 'graduated') tally.graduatedWords.push(word.term);
+    if (outcome === 'learned') tally.learnedWords.push(word.term);
 
     current = null;
 

@@ -10,8 +10,8 @@
 import { loadCorpus } from './lists.js';
 import { createLesson } from './lesson.js';
 import { openStore } from './store.js';
-import { isDue } from './schedule.js';
-import { $, el, paintHome, paintResults, runLesson } from './ui.js';
+import { isDue, isOneWay, missingDirection } from './schedule.js';
+import { $, DIRECTION_LABEL, el, paintHome, paintResults, runLesson } from './ui.js';
 
 const TABS = ['home', 'words', 'tests', 'settings'];
 const MODAL = ['start', 'lesson', 'results'];
@@ -78,6 +78,13 @@ document.addEventListener('click', e => {
     return;
   }
 
+  /* "Practise the side you are missing" — the fix attached to the marker. */
+  const practise = e.target.closest('[data-practise]');
+  if (practise) {
+    startLesson(practise.dataset.practise, practise.dataset.focus.split(' ').filter(Boolean));
+    return;
+  }
+
   const action = e.target.closest('[data-action]');
   if (action?.dataset.action === 'close-modal') {
     if (exitGuard && exitGuard() === false) return;
@@ -109,12 +116,40 @@ document.addEventListener('submit', e => e.preventDefault());
    Built with textContent throughout: chapter titles and terms are file
    content, and innerHTML would make an editable word list an injection path. */
 
+/**
+ * The words in a chapter she knows one way round only, by which way is missing.
+ *
+ * PLAN section 2.4 is firm that the both-directions requirement must appear as
+ * a suggestion with the fix attached, never as an invisible wall — so this
+ * count exists to be shown next to a button that practises exactly that side.
+ */
+function oneWayIn(list) {
+  const missing = { fwd: [], rev: [] };
+  for (const word of list.words) {
+    const card = store.cards.get(word.id);
+    if (card && isOneWay(card)) missing[missingDirection(card)].push(word.id);
+  }
+  return missing;
+}
+
 function chapterCard(list) {
   const card = el('div', 'card');
   const head = el('div', 'chapter-head');
   head.append(el('span', 'chapter-title', list.title ?? list.file));
   head.append(el('span', 'caption', `${list.words.length} woorden`));
   card.append(head);
+
+  const missing = oneWayIn(list);
+  const worst = missing.rev.length >= missing.fwd.length ? 'rev' : 'fwd';
+  const count = missing[worst].length;
+  if (count) {
+    card.append(el('p', 'caption one-way',
+      `${count} ${count === 1 ? 'woord ken je' : 'woorden ken je'} nog maar één richting`));
+    const practise = el('button', 'btn btn-small', `${DIRECTION_LABEL[worst]} oefenen`);
+    practise.dataset.practise = worst;
+    practise.dataset.focus = missing[worst].join(' ');
+    card.append(practise);
+  }
 
   const notes = el('div', 'tags');
   for (const warning of list.warnings) {
@@ -128,10 +163,11 @@ function chapterCard(list) {
   return card;
 }
 
-function renderChapters(lists, wordCount) {
+function renderChapters() {
+  if (!corpus) return;
   $('chapter-list').replaceChildren(
-    ...lists.map(chapterCard),
-    el('p', 'caption', `${wordCount} woorden in totaal`),
+    ...corpus.lists.map(chapterCard),
+    el('p', 'caption', `${corpus.words.size} woorden in totaal`),
   );
 }
 
@@ -178,12 +214,16 @@ function refreshHome() {
   });
 }
 
-function startLesson() {
+/**
+ * @param {'fwd'|'rev'|'both'} [only]  overrides the picker — this is how the
+ *   Words screen's "practise the missing side" button works.
+ */
+function startLesson(only, focusIds = null) {
   /* Guard rather than trust: the button is disabled until the corpus is in,
      so reaching here without one would be a bug. */
   if (!corpus?.words.size) return;
 
-  const direction = chosenDirection();
+  const direction = only ?? chosenDirection();
   store.settings.lastDirection = direction;
   store.save();
 
@@ -191,6 +231,7 @@ function startLesson() {
     words: corpus.words,
     cards: store.cards,
     direction,
+    focusIds,
     minutes: store.settings.lessonMinutes,
     newPerLesson: store.settings.newPerLesson,
     now: Date.now(),
@@ -205,6 +246,7 @@ function startLesson() {
       setExitGuard(null);
       paintResults(lesson.results());
       refreshHome();
+      renderChapters();
       show('results');
     },
   });
@@ -221,6 +263,7 @@ function startLesson() {
       lesson.finish();
       paintResults(lesson.results());
       refreshHome();
+      renderChapters();
       show('results');
     });
     return false;
@@ -260,7 +303,7 @@ async function boot() {
 
   try {
     corpus = await loadCorpus();
-    renderChapters(corpus.lists, corpus.words.size);
+    renderChapters();
     refreshHome();
     startButton.disabled = corpus.words.size === 0;
     document.documentElement.dataset.corpus = 'ready';

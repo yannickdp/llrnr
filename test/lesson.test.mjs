@@ -425,3 +425,157 @@ test('acknowledging when no card is showing is a bug too', () => {
   const l = lesson();
   assert.throws(() => l.acknowledge(START), /nothing to acknowledge/);
 });
+
+/* ================================================== the weaker side ===== */
+
+/** A retain card with a given per-direction record, due now. */
+function recorded(words, id, { fwd = [], rev = [], okFwd = false, okRev = false } = {}) {
+  return new Map([[id, {
+    term: words.get(id).term, lists: [], phase: 'retain', micro: 0, box: 2,
+    dueAt: new Date(START - MIN).toISOString(),
+    cleanDays: { fwd: [...fwd], rev: [...rev] },
+    lastSlip: { fwd: null, rev: null },
+    seen: 6, correct: 5, slips: 0,
+    dirOk: { fwd: okFwd, rev: okRev },
+  }]]);
+}
+
+test('both mode asks the side she is worse at', () => {
+  const words = corpus();
+  const [id] = [...words.keys()];
+
+  /* She recognises it but has never produced it: ask the other way round. */
+  const strongForward = createLesson({
+    words, cards: recorded(words, id, { fwd: ['2026-09-01', '2026-09-02'], okFwd: true }),
+    direction: 'both', now: START, random: () => 0.5,
+  });
+  assert.equal(strongForward.next(START).direction, 'rev');
+
+  /* And the reverse case, so it is following the record and not a preference. */
+  const strongReverse = createLesson({
+    words, cards: recorded(words, id, { rev: ['2026-09-01', '2026-09-02'], okRev: true }),
+    direction: 'both', now: START, random: () => 0.5,
+  });
+  assert.equal(strongReverse.next(START).direction, 'fwd');
+});
+
+test('having produced it once beats never having done so', () => {
+  const words = corpus();
+  const [id] = [...words.keys()];
+  const lesson = createLesson({
+    words, cards: recorded(words, id, { okFwd: true }),
+    direction: 'both', now: START, random: () => 0.5,
+  });
+  assert.equal(lesson.next(START).direction, 'rev');
+});
+
+test('a tie alternates rather than favouring one side', () => {
+  const words = corpus();
+  const seen = [];
+  const l = lesson({ direction: 'both' });
+  let t = START;
+
+  for (let i = 0; i < 20 && seen.length < 4; i++) {
+    const step = l.next(t);
+    if (step.kind === 'done') break;
+    if (step.kind === 'wait') { t = step.untilMs; continue; }
+    if (step.kind === 'present') { l.acknowledge(t); continue; }
+    seen.push(step.direction);
+    l.answer(step.direction === 'fwd' ? step.word.translations[0] : step.word.term, t);
+    t += 2 * S;
+  }
+  assert.ok(seen.includes('fwd') && seen.includes('rev'),
+    'with no record either way, Both must not settle on one side');
+});
+
+test('a one-way lesson ignores the record entirely', () => {
+  const words = corpus();
+  const [id] = [...words.keys()];
+  const cards = recorded(words, id, { fwd: ['2026-09-01', '2026-09-02'], okFwd: true });
+
+  const l = createLesson({ words, cards, direction: 'fwd', now: START, random: () => 0.5 });
+  assert.equal(l.next(START).direction, 'fwd',
+    'the picker is a practice tool: if she asks for one side, she gets it');
+});
+
+test('the results name the words that were learned outright', () => {
+  const words = corpus();
+  const [id] = [...words.keys()];
+  const cards = recorded(words, id, { okFwd: true, okRev: true });
+  cards.get(id).box = 5;
+
+  const l = createLesson({ words, cards, direction: 'fwd', now: START, random: () => 0.5 });
+  l.next(START);
+  const result = l.answer(l.current.word.translations[0], START);
+
+  assert.equal(result.outcome, 'learned');
+  assert.deepEqual(l.results().learnedWords, [words.get(id).term]);
+});
+
+test('a word proven one way only is parked, and the results say so', () => {
+  const words = corpus();
+  const [id] = [...words.keys()];
+  const cards = recorded(words, id, { okFwd: true });
+  cards.get(id).box = 5;
+
+  const l = createLesson({ words, cards, direction: 'fwd', now: START, random: () => 0.5 });
+  l.next(START);
+  const result = l.answer(l.current.word.translations[0], START);
+
+  assert.equal(result.outcome, 'parked');
+  assert.equal(l.results().parked, 1);
+  assert.equal(l.results().learnedWords.length, 0);
+});
+
+/* ================================================ focused practice ====== */
+
+test('a focused lesson drills the named words even though they are not due', () => {
+  const words = corpus();
+  const [id] = [...words.keys()];
+  const cards = recorded(words, id, { fwd: ['2026-09-01'], okFwd: true });
+  /* Parked at box 5: not due again for two months. */
+  cards.get(id).box = 5;
+  cards.get(id).dueAt = new Date(START + 60 * 24 * 60 * MIN).toISOString();
+
+  const l = createLesson({
+    words, cards, direction: 'rev', focusIds: [id], now: START, random: () => 0.5,
+  });
+
+  const step = l.next(START);
+  assert.equal(step.kind, 'ask', 'the word it promised to practise must actually be asked');
+  assert.equal(step.id, id);
+  assert.equal(step.direction, 'rev');
+});
+
+test('a focused lesson introduces no new words — it is a repair, not a session', () => {
+  const words = corpus();
+  const [id] = [...words.keys()];
+  const cards = recorded(words, id, { okFwd: true });
+  cards.get(id).box = 5;
+  cards.get(id).dueAt = new Date(START + 60 * 24 * 60 * MIN).toISOString();
+
+  const l = createLesson({
+    words, cards, direction: 'rev', focusIds: [id], now: START, random: () => 0.5,
+  });
+
+  l.next(START);
+  l.answer(words.get(id).term, START);
+  assert.equal(l.results().presented, 0);
+});
+
+test('answering the missing side releases the word', () => {
+  const words = corpus();
+  const [id] = [...words.keys()];
+  const cards = recorded(words, id, { fwd: ['2026-09-01'], okFwd: true });
+  cards.get(id).box = 5;
+  cards.get(id).dueAt = new Date(START + 60 * 24 * 60 * MIN).toISOString();
+
+  const l = createLesson({
+    words, cards, direction: 'rev', focusIds: [id], now: START, random: () => 0.5,
+  });
+  l.next(START);
+  const result = l.answer(words.get(id).term, START);
+
+  assert.equal(result.outcome, 'learned');
+  assert.equal(cards.get(id).phase, 'learned');
+});
