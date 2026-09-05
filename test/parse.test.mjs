@@ -6,6 +6,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { parseList, normalize, cardId, fnv1a } from '../js/parse.js';
 
 const one = text => {
@@ -220,21 +221,20 @@ test('shared translations are matched after folding case and accents', () => {
 
 /* ------------------------------------------------------ the real file --- */
 
-test('the committed chapter parses cleanly and holds its awkward cases', async () => {
-  const { readFile } = await import('node:fs/promises');
-  const text = await readFile(new URL('../data/latin-chapter-01.txt', import.meta.url), 'utf8');
+test('whatever is in the committed chapter, the parser can read all of it', () => {
+  /* Deliberately structural. The word list is hers to edit — she adds chapters
+     and fixes translations — so a test that asserted particular vocabulary
+     would break on every edit and train us to ignore a red suite. What must
+     hold for any list is that nothing in it is unreadable. */
+  const text = readFileSync(new URL('../data/latin-chapter-01.txt', import.meta.url), 'utf8');
   const r = parseList(text, { listId: 'latin-ch01' });
 
   assert.deepEqual(r.rejects, [], 'the committed list must have no unreadable lines');
-  assert.equal(r.title, 'Hoofdstuk 1 — Familia');
-  assert.ok(r.words.length > 20);
+  assert.ok(r.title, 'and must name itself on its first # line');
+  assert.ok(r.words.length > 0);
+  assert.ok(r.words.every(w => w.term && w.translations.length > 0));
   assert.ok(r.words.every(w => w.lists.includes('latin-ch01')));
-
-  assert.ok(r.warnings.some(w => w.type === 'homograph' && w.term === 'liber'));
-  assert.ok(r.warnings.some(w => w.type === 'shared-translation' && w.translation === 'zeggen'));
-  assert.equal(r.words.find(w => w.term === 'unus').translations[0], 'één');
-  assert.equal(r.words.find(w => w.term === 'ad').form, '');
-  assert.equal(r.words.find(w => w.term === 'sed').form, '');
+  assert.equal(new Set(r.words.map(w => w.id)).size, r.words.length, 'no two words share an id');
 });
 
 test('every rejected line carries a stable code as well as Dutch copy', () => {

@@ -102,6 +102,12 @@ document.addEventListener('click', e => {
     return;
   }
 
+  const segment = e.target.closest('[data-setting] button');
+  if (segment) {
+    changeSetting(segment.closest('[data-setting]'), segment);
+    return;
+  }
+
   const resetId = e.target.closest('[data-reset-list]')?.dataset.resetList;
   if (resetId) {
     resetChapter(resetId);
@@ -558,6 +564,39 @@ const askToQuit = onQuit => askToConfirm(
   { confirmLabel: 'Stoppen', cancelLabel: 'Verdergaan' },
 );
 
+/* ---------------------------------------------------------- settings --- */
+
+/* Each control is a `.segmented` group carrying the settings key it edits, so
+   adding one is a matter of markup rather than another handler here. */
+
+const readSetting = (group, raw) => ({
+  number: Number(raw),
+  boolean: raw === 'true',
+}[group.dataset.type] ?? raw);
+
+/** Light up whichever button matches what is stored. */
+function renderSettings() {
+  for (const group of document.querySelectorAll('[data-setting]')) {
+    const current = store.settings[group.dataset.setting];
+    for (const button of group.querySelectorAll('button')) {
+      const value = readSetting(group, button.dataset.value);
+      button.setAttribute('aria-pressed', String(value === current));
+    }
+  }
+}
+
+function changeSetting(group, button) {
+  const key = group.dataset.setting;
+  store.settings[key] = readSetting(group, button.dataset.value);
+  store.save();
+
+  renderSettings();
+
+  /* Two settings have an effect outside their own value. */
+  if (key === 'sound') setSoundEnabled(store.settings.sound);
+  if (key === 'lastDirection') restoreDirection();
+}
+
 /* ------------------------------------------------------------ backup --- */
 
 const backupFilename = () => `llrnr-${new Date().toISOString().slice(0, 10)}.json`;
@@ -639,6 +678,7 @@ async function applyRestore(event) {
   $('restore-text').value = '';
   refreshRestorePreview();
   restoreDirection();
+  renderSettings();
   setSoundEnabled(store.settings.sound);
   await reloadCorpus();
   note('export-note', 'Terugzetten gelukt.');
@@ -695,6 +735,7 @@ async function boot() {
   startButton.addEventListener('click', () => startLesson());
 
   restoreDirection();
+  renderSettings();
   setSoundEnabled(store.settings.sound);
   $('test-form').addEventListener('submit', saveTest);
 

@@ -238,8 +238,10 @@ screen inherits this without saying so again.
       another chapter is left alone, since the card is shared
 
 ### 4.5 Settings screen
-- [ ] Lesson length, new words per lesson, anticipation gap, default direction, sound
-- [ ] Export / import, reset a chapter
+- [x] Lesson length, new words per lesson, anticipation gap, default direction, sound —
+      each a segmented control carrying the settings key it edits, so adding one is
+      markup rather than another handler
+- [x] Export / import, reset a chapter
 
 ---
 

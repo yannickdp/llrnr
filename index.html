@@ -91,9 +91,52 @@
 
   <section class="screen" id="screen-settings" data-screen="settings" hidden>
     <header class="screen-head"><h1>Instellingen</h1></header>
-    <div class="card">
-      <p class="placeholder">Lengte van een les, nieuwe woorden per les, denktijd,
-        vaste richting en geluid komen hier.</p>
+    <div class="card stack">
+      <div class="field">
+        <span>Lengte van een les</span>
+        <div class="segmented" data-setting="lessonMinutes" data-type="number">
+          <button type="button" data-value="5">5 min</button>
+          <button type="button" data-value="10">10 min</button>
+          <button type="button" data-value="15">15 min</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span>Nieuwe woorden per les</span>
+        <div class="segmented" data-setting="newPerLesson" data-type="number">
+          <button type="button" data-value="4">4</button>
+          <button type="button" data-value="6">6</button>
+          <button type="button" data-value="8">8</button>
+          <button type="button" data-value="12">12</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span>Denktijd voor je mag typen</span>
+        <div class="segmented" data-setting="anticipationSeconds" data-type="number">
+          <button type="button" data-value="0">geen</button>
+          <button type="button" data-value="2">2 s</button>
+          <button type="button" data-value="4">4 s</button>
+          <button type="button" data-value="6">6 s</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span>Standaardrichting</span>
+        <div class="segmented" data-setting="lastDirection">
+          <button type="button" data-value="fwd">La &rarr; Ned</button>
+          <button type="button" data-value="rev">Ned &rarr; La</button>
+          <button type="button" data-value="both">Beide</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span>Geluid</span>
+        <div class="segmented" data-setting="sound" data-type="boolean">
+          <button type="button" data-value="true">Aan</button>
+          <button type="button" data-value="false">Uit</button>
+        </div>
+      </div>
     </div>
 
     <h2 class="section-head">Bewaren</h2>
