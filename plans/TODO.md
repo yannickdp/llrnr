@@ -7,6 +7,13 @@ Mark `[x]` as things land. Section references point at the plan text that define
 Phases are ordered but not strictly gated: Phase 3 is the differentiator and must not
 slip behind Phase 4.
 
+**Standing rule — the app speaks Dutch.** Every user-visible string is Dutch: screens,
+buttons, badge names, the readiness panel, error messages and the parser's
+rejected-line reasons. Code stays English (identifiers, card fields, comments, these
+plans), Latin stays Latin (stage and building names, each glossed in Dutch), and dates
+and numbers use `nl-BE`. See PLAN §1. Any new checkbox below that puts words on the
+screen inherits this without saying so again.
+
 ---
 
 ## Phase 0 — scaffolding
@@ -28,6 +35,18 @@ slip behind Phase 4.
 - [x] `css/style.css`: mobile-first, CSS variables for theming
 - [x] Bottom tab bar — Home / Words / Tests / Settings (PLAN §5)
 - [x] Lesson flow styled as a modal over the tabs, not a tab
+
+### 1.1b Dutch throughout *(added after the shell was built in English)*
+- [x] Translate the shell: tab bar, screen headings, buttons, placeholder copy
+- [x] Direction picker reads **Latijn → Nederlands / Nederlands → Latijn / Beide**
+- [x] Parser rejects and warnings carry a stable English `code` **and** a Dutch message
+- [x] Loader and boot failures report in Dutch ("De lijsten konden niet geladen worden")
+- [x] Tests assert on `code`, not on the Dutch wording
+- [x] `<html lang="nl">`
+- [ ] Manifest `name` / `short_name` in Dutch *(with Phase 1.5)*
+- [ ] Dates and numbers formatted `nl-BE` *(nothing renders one yet — due with the
+      streak, the heatmap and the test dates)*
+- [x] Check the Dutch copy still fits a 390px screen — it runs longer than the English
 
 ### 1.2 `parse.js` + a real chapter
 - [x] Parse `term | form | translation`; 2-field lines read as `term | translation`
@@ -92,7 +111,7 @@ slip behind Phase 4.
 ### 2.2 `answer.js`
 - [ ] Case-insensitive, accent-stripped, whitespace-trimmed matching
 - [ ] Any `/`-separated alternative accepted
-- [ ] Levenshtein distance 1 → **almost**, with "nearly! it is *mater*"
+- [ ] Levenshtein distance 1 → **almost**, with "bijna! het is *mater*"
 - [ ] Clean recall = correct first attempt, no hint, no almost
 - [ ] Reverse mode: accept any word in the pool sharing that translation, credit the
       card that was asked
@@ -128,11 +147,12 @@ slip behind Phase 4.
 - [ ] Pure module, fake-clock tested, separate from the lesson loop
 
 ### 3.2 Readiness panel
-- [ ] "N of M words test-ready both ways"
-- [ ] "K words solid Latin→Dutch, not yet the other way round" (the key diagnostic)
-- [ ] Shaky count and not-started count
+- [ ] "N van de M woorden klaar in beide richtingen"
+- [ ] "K woorden zitten goed van Latijn naar Nederlands, nog niet omgekeerd"
+      (the key diagnostic)
+- [ ] Shaky count and not-started count ("wankel", "nog niet begonnen")
 - [ ] Minutes-a-day estimate from **remaining clean recalls across both directions**
-- [ ] [ Practise Dutch → Latin ] button starting a lesson in exactly that direction
+- [ ] [ Nederlands → Latijn oefenen ] button starting a lesson in that direction
 - [ ] Panel pushes above the city on Home while a test is in its run-up
 - [ ] Results screen leads with the readiness change ("+4 test-ready today")
 
@@ -190,20 +210,73 @@ slip behind Phase 4.
 
 ## Phase 4b — the reward city *(downstream of 4.1; see [PLAN-ROMA.md](PLAN-ROMA.md))*
 
-- [ ] 1. Renderer skeleton — one hardcoded sprite, canvas, integer scaling, crisp on a
-      real phone
-- [ ] 2. Stage 1's five sprites + hills backdrop — **stop and look**: go/no-go on
-      hand-authored art vs a CC0 tileset
-- [ ] 3. Unlock logic against total XP, Home-screen hero placement, dim silhouette
-      teaser with XP remaining
-- [ ] 4. The unlock moment — pan, draw-in, chime, name card *(stopping point: still
-      worth having)*
+Drawing technique is specified in [pixel-art-plan.md](pixel-art-plan.md) — engine
+primitives, palette, and complete recipes for the temple, Colosseum, aqueduct and
+triumphal arch. Section refs below point at PLAN-ROMA.
+
+### 4b.1 Engine *(PLAN-ROMA §4)*
+- [ ] 1. `js/roma/engine.js` — the five primitives `P` / `hash` / `blob` / `bloom` /
+      `arch` (pixel-art-plan §3)
+- [ ] `js/roma/palette.js` — the one shared palette; **no building hardcodes a colour**
+- [ ] Three-tone shading rule (lit upper-left / base / shadow lower-right) applied
+      throughout
+- [ ] `glowTargets` + `emitters` registries — buildings push, never read
+- [ ] All randomness from `hash(x, y)`, never `Math.random()`, never stored
+- [ ] Renderer skeleton: canvas, `imageSmoothingEnabled = false`,
+      `image-rendering: pixelated`, integer scale only, `devicePixelRatio` sizing,
+      one hardcoded sprite, **crisp on a real phone**
+- [ ] Fix the interface `draw(ctx, x, groundY, { scale, progress })` **now** — both
+      the grid and the draw-function modes compile to it, and `progress` is expensive
+      to retrofit *(§3, §5)*
+
+### 4b.2 Stage 1 + the go/no-go *(§3)*
+- [ ] 2. Stage 1's five sprites (character grids — hut, sheepfold, palisade, fig tree,
+      altar) + the hills backdrop
+- [ ] Fire system with stage 1, not later: procedural flame + smoke for `Ara`, the
+      only motion in the city until stage 2 *(§4)*
+- [ ] Slot map for all **25** buildings on paper — `(x, band)`, before the second
+      building is drawn *(§5)*
+- [ ] Throwaway spike of the temple recipe, to see the engine's ceiling
+- [ ] **Stop and look on the phone** — go/no-go on hand-authored art vs a CC0 tileset.
+      Judge it on **stage 1**, the rustic sprites with no recipe, not on the temple
+
+### 4b.3 Unlock + the moment
+- [ ] 3. Unlock logic against total XP; Home hero = a 320-wide window on the 560-wide
+      scene *(§5, §7)*
+- [ ] 3. Teaser is a **construction site**, not a dim silhouette: `progress` driven by
+      XP, scaffolding on top, XP remaining underneath *(§5)*
+- [ ] 4. The unlock moment — pan, scaffolding off, completion reveal via clip rect,
+      chime, name card *(stopping point: still worth having)*
+
+### 4b.4 Volume
 - [ ] 5. Stages 2 and 3 (ten buildings) + the stage-crossing moment
-- [ ] 6. Stages 4 and 5 (nine buildings), ending at `Templum Iovis`
-- [ ] 7. Life — citizens, smoke, a boat, birds, in a suspendable loop
-- [ ] 8. Retune the XP table against a week of real lesson data
+- [ ] 5. Far band with the `mini*` silhouette treatment, colours pulled toward
+      `hillFar` for atmospheric perspective — lands with `Murus Servii` *(§5)*
+- [ ] 6. Stages 4 and 5 (**ten** buildings, incl. the new `Arcus Triumphalis`), ending
+      at `Templum Iovis` — where the spec's recipes are cashed in
+- [ ] `Aqua Appia` drawn as 3–4 arches running off the left edge, not full width *(§5)*
+
+### 4b.5 Life, light and tuning
+- [ ] 7. Life — citizens, smoke, a boat, birds, water shimmer, in a suspendable loop
+- [ ] 7. Citizen count tracks words `learned` (capped ~12) — a free second progress
+      read *(§4)*
+- [ ] 7. Day/night pass driven by the **real clock**, not an auto-cycling timer
+      *(§6)*
+- [ ] 8. Retune the XP table against a week of real lesson data — the capstone moved to
+      74 000 with `Arcus Triumphalis` and was always an estimate *(§2)*
+
+### 4b.6 Invariants
+- [ ] Layer cache: sky, hills and finished buildings offscreen, invalidated on unlock;
+      per-tick redraw limited to fire, smoke, water, citizens *(§8 — required at
+      560×180, not an optimisation)*
+- [ ] Loop suspended on `visibilitychange` and by `IntersectionObserver`
+- [ ] `prefers-reduced-motion` → one static frame, no flame flicker, no smoke, no bob
+- [ ] Module seam holds: `render.js` knows no meanings, `catalogue.js` knows no
+      drawing, `buildings.js` knows no unlock rules *(§8)*
 - [ ] `roma.unlocked` / `stage` treated as caches: if they disagree with `xp`, **`xp` wins**
 - [ ] `roma.seenXp` powers "what is new since she last looked?"
+- [ ] Nothing about the art is persisted — `progress`, citizen count and time of day
+      are derived at render time
 
 ---
 
@@ -216,13 +289,16 @@ slip behind Phase 4.
 - [ ] Grading grammar forms as a harder mode
 - [ ] A second language list (French / English) to prove the generic model
 - [ ] Roma extras: choice at some unlocks, tap-a-building history, nameplate mode,
-      export the city as a PNG
+      export the city as a PNG (`toBlob()` on the full scene), manual day/night toggle
+      in the full-screen view only
+- [ ] ~~Ruin mode for a neglected city~~ — **rejected** on purpose: nothing is ever
+      taken away (PLAN-ROMA §10)
 
 ---
 
 ## Open questions to close
 
-- [ ] Confirm Dutch as the native language for translations
+- [x] Dutch confirmed as the native language — and as the app's own language
 - [ ] Are grammar forms examined? (assumed display-only for v1)
 - [ ] Tune "3 clean recalls on 3 days" against a real mark once one exists
 - [x] Word list format — settled: `term | form | translation` text, one word per line

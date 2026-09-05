@@ -1,4 +1,8 @@
-/* Tests for the parser. Run with `node --test test/` — no dependencies. */
+/* Tests for the parser. Run with `node --test test/` — no dependencies.
+
+   Rejects are asserted on their `code`, never their `reason`: the reasons are
+   Dutch copy she reads in the import preview, and rewording them must not break
+   a test. */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -96,21 +100,21 @@ test('a line with no separator is reported with its number and reason', () => {
   assert.equal(r.rejects.length, 1);
   assert.equal(r.rejects[0].line, 3);
   assert.equal(r.rejects[0].text, 'nonsense');
-  assert.match(r.rejects[0].reason, /no \|/);
+  assert.equal(r.rejects[0].code, 'no-separator');
 });
 
 test('too many fields is reported rather than silently truncated', () => {
   const r = parseList('pater | patris, m. | vader | extra');
   assert.equal(r.words.length, 0);
-  assert.match(r.rejects[0].reason, /4 fields/);
+  assert.equal(r.rejects[0].code, 'too-many-fields');
 });
 
 test('an empty term or an empty translation is reported', () => {
   const r = parseList(' | patris, m. | vader\npater | patris, m. |  ');
   assert.equal(r.words.length, 0);
   assert.equal(r.rejects.length, 2);
-  assert.match(r.rejects[0].reason, /no term/);
-  assert.match(r.rejects[1].reason, /no translation/);
+  assert.equal(r.rejects[0].code, 'no-term');
+  assert.equal(r.rejects[1].code, 'no-translation');
 });
 
 test('a line ending in a separator is reported, not read as a two-field line', () => {
@@ -118,7 +122,8 @@ test('a line ending in a separator is reported, not read as a two-field line', (
      would silently promote the grammar form into the answer. */
   const r = parseList('pater | patris, m. |');
   assert.equal(r.words.length, 0);
-  assert.match(r.rejects[0].reason, /ends in \|/);
+  assert.equal(r.rejects[0].code, 'no-translation');
+  assert.match(r.rejects[0].reason, /eindigt op \|/, 'and says so in Dutch');
 });
 
 test('nothing is ever dropped without a reason', () => {
@@ -195,7 +200,7 @@ test('the same term twice with no form to tell them apart is a duplicate, not a 
   const r = parseList('pater | vader\npater | papa');
   assert.equal(r.words.length, 1, 'two cards must never share one id');
   assert.equal(r.rejects.length, 1);
-  assert.match(r.rejects[0].reason, /duplicate of line 1/);
+  assert.equal(r.rejects[0].code, 'duplicate');
 });
 
 /* ------------------------------------------------ shared translations --- */
@@ -221,7 +226,7 @@ test('the committed chapter parses cleanly and holds its awkward cases', async (
   const r = parseList(text, { listId: 'latin-ch01' });
 
   assert.deepEqual(r.rejects, [], 'the committed list must have no unreadable lines');
-  assert.equal(r.title, 'Chapter 1 — Familia');
+  assert.equal(r.title, 'Hoofdstuk 1 — Familia');
   assert.ok(r.words.length > 20);
   assert.ok(r.words.every(w => w.lists.includes('latin-ch01')));
 
@@ -230,4 +235,28 @@ test('the committed chapter parses cleanly and holds its awkward cases', async (
   assert.equal(r.words.find(w => w.term === 'unus').translations[0], 'één');
   assert.equal(r.words.find(w => w.term === 'ad').form, '');
   assert.equal(r.words.find(w => w.term === 'sed').form, '');
+});
+
+test('every rejected line carries a stable code as well as Dutch copy', () => {
+  const r = parseList([
+    'rubbish',
+    'pater | patris, m. | vader | extra',
+    ' | vorm | x',
+    'sed |',
+    'pater | vader',
+    'pater | papa',
+  ].join('\n'));
+  const codes = r.rejects.map(x => x.code);
+  assert.deepEqual(codes,
+    ['no-separator', 'too-many-fields', 'no-term', 'no-translation', 'duplicate']);
+  for (const reject of r.rejects) {
+    assert.ok(reject.reason.length > 0, `${reject.code} has no Dutch message`);
+    assert.ok(Number.isInteger(reject.line));
+  }
+});
+
+test('warnings are Dutch and keep their English type', () => {
+  const r = parseList('liber | libri, m. | boek\nliber | libera | vrij');
+  const warning = r.warnings.find(w => w.type === 'homograph');
+  assert.match(warning.message, /komt|staat/, 'the message she reads is Dutch');
 });

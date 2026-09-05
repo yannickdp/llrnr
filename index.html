@@ -22,50 +22,50 @@
     </header>
 
     <div class="card card-hero">
-      <p class="placeholder">The pixel-art city lives here.</p>
+      <p class="placeholder">Hier komt de pixelstad.</p>
     </div>
 
     <div class="meter" role="presentation">
       <div class="meter-fill" style="inline-size: 34%"></div>
     </div>
-    <p class="caption">XP toward the next building</p>
+    <p class="caption">XP tot het volgende gebouw</p>
 
     <div class="row row-stats">
-      <div class="stat"><span class="stat-value">5</span><span class="stat-label">day streak</span></div>
-      <div class="stat"><span class="stat-value">12</span><span class="stat-label">words due</span></div>
-      <div class="stat"><span class="stat-value">8</span><span class="stat-label">new available</span></div>
+      <div class="stat"><span class="stat-value">5</span><span class="stat-label">dagen op rij</span></div>
+      <div class="stat"><span class="stat-value">12</span><span class="stat-label">te herhalen</span></div>
+      <div class="stat"><span class="stat-value">8</span><span class="stat-label">nieuwe woorden</span></div>
     </div>
 
-    <button class="btn btn-primary btn-lg" data-goto="start">Start lesson</button>
+    <button class="btn btn-primary btn-lg" data-goto="start">Les starten</button>
 
-    <h2 class="section-head">Progress</h2>
+    <h2 class="section-head">Vooruitgang</h2>
     <div class="card">
-      <p class="placeholder">Words learned, accuracy, practice heatmap.</p>
+      <p class="placeholder">Gekende woorden, juistheid, oefenkalender.</p>
     </div>
   </section>
 
   <section class="screen" id="screen-words" data-screen="words" hidden>
-    <header class="screen-head"><h1>Words</h1></header>
+    <header class="screen-head"><h1>Woorden</h1></header>
     <div id="chapter-list" class="stack">
-      <p class="placeholder">Loading chapters&hellip;</p>
+      <p class="placeholder">Hoofdstukken laden&hellip;</p>
     </div>
-    <button class="btn">Add list</button>
+    <button class="btn">Lijst toevoegen</button>
   </section>
 
   <section class="screen" id="screen-tests" data-screen="tests" hidden>
-    <header class="screen-head"><h1>Tests</h1></header>
+    <header class="screen-head"><h1>Toetsen</h1></header>
     <div class="card">
-      <p class="placeholder">Readiness panel, per-direction breakdown, minutes-a-day
-        estimate.</p>
+      <p class="placeholder">Hoe klaar je bent, per richting, en hoeveel minuten per dag
+        je nog nodig hebt.</p>
     </div>
-    <button class="btn">Add test</button>
+    <button class="btn">Toets toevoegen</button>
   </section>
 
   <section class="screen" id="screen-settings" data-screen="settings" hidden>
-    <header class="screen-head"><h1>Settings</h1></header>
+    <header class="screen-head"><h1>Instellingen</h1></header>
     <div class="card">
-      <p class="placeholder">Lesson length, new words per lesson, anticipation gap,
-        default direction, sound, export / import, reset a chapter.</p>
+      <p class="placeholder">Lengte van een les, nieuwe woorden per les, denktijd,
+        vaste richting, geluid, bewaren / terugzetten, hoofdstuk opnieuw beginnen.</p>
     </div>
   </section>
 
@@ -79,15 +79,15 @@
   </button>
   <button class="tab" data-goto="words">
     <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4zM20 4h-6a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h6z"/></svg>
-    <span class="tab-label">Words</span>
+    <span class="tab-label">Woorden</span>
   </button>
   <button class="tab" data-goto="tests">
     <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v14H4zM8 3v4M16 3v4M4 10h16"/></svg>
-    <span class="tab-label">Tests</span>
+    <span class="tab-label">Toetsen</span>
   </button>
   <button class="tab" data-goto="settings">
     <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h8M17 8h3M4 16h3M12 16h8"/><circle cx="14.5" cy="8" r="2.5"/><circle cx="9.5" cy="16" r="2.5"/></svg>
-    <span class="tab-label">Settings</span>
+    <span class="tab-label">Instellingen</span>
   </button>
 </nav>
 
@@ -96,40 +96,40 @@
 <div id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" hidden>
   <header class="sheet-head">
     <h2 class="sheet-title" id="modal-title"></h2>
-    <button class="icon-btn" data-action="close-modal" aria-label="Close">
+    <button class="icon-btn" data-action="close-modal" aria-label="Sluiten">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
   </header>
 
   <div class="sheet-body">
 
-    <section class="screen" id="screen-start" data-screen="start" data-title="Start lesson" hidden>
-      <p class="lede">Which way round?</p>
+    <section class="screen" id="screen-start" data-screen="start" data-title="Les starten" hidden>
+      <p class="lede">Welke richting?</p>
       <div class="choices">
         <button class="choice" aria-pressed="false">
-          <span class="choice-title">Latin &rarr; Dutch</span>
-          <span class="choice-note">Comprehension. The easier way round.</span>
+          <span class="choice-title">Latijn &rarr; Nederlands</span>
+          <span class="choice-note">Begrijpen. De makkelijkste richting.</span>
         </button>
         <button class="choice" aria-pressed="false">
-          <span class="choice-title">Dutch &rarr; Latin</span>
-          <span class="choice-note">Production and spelling. Where marks are lost.</span>
+          <span class="choice-title">Nederlands &rarr; Latijn</span>
+          <span class="choice-note">Zelf schrijven en spellen. Hier verlies je punten.</span>
         </button>
         <button class="choice" aria-pressed="true">
-          <span class="choice-title">Both</span>
-          <span class="choice-note">Mixed per word, weaker side first. What the exam looks like.</span>
+          <span class="choice-title">Beide</span>
+          <span class="choice-note">Door elkaar, je zwakste richting eerst. Zoals op de toets.</span>
         </button>
       </div>
-      <button class="btn btn-primary btn-lg" data-goto="lesson">Go</button>
+      <button class="btn btn-primary btn-lg" data-goto="lesson">Start</button>
     </section>
 
-    <section class="screen screen-lesson" id="screen-lesson" data-screen="lesson" data-title="Lesson" hidden>
+    <section class="screen screen-lesson" id="screen-lesson" data-screen="lesson" data-title="Les" hidden>
       <div class="lesson-bar">
         <div class="meter meter-thin"><div class="meter-fill" style="inline-size: 62%"></div></div>
-        <span class="caption lesson-clock">6:12 left</span>
+        <span class="caption lesson-clock">nog 6:12</span>
       </div>
 
       <div class="prompt-area">
-        <p class="direction-marker">Dutch &rarr; Latin</p>
+        <p class="direction-marker">Nederlands &rarr; Latijn</p>
         <p class="prompt">moeder</p>
         <div class="ring" role="presentation"><span class="ring-count">4</span></div>
       </div>
@@ -137,20 +137,20 @@
       <form class="answer-form" autocomplete="off">
         <input class="answer-input" type="text" inputmode="text"
                autocapitalize="off" autocorrect="off" spellcheck="false"
-               placeholder="Type the Latin word" aria-label="Your answer">
-        <button class="btn btn-primary" type="submit">Check</button>
+               placeholder="Typ het Latijnse woord" aria-label="Jouw antwoord">
+        <button class="btn btn-primary" type="submit">Nakijken</button>
       </form>
 
-      <p class="placeholder">Reveal — correct answer, alternatives, grammar form.</p>
-      <button class="btn" data-goto="results">Finish (temporary)</button>
+      <p class="placeholder">Antwoord — het juiste woord, andere vertalingen, de vorm.</p>
+      <button class="btn" data-goto="results">Stoppen (tijdelijk)</button>
     </section>
 
-    <section class="screen" id="screen-results" data-screen="results" data-title="Results" hidden>
-      <p class="lede">Nice work.</p>
+    <section class="screen" id="screen-results" data-screen="results" data-title="Resultaat" hidden>
+      <p class="lede">Goed gedaan.</p>
       <div class="card">
-        <p class="placeholder">Graduated, boxes climbed, XP, badges, drop-backs.</p>
+        <p class="placeholder">Gekende woorden, doosjes omhoog, XP, badges, teruggevallen woorden.</p>
       </div>
-      <button class="btn btn-primary btn-lg" data-goto="home">Done</button>
+      <button class="btn btn-primary btn-lg" data-goto="home">Klaar</button>
     </section>
 
   </div>

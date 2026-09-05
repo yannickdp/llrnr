@@ -60,7 +60,7 @@ test('a missing or malformed index is an error, not an empty app', async () => {
   await assert.rejects(loadCorpus(), /index\.json/);
 
   serve({ 'data/index.json': '{"version":1}' });
-  await assert.rejects(loadCorpus(), /"lists" array/);
+  await assert.rejects(loadCorpus(), /"lists"-lijst/);
 });
 
 test('a missing chapter file names itself in the error', async () => {

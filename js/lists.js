@@ -11,6 +11,9 @@
 
 import { parseList, normalize } from './parse.js';
 
+/* These messages reach the screen when a hand-edited data/ file breaks, so they
+   are Dutch like the rest of the UI. Bug guards elsewhere stay English. */
+
 const BASE = 'data/';
 
 /**
@@ -21,10 +24,10 @@ const BASE = 'data/';
  */
 export async function loadIndex(base = BASE) {
   const res = await fetch(`${base}index.json`, { cache: 'no-cache' });
-  if (!res.ok) throw new Error(`cannot read ${base}index.json (${res.status})`);
+  if (!res.ok) throw new Error(`${base}index.json kan niet gelezen worden (${res.status})`);
 
   const index = await res.json();
-  if (!Array.isArray(index?.lists)) throw new Error(`${base}index.json has no "lists" array`);
+  if (!Array.isArray(index?.lists)) throw new Error(`${base}index.json bevat geen "lists"-lijst`);
   return index;
 }
 
@@ -32,7 +35,7 @@ async function fetchText(base, list) {
   /* ?v=<rev> is the whole cache-busting story: bump rev in index.json and the
      edited chapter is fetched fresh instead of being served from the cache. */
   const res = await fetch(`${base}${list.file}?v=${list.rev}`);
-  if (!res.ok) throw new Error(`cannot read ${list.file} (${res.status})`);
+  if (!res.ok) throw new Error(`${list.file} kan niet gelezen worden (${res.status})`);
   return res.text();
 }
 

@@ -114,7 +114,7 @@ function chapterCard(list) {
   const card = el('div', 'card');
   const head = el('div', 'chapter-head');
   head.append(el('span', 'chapter-title', list.title ?? list.file));
-  head.append(el('span', 'caption', `${list.words.length} words`));
+  head.append(el('span', 'caption', `${list.words.length} woorden`));
   card.append(head);
 
   const notes = el('div', 'tags');
@@ -122,7 +122,7 @@ function chapterCard(list) {
     notes.append(el('span', 'tag', warning.message));
   }
   for (const reject of list.rejects) {
-    notes.append(el('span', 'tag tag-bad', `line ${reject.line}: ${reject.reason}`));
+    notes.append(el('span', 'tag tag-bad', `regel ${reject.line}: ${reject.reason}`));
   }
   if (notes.children.length) card.append(notes);
 
@@ -135,12 +135,12 @@ async function renderChapters() {
     const { lists, words } = await loadCorpus();
     host.replaceChildren(
       ...lists.map(chapterCard),
-      el('p', 'caption', `${words.size} words in the pool`),
+      el('p', 'caption', `${words.size} woorden in totaal`),
     );
   } catch (err) {
     /* Say what broke and where. A silent empty list would be the worst
        possible failure for a file the parent edits by hand. */
-    host.replaceChildren(el('p', 'tag tag-bad', `Could not load the lists — ${err.message}`));
+    host.replaceChildren(el('p', 'tag tag-bad', `De lijsten konden niet geladen worden — ${err.message}`));
     console.error(err);
   }
 }

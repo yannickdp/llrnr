@@ -1,9 +1,9 @@
-# Chapter 1 — Familia
-# STAND-IN LIST — invented for development, not her real chapter 1.
-# Replace the lines below with the real list and bump "rev" in index.json.
-# It deliberately contains the awkward cases: a homograph pair (liber), several
-# words sharing a translation (zeggen), accents (één), alternatives with "/",
-# a blank grammar form, a two-field line, and columns padded with spaces.
+# Hoofdstuk 1 — Familia
+# VOORLOPIGE LIJST — zelf verzonnen om mee te ontwikkelen, niet haar echte
+# hoofdstuk 1. Vervang de regels hieronder door de echte lijst en verhoog "rev"
+# in index.json. Er zitten met opzet lastige gevallen in: een homoniem (liber),
+# woorden die een vertaling delen (zeggen), accenten (één), alternatieven met
+# "/", een lege vorm, een regel met twee velden, en uitgelijnde kolommen.
 
 pater    | patris, m.       | vader
 mater    | matris, f.       | moeder / mama

@@ -43,6 +43,36 @@ skips every hard part of iOS development.
 - **Word lists as plain pipe-separated text** (section 4) — add a new chapter without
   touching code, or paste one in from the phone.
 
+### The app speaks Dutch
+
+**Every user-visible string is in Dutch.** She is a Flemish schoolkid being examined
+in Dutch; an app that talks to her in English adds a second language to a tool whose
+whole job is teaching a first. This covers all of it — screens, buttons, badge names,
+the readiness panel, error messages, and the parser's rejected-line reasons, which she
+reads whenever she pastes in a new chapter.
+
+Three things stay as they are:
+
+- **Code stays English.** Identifiers, screen names, card fields, git history,
+  comments and these plans. The convention is the ordinary one: English in the source,
+  Dutch on the screen.
+- **Latin stays Latin.** The stage names (*Roma Quadrata* … *Roma Aeterna*) and the
+  building names in [PLAN-ROMA.md](PLAN-ROMA.md) are vocabulary, not chrome. Each is
+  glossed in Dutch where it appears.
+- **The lesson content is whatever the word list says**, which is the point of the
+  generic `term | form | translation` format.
+
+Dutch is also the *interface* language rather than a locale setting: there is one
+user, so there is no language picker and no string table indirection. Dutch text sits
+directly in the markup and the modules that render it. Where a pure module has to
+report something to her — the parser's rejects and warnings — it carries a stable
+English `code` alongside the Dutch message, so the wording can change without breaking
+the tests that assert on it.
+
+Dates and numbers use `nl-BE`, which also settles the small things: `05/09/2026`
+rather than `9/5/2026`, a comma as the decimal separator, and Monday as the first day
+of the practice heatmap.
+
 ### Hosting
 
 Two options, both free:
@@ -141,7 +171,7 @@ Consequences:
   self-grading, which children get wrong in both directions), and it trains the
   spelling she is actually marked on. Matching is forgiving: case-insensitive,
   accents stripped, whitespace trimmed, any `/`-separated alternative accepted, and
-  a Levenshtein distance of 1 counts as **almost** ("nearly! it is *mater*").
+  a Levenshtein distance of 1 counts as **almost** ("bijna! het is *mater*").
 - **Multiple choice appears only on a presentation card's first check**, as a gentle
   first contact. It never appears again for that word.
 
@@ -155,11 +185,11 @@ On top of that, every lesson starts with a three-way choice — a practice tool 
 drilling one side, not a change to what counts as learned. The last choice is
 remembered as the default.
 
-| Mode | Prompt → answer | When to pick it |
+| Mode (as labelled) | Prompt → answer | When to pick it |
 |---|---|---|
-| **Latin → Dutch** | `mater` → *moeder* | Comprehension. The easier way round. |
-| **Dutch → Latin** | `moeder` → *mater* | Production and spelling. The hard one, and where marks are lost. |
-| **Both** | mixed per word | The default, and what the exam looks like. |
+| **Latijn → Nederlands** | `mater` → *moeder* | Comprehension. The easier way round. |
+| **Nederlands → Latijn** | `moeder` → *mater* | Production and spelling. The hard one, and where marks are lost. |
+| **Beide** | mixed per word | The default, and what the exam looks like. |
 
 In **Both** mode the direction is not random: for each word the engine picks the
 direction with the *weaker* record, alternating on a tie. So "Both" quietly spends
@@ -256,13 +286,13 @@ While a test is active and within its run-up:
 
 **The readiness panel is the whole point:**
 
-> **Latin — chapters 4–5** · test in 3 days
-> **24 of 40 words test-ready both ways**
-> 11 words solid Latin→Dutch, not yet the other way round
-> 5 words still shaky · 0 not started
-> ≈ 14 minutes a day to be ready in time
+> **Latijn — hoofdstuk 4–5** · toets over 3 dagen
+> **24 van de 40 woorden klaar in beide richtingen**
+> 11 woorden zitten goed van Latijn naar Nederlands, nog niet omgekeerd
+> 5 woorden zijn nog wankel · 0 nog niet begonnen
+> ≈ 14 minuten per dag om op tijd klaar te zijn
 >
-> [ Practise Dutch → Latin ]
+> [ Nederlands → Latijn oefenen ]
 
 The middle line is the most useful diagnostic in the whole app: it names the exact
 gap that loses marks, because recognition always runs ahead of production. The button
@@ -552,10 +582,25 @@ malformed list is the single most maddening bug this app could have.
 7. **Settings** — lesson length, new words per lesson, anticipation gap, default
    direction, sound, export/import progress JSON, reset a chapter.
 
-Navigation: a bottom tab bar — **Home / Words / Tests / Settings**. Thumb-reachable,
-four items, and instantly familiar because every iPhone app looks like that. Start
-lesson, Lesson and Results are a modal flow over the top rather than tabs, so there
-is no way to wander out of a lesson by mistake.
+Navigation: a bottom tab bar — **Home / Woorden / Toetsen / Instellingen**.
+Thumb-reachable, four items, and instantly familiar because every iPhone app looks
+like that. The lesson flow — **Les starten**, **Les**, **Resultaat** — is a modal over
+the top rather than a fifth tab, so there is no way to wander out of a lesson by
+mistake.
+
+The screen names above are the English ones used in the code and in the rest of this
+plan; the labels she sees are the Dutch ones. The mapping, once, so it is written
+down somewhere:
+
+| Code | Label |
+|---|---|
+| `home` | Home |
+| `words` | Woorden |
+| `tests` | Toetsen |
+| `settings` | Instellingen |
+| `start` | Les starten |
+| `lesson` | Les |
+| `results` | Resultaat |
 
 ---
 
@@ -579,9 +624,11 @@ llrnr/
     gamify.js                # xp, stages, streaks, badges
     ui.js                    # rendering helpers, animations
     roma/                    # the reward city — see PLAN-ROMA.md
-      catalogue.js           #   the 24 buildings: latin, dutch, cost, slot
-      sprites.js             #   character-grid pixel art + palettes
-      render.js              #   canvas, integer scaling, draw-in animation
+      engine.js              #   P/hash/blob/bloom/arch, flame, smoke, scale props
+      palette.js             #   the one shared palette
+      catalogue.js           #   the 25 buildings: latin, dutch, cost, slot, band
+      buildings.js           #   draw functions + character grids, one interface
+      render.js              #   scene layers, integer scaling, layer cache, night
       roma.js                #   unlock logic against total XP
   data/
     index.json               # available lists: id, file, rev
@@ -668,7 +715,9 @@ catalogue is never a broken feature.
   per line, per section 4. Field 2 blank or omitted where there is no grammar form,
   `/` between alternative translations. One file per chapter, first line a `#` title.
   A single real chapter unblocks Phase 1 item 2; the rest can follow whenever.
-- **Native language for translations** — Dutch assumed. Confirm.
+- **Native language: settled — Dutch, and the app itself speaks Dutch too.** She and
+  her father are Flemish, so every user-visible string is Dutch (section 1), while the
+  code stays English. `nl-BE` for dates and numbers.
 - **Are the grammar forms examined?** If she is marked on "matris, f." then field 2
   needs grading rather than just display, which changes the answer UI. Assumed
   display-only for v1 — but the field is in the format from the start precisely so

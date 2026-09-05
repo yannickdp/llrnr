@@ -5,6 +5,11 @@
    one parser serves both the committed data/*.txt files and the paste-in
    importer, and it is testable without a browser.
 
+   Every string that reaches her — reject reasons, warnings — is Dutch, and carries
+   a stable English `code`/`type` beside it so the wording can be reworded without
+   breaking anything that tests or branches on it. Thrown errors stay English: those
+   are bug guards, and she never sees one.
+
    Line format (PLAN section 4):
 
        term | form | translation
@@ -94,7 +99,7 @@ function detectSeparator(firstDataLine) {
  *   title: string|null,
  *   separator: string,
  *   words: Array<{id,term,form,translations,answer,line,lists}>,
- *   rejects: Array<{line,text,reason}>,
+ *   rejects: Array<{line,text,code,reason}>,
  *   warnings: Array<object>
  * }}
  */
@@ -136,15 +141,15 @@ export function parseList(text, { collidingTerms = new Set(), listId = null } = 
 
     if (fields.length === 1) {
       rejects.push({
-        line, text: raw,
-        reason: `no ${separator.label} found — expected "term ${separator.label} form ${separator.label} translation"`,
+        line, text: raw, code: 'no-separator',
+        reason: `geen ${separator.label} gevonden — verwacht "woord ${separator.label} vorm ${separator.label} vertaling"`,
       });
       continue;
     }
     if (fields.length > 3) {
       rejects.push({
-        line, text: raw,
-        reason: `${fields.length} fields, expected 2 or 3 — is there a stray ${separator.label}?`,
+        line, text: raw, code: 'too-many-fields',
+        reason: `${fields.length} velden, verwacht er 2 of 3 — staat er een ${separator.label} te veel?`,
       });
       continue;
     }
@@ -155,17 +160,17 @@ export function parseList(text, { collidingTerms = new Set(), listId = null } = 
       fields.length === 2 ? [fields[0], '', fields[1]] : fields;
 
     if (!term) {
-      rejects.push({ line, text: raw, reason: 'no term' });
+      rejects.push({ line, text: raw, code: 'no-term', reason: 'geen woord op deze regel' });
       continue;
     }
 
     const translations = translation.split('/').map(t => t.trim()).filter(Boolean);
     if (!translations.length) {
       rejects.push({
-        line, text: raw,
+        line, text: raw, code: 'no-translation',
         reason: raw.endsWith(separator.char)
-          ? `no translation for "${term}" — the line ends in ${separator.label}, so either fill in the last field or remove it`
-          : `no translation for "${term}"`,
+          ? `geen vertaling voor "${term}" — de regel eindigt op ${separator.label}: vul het laatste veld in of laat de ${separator.label} weg`
+          : `geen vertaling voor "${term}"`,
       });
       continue;
     }
@@ -206,8 +211,8 @@ export function parseList(text, { collidingTerms = new Set(), listId = null } = 
        rather than a homograph. Keeping both would give two cards one ID. */
     if (seenIds.has(id)) {
       rejects.push({
-        line: row.line, text: row.term,
-        reason: `duplicate of line ${seenIds.get(id)}`,
+        line: row.line, text: row.term, code: 'duplicate',
+        reason: `zelfde woord als op regel ${seenIds.get(id)}`,
       });
       continue;
     }
@@ -229,7 +234,7 @@ export function parseList(text, { collidingTerms = new Set(), listId = null } = 
     warnings.push({
       type: 'homograph',
       term: key,
-      message: `"${key}" appears ${count} times — told apart by grammar form, worth checking by eye`,
+      message: `"${key}" staat er ${count} keer in — uit elkaar gehouden via de vorm, kijk dit even na`,
       entries: words.filter(w => normalize(w.term) === key)
         .map(w => ({ line: w.line, form: w.form, id: w.id })),
     });
@@ -251,7 +256,7 @@ export function parseList(text, { collidingTerms = new Set(), listId = null } = 
     warnings.push({
       type: 'shared-translation',
       translation: key,
-      message: `"${key}" translates ${group.length} different terms — any of them counts in Dutch → Latin`,
+      message: `"${key}" hoort bij ${group.length} verschillende woorden — in Nederlands → Latijn is elk daarvan juist`,
       entries: group.map(w => ({ line: w.line, term: w.term, id: w.id })),
     });
   }
