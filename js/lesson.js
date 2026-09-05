@@ -22,6 +22,16 @@ import { normalize } from './parse.js';
 const MINUTE = 60_000;
 
 /**
+ * The most day-scale reviews one lesson will serve.
+ *
+ * After a two-week holiday hundreds of words are overdue, and serving them all
+ * is the fastest way to make her quit. PLAN section 2.5: cap the load, and pick
+ * the cap by *lowest box first* — rescue the shaky words before polishing the
+ * solid ones. The rest are not lost, only later.
+ */
+export const REVIEW_CAP = 40;
+
+/**
  * @param {object} opts
  * @param {Map<string,object>} opts.words     the corpus: id -> word
  * @param {Map<string,object>} opts.cards     progress: id -> card (mutated in place)
@@ -48,6 +58,7 @@ export function createLesson({
      that never asks any of the words it named. A focused lesson introduces no
      new words either — it is a targeted repair, not a normal session. */
   focusIds = null,
+  reviewCap = REVIEW_CAP,
   now = Date.now(),
   random = Math.random,
 } = {}) {
@@ -77,17 +88,47 @@ export function createLesson({
 
   /* ------------------------------------------------------------ queue --- */
 
-  const live = () => [...cards.entries()].filter(([, c]) => c.phase !== 'learned');
+  /* A card can outlive its chapter: PLAN section 4 keeps progress when a list
+     is dropped from index.json, precisely so removing one loses nothing. Such
+     a card has no word to ask, so it is skipped rather than crashing the
+     lesson — and it is still there if the chapter comes back. */
+  const live = () => [...cards.entries()]
+    .filter(([id, c]) => c.phase !== 'learned' && words.has(id));
+
+  /**
+   * Which of the day's due reviews this lesson will take on, chosen once at the
+   * start. Lowest box first, then most overdue: a box-1 word she nearly lost is
+   * worth more than a box-5 word she is merely due to see again.
+   *
+   * Only day-scale reviews are capped. Micro-ladder repeats are the current
+   * session's own work and are always served, or the ladder would break.
+   */
+  function selectReviews(t) {
+    const due = [...cards.entries()]
+      .filter(([, c]) => c.phase === 'retain' && isDue(c, t))
+      .sort(([, a], [, b]) => (a.box - b.box) || (overdueBy(b, t) - overdueBy(a, t)));
+
+    return { chosen: new Set(due.slice(0, reviewCap).map(([id]) => id)), total: due.length };
+  }
+
+  const { chosen: reviewSet, total: dueAtStart } = selectReviews(now);
+
+  function servable(id, card, t) {
+    if (focus.has(id)) return true;
+    if (!isDue(card, t)) return false;
+    return card.phase === 'acquire' || reviewSet.has(id);
+  }
 
   function dueNow(t) {
     return live()
-      .filter(([id, c]) => isDue(c, t) || focus.has(id))
+      .filter(([id, c]) => servable(id, c, t))
       .sort(([, a], [, b]) => {
         /* A ladder repeat always wins: its interval is the exercise. */
         if ((a.phase === 'acquire') !== (b.phase === 'acquire')) {
           return a.phase === 'acquire' ? -1 : 1;
         }
-        return overdueBy(b, t) - overdueBy(a, t);
+        /* Then the shakiest word, and among equals the longest-waiting. */
+        return (a.box - b.box) || (overdueBy(b, t) - overdueBy(a, t));
       });
   }
 
@@ -104,7 +145,10 @@ export function createLesson({
   }
 
   function soonestDue(t) {
-    const times = live().map(([, c]) => Date.parse(c.dueAt)).filter(ms => ms > t);
+    const times = live()
+      .filter(([id, c]) => focus.has(id) || c.phase === 'acquire' || reviewSet.has(id))
+      .map(([, c]) => Date.parse(c.dueAt))
+      .filter(ms => ms > t);
     return times.length ? Math.min(...times) : null;
   }
 
@@ -271,7 +315,12 @@ export function createLesson({
     timeLeftMs, elapsedFraction,
     get current() { return current; },
     get isFinished() { return finished; },
-    results: () => ({ ...tally, elapsedMs: Date.now() - startedAt }),
+    results: () => ({
+      ...tally,
+      elapsedMs: Date.now() - startedAt,
+      /* What the cap left for another day — never rendered as a list. */
+      heldBack: Math.max(0, dueAtStart - reviewSet.size),
+    }),
     /* Exposed for the UI and the tests; never written to from outside. */
     cards,
   };

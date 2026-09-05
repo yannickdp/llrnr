@@ -143,9 +143,13 @@ screen inherits this without saying so again.
 - [x] Small marker in-lesson showing which way round the question is
 
 ### 2.4 Backlog protection
-- [ ] Cap review load at ~40 items per lesson
-- [ ] Order candidates lowest box first, then most overdue
-- [ ] Never render a wall of hundreds of due cards
+- [x] Cap review load at ~40 items per lesson
+- [x] Order candidates lowest box first, then most overdue
+- [x] Never render a wall of hundreds of due cards — the remainder is one number
+      on the results screen, never a list
+- [x] Micro-ladder repeats are exempt from the cap, or a repair would break
+      mid-session
+- [x] A card whose chapter has left `index.json` is skipped, not crashed on
 
 ---
 

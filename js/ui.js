@@ -288,6 +288,15 @@ export function paintResults(results) {
     cards.push(card);
   }
 
+  /* A count, never a list. After a holiday the honest answer is "hundreds",
+     and hundreds of words on a results screen is what makes her stop. */
+  if (results.heldBack) {
+    const card = el('div', 'card');
+    card.append(el('p', 'result-line', `Nog ${results.heldBack} woorden te herhalen`));
+    card.append(el('p', 'caption', 'Die komen de volgende lessen aan de beurt.'));
+    cards.push(card);
+  }
+
   if (results.droppedWords.length) {
     const card = el('div', 'card');
     card.append(el('p', 'result-line', 'Even teruggevallen'));

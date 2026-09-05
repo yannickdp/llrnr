@@ -7,11 +7,12 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createLesson } from '../js/lesson.js';
+import { createLesson, REVIEW_CAP } from '../js/lesson.js';
 import { parseList } from '../js/parse.js';
 import { MICRO_STEPS_MS } from '../js/schedule.js';
 
 const S = 1000, MIN = 60_000;
+const NEWLINE = String.fromCharCode(10);
 const START = new Date('2026-09-04T15:00:00').getTime();
 
 const LIST = `
@@ -578,4 +579,147 @@ test('answering the missing side releases the word', () => {
 
   assert.equal(result.outcome, 'learned');
   assert.equal(cards.get(id).phase, 'learned');
+});
+
+/* =================================================== after a holiday ==== */
+
+/** A bigger corpus, so a real backlog can be built. */
+function bigCorpus(n) {
+  const lines = [];
+  for (let i = 0; i < n; i++) lines.push(`term${i} | vorm${i} | vertaling${i}`);
+  return new Map(parseList(lines.join(NEWLINE), { listId: 'test' }).words.map(w => [w.id, w]));
+}
+
+/** Every word overdue, with the box given by `boxOf`. */
+function backlog(words, { boxOf = () => 3, daysLateOf = () => 5 } = {}) {
+  const cards = new Map();
+  let i = 0;
+  for (const [id, word] of words) {
+    const n = i++;
+    cards.set(id, {
+      term: word.term, lists: [], phase: 'retain', micro: 0, box: boxOf(n),
+      dueAt: new Date(START - daysLateOf(n) * 24 * 60 * MIN).toISOString(),
+      cleanDays: { fwd: [], rev: [] }, lastSlip: { fwd: null, rev: null },
+      seen: 8, correct: 7, slips: 1, dirOk: { fwd: true, rev: true },
+    });
+  }
+  return cards;
+}
+
+/** Play a lesson, recording every card asked. */
+function playCounting(l, { minutes = 10 } = {}) {
+  let t = START;
+  const asked = [];
+  for (let i = 0; i < 4000; i++) {
+    const step = l.next(t);
+    if (step.kind === 'done') break;
+    if (step.kind === 'wait') { t = step.untilMs; continue; }
+    if (step.kind === 'present') { l.acknowledge(t); continue; }
+    asked.push({ id: step.id, phase: step.card.phase, box: step.card.box });
+    l.answer(step.direction === 'fwd' ? step.word.translations[0] : step.word.term, t);
+    t += 2 * S;
+  }
+  void minutes;
+  return asked;
+}
+
+test('a fortnight of backlog is capped, not served in full', () => {
+  const words = bigCorpus(300);
+  const l = createLesson({
+    words, cards: backlog(words), direction: 'fwd', minutes: 15,
+    now: START, random: () => 0.5,
+  });
+
+  const reviews = playCounting(l).filter(a => a.phase === 'retain');
+  const distinct = new Set(reviews.map(a => a.id));
+  assert.ok(distinct.size <= REVIEW_CAP, `${distinct.size} reviews served, cap is ${REVIEW_CAP}`);
+  assert.equal(l.results().heldBack, 300 - REVIEW_CAP);
+});
+
+test('the shaky words are rescued first, not the solid ones', () => {
+  const words = bigCorpus(120);
+  /* Box 5 words are the most overdue, so only the box rule can put box 1 first. */
+  const cards = backlog(words, {
+    boxOf: n => (n % 5) + 1,
+    daysLateOf: n => ((n % 5) + 1) * 10,
+  });
+
+  const l = createLesson({
+    words, cards, direction: 'fwd', minutes: 15, now: START, random: () => 0.5,
+  });
+
+  const boxes = playCounting(l).filter(a => a.phase === 'retain').map(a => a.box);
+  assert.ok(boxes.length > 0);
+  assert.equal(boxes[0], 1, 'the first word asked must be the shakiest');
+  assert.ok(boxes.filter(b => b === 1).length >= boxes.filter(b => b === 5).length,
+    'a box-1 word she nearly lost outranks a box-5 word she merely owes a look');
+});
+
+test('the cap never blocks the current session own ladder', () => {
+  const words = bigCorpus(80);
+  const cards = backlog(words);
+  const l = createLesson({
+    words, cards, direction: 'fwd', minutes: 15, reviewCap: 3,
+    now: START, random: () => 0.5,
+  });
+
+  /* Three reviews are allowed; a word that drops back into acquire must keep
+     being served regardless, or its ladder would break mid-repair. */
+  let t = START;
+  const step = l.next(t);
+  l.answer('volslagen onzin', t);          // drops it into acquire
+  const dropped = step.id;
+
+  t += 6 * S;
+  const seen = [];
+  for (let i = 0; i < 12; i++) {
+    const next = l.next(t);
+    if (next.kind === 'wait') { t = next.untilMs; continue; }
+    if (next.kind === 'done' || next.kind === 'present') break;
+    seen.push(next.id);
+    l.answer(next.word.translations[0], t);
+    t += 2 * S;
+  }
+  assert.ok(seen.includes(dropped), 'the repaired word must come back inside the session');
+});
+
+test('a small day is untouched by the cap', () => {
+  const words = bigCorpus(6);
+  const l = createLesson({
+    words, cards: backlog(words), direction: 'fwd', minutes: 10,
+    now: START, random: () => 0.5,
+  });
+
+  const reviews = new Set(playCounting(l).filter(a => a.phase === 'retain').map(a => a.id));
+  assert.equal(reviews.size, 6);
+  assert.equal(l.results().heldBack, 0);
+});
+
+test('held-back words are counted, never listed', () => {
+  const words = bigCorpus(100);
+  const l = createLesson({
+    words, cards: backlog(words), direction: 'fwd', now: START, random: () => 0.5,
+  });
+  const results = l.results();
+  assert.equal(results.heldBack, 100 - REVIEW_CAP);
+  assert.equal(typeof results.heldBack, 'number', 'a count she can read, not a wall of words');
+});
+
+test('a card whose chapter was removed is skipped, not crashed on', () => {
+  const words = corpus();
+  const cards = backlog(words);
+  /* A leftover from a chapter no longer in index.json. */
+  cards.set('h-gone', {
+    term: 'obsoletus', lists: ['latin-ch99'], phase: 'retain', micro: 0, box: 1,
+    dueAt: new Date(START - 99 * 24 * 60 * MIN).toISOString(),
+    cleanDays: { fwd: [], rev: [] }, lastSlip: { fwd: null, rev: null },
+    seen: 3, correct: 2, slips: 0, dirOk: { fwd: true, rev: false },
+  });
+
+  const l = createLesson({ words, cards, direction: 'fwd', now: START, random: () => 0.5 });
+  const asked = playCounting(l).map(a => a.id);
+
+  assert.ok(!asked.includes('h-gone'));
+  assert.ok(asked.length > 0, 'the rest of the lesson still runs');
+  assert.ok(cards.has('h-gone'), 'and the card is kept, in case the chapter returns');
 });
