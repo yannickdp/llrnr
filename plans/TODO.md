@@ -213,11 +213,13 @@ screen inherits this without saying so again.
 - [x] Never lose XP for a wrong answer
 
 ### 4.2 Badges + celebration
-- [ ] Badges: first word learned, ten learned, chapter fully learned, 7-day streak,
+- [x] Badges: first word learned, ten learned, chapter fully learned, 7-day streak,
       30-day streak, lesson with no drop-backs, 100 typed answers,
       test-ready with a day to spare
-- [ ] Badge popups on the Results screen
-- [ ] Sounds, respecting the `sound` setting
+- [x] Badge popups on the Results screen
+- [x] Sounds, respecting the `sound` setting — synthesised, no audio files, and
+      created only after a tap so iOS allows them *(the toggle to turn them off
+      arrives with Settings in 4.5; heard-on-device still unverified)*
 
 ### 4.3 Words screen visualisation
 - [ ] new → acquire → box 1–5 → learned dot track per word (position, not percentage)

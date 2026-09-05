@@ -13,7 +13,8 @@ import { createLesson } from './lesson.js';
 import { openStore } from './store.js';
 import { isDue, isOneWay, missingDirection } from './schedule.js';
 import { activeTest, makeTest, readiness } from './cram.js';
-import { awardLesson, goalMetToday, stageFor } from './gamify.js';
+import { awardLesson, goalMetToday, newBadges, stageFor } from './gamify.js';
+import { setSoundEnabled } from './sound.js';
 import {
   $, DIRECTION_LABEL, el, importPreview, paintHome, paintResults, readinessPanel, runLesson,
 } from './ui.js';
@@ -482,12 +483,31 @@ function finishLesson(lesson, test, readyBefore) {
 
   /* XP is paid on transitions, so this is the one place it can be awarded:
      when the lesson is over and its tally is final. */
-  const award = awardLesson(store.progress, results, Date.now());
+  const now = Date.now();
+  const award = awardLesson(store.progress, results, now);
   store.progress.xp = award.xp;
   store.progress.streak = award.streak;
+  store.progress.typedAnswers += results.typed;
+
+  /* Badges are checked after the award, so a streak badge can be earned by the
+     very lesson that extended the streak. */
+  const words = activeWords();
+  const earned = newBadges({
+    cards: store.cards,
+    words,
+    lists: corpus.lists,
+    streak: award.streak,
+    results,
+    tests: store.progress.tests,
+    typedTotal: store.progress.typedAnswers,
+    learnedCount: [...store.cards.values()].filter(card => card.phase === 'learned').length,
+    now,
+  }, store.progress.badges);
+
+  store.progress.badges.push(...earned.map(badge => badge.id));
   store.save();
 
-  paintResults(results, { test, gained, award });
+  paintResults(results, { test, gained, award, badges: earned });
   refreshHome();
   renderChapters();
   renderReadiness();
@@ -533,6 +553,7 @@ async function boot() {
   startButton.addEventListener('click', () => startLesson());
 
   restoreDirection();
+  setSoundEnabled(store.settings.sound);
   $('test-form').addEventListener('submit', saveTest);
 
   $('import-text').addEventListener('input', refreshPreview);

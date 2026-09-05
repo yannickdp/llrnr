@@ -48,6 +48,9 @@ export function emptyProgress() {
     version: VERSION,
     xp: 0,
     stage: 0,
+    /* Answers she typed out herself, ever. Tapped multiple-choice answers do
+       not count: the badge is for writing them. */
+    typedAnswers: 0,
     streak: { current: 0, best: 0, lastDay: null, freezes: 1, freezeWeek: null },
     badges: [],
     roma: { unlocked: [], seenXp: 0 },
@@ -113,6 +116,7 @@ function fill(progress) {
         ? progress.settings.excludedLists : [],
     },
     badges: Array.isArray(progress.badges) ? progress.badges : [],
+    typedAnswers: Number.isFinite(progress.typedAnswers) ? progress.typedAnswers : 0,
     tests: Array.isArray(progress.tests) ? progress.tests : [],
     cards: progress.cards && typeof progress.cards === 'object' ? progress.cards : {},
   };

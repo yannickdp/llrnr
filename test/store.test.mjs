@@ -201,6 +201,7 @@ test('the stored blob has the shape PLAN section 4 describes', () => {
   openStore({ storage }).save();
 
   assert.deepEqual(Object.keys(JSON.parse(storage.peek(KEY))).sort(), [
-    'badges', 'cards', 'roma', 'settings', 'stage', 'streak', 'tests', 'version', 'xp',
+    'badges', 'cards', 'roma', 'settings', 'stage', 'streak', 'tests',
+    'typedAnswers', 'version', 'xp',
   ]);
 });

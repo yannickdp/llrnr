@@ -8,6 +8,8 @@
    backgrounded tab, so the countdown ring and the lesson clock recompute from
    Date.now() on every animation frame instead of counting ticks down. */
 
+import { fanfare, forGrade } from './sound.js';
+
 export const el = (tag, className, text) => {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -246,6 +248,7 @@ export function runLesson(lesson, { anticipationSeconds = 4, onFinish } = {}) {
   }
 
   function paintReveal(reveal) {
+    forGrade(reveal.grade);
     const verdict = { correct: 'Juist', wrong: 'Fout', almost: 'Bijna!' }[reveal.grade];
     const card = el('div', `card reveal reveal-${reveal.grade}`);
     card.append(el('p', 'eyebrow', verdict));
@@ -340,9 +343,22 @@ export function runLesson(lesson, { anticipationSeconds = 4, onFinish } = {}) {
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-export function paintResults(results, { test = null, gained = 0, award = null } = {}) {
+export function paintResults(results, { test = null, gained = 0, award = null, badges = [] } = {}) {
   const host = $('results-body');
   const lines = [];
+  const cards = [];
+
+  /* Badges lead, and get the one flourish the app allows itself. */
+  if (badges.length) {
+    fanfare();
+    for (const badge of badges) {
+      const card = el('div', 'card badge');
+      card.append(el('p', 'eyebrow', 'Nieuwe badge'));
+      card.append(el('p', 'badge-name', badge.name));
+      card.append(el('p', 'caption', badge.why));
+      cards.push(card);
+    }
+  }
 
   if (award?.gained) {
     lines.push([`+${award.gained} XP`, award.doubled ? 'eerste les van vandaag — dubbel' : '']);
@@ -370,12 +386,12 @@ export function paintResults(results, { test = null, gained = 0, award = null } 
   }
   lines.push([`${results.correct} van de ${results.answered} juist`, '']);
 
-  const cards = lines.map(([title, detail]) => {
+  cards.push(...lines.map(([title, detail]) => {
     const card = el('div', 'card');
     card.append(el('p', 'result-line', title));
     if (detail) card.append(el('p', 'caption', detail));
     return card;
-  });
+  }));
 
   if (results.parked) {
     const card = el('div', 'card');

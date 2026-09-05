@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   XP, STAGES, stageFor, xpForResults, advanceStreak, goalMetToday, awardLesson, weekKey,
+  newBadges,
 } from '../js/gamify.js';
 import { emptyProgress } from '../js/store.js';
 
@@ -197,4 +198,99 @@ test('awarding never mutates the progress it was given', () => {
   const before = structuredClone(progress);
   awardLesson(progress, results({ answered: 3, learned: 1 }), AT('04'));
   assert.deepEqual(progress, before);
+});
+
+/* ============================================================ badges ===== */
+
+const badgeContext = (over = {}) => ({
+  cards: new Map(),
+  words: new Map(),
+  lists: [],
+  streak: emptyProgress().streak,
+  results: results(),
+  tests: [],
+  typedTotal: 0,
+  learnedCount: 0,
+  now: AT('04'),
+  ...over,
+});
+
+const idsOf = (context, already = []) => newBadges(context, already).map(b => b.id);
+
+test('the first learned word earns the first badge', () => {
+  assert.deepEqual(idsOf(badgeContext({ learnedCount: 1 })), ['first-learned']);
+});
+
+test('ten learned words earns both, if the first was somehow missed', () => {
+  assert.deepEqual(idsOf(badgeContext({ learnedCount: 10 })),
+    ['first-learned', 'ten-learned']);
+});
+
+test('a badge is never given twice', () => {
+  const context = badgeContext({ learnedCount: 12 });
+  assert.deepEqual(idsOf(context, ['first-learned', 'ten-learned']), []);
+});
+
+test('a chapter counts only when every one of its words is learned', () => {
+  const learned = { phase: 'learned' };
+  const lists = [{ id: 'ch01', words: [{ id: 'a' }, { id: 'b' }] }];
+
+  const partly = badgeContext({ lists, cards: new Map([['a', learned]]), learnedCount: 1 });
+  assert.ok(!idsOf(partly).includes('chapter-learned'));
+
+  const fully = badgeContext({
+    lists, cards: new Map([['a', learned], ['b', learned]]), learnedCount: 2,
+  });
+  assert.ok(idsOf(fully).includes('chapter-learned'));
+});
+
+test('an empty chapter does not count as finished', () => {
+  const context = badgeContext({ lists: [{ id: 'ch01', words: [] }] });
+  assert.ok(!idsOf(context).includes('chapter-learned'));
+});
+
+test('the streak badges land on the day they are reached', () => {
+  assert.ok(!idsOf(badgeContext({ streak: { ...emptyProgress().streak, current: 6 } })).includes('streak-7'));
+  assert.ok(idsOf(badgeContext({ streak: { ...emptyProgress().streak, current: 7 } })).includes('streak-7'));
+  assert.ok(idsOf(badgeContext({ streak: { ...emptyProgress().streak, current: 30 } })).includes('streak-30'));
+});
+
+test('a flawless lesson needs to be a real lesson', () => {
+  const oneAnswer = badgeContext({ results: results({ answered: 1, dropped: 0 }) });
+  assert.ok(!idsOf(oneAnswer).includes('flawless-lesson'), 'one right answer is not a feat');
+
+  const proper = badgeContext({ results: results({ answered: 12, dropped: 0 }) });
+  assert.ok(idsOf(proper).includes('flawless-lesson'));
+
+  const slipped = badgeContext({ results: results({ answered: 12, dropped: 1 }) });
+  assert.ok(!idsOf(slipped).includes('flawless-lesson'));
+});
+
+test('typed answers are counted, tapped ones are not', () => {
+  assert.ok(!idsOf(badgeContext({ typedTotal: 99 })).includes('typed-100'));
+  assert.ok(idsOf(badgeContext({ typedTotal: 100 })).includes('typed-100'));
+});
+
+test('being ready early is the badge, and the evening before is not', () => {
+  const three = ['2026-09-01', '2026-09-02', '2026-09-03'];
+  const ready = {
+    term: 'mater', lists: ['latin-ch04'], phase: 'retain', box: 5, micro: 0,
+    dueAt: null, cleanDays: { fwd: [...three], rev: [...three] },
+    lastSlip: { fwd: null, rev: null }, seen: 20, correct: 20, slips: 0,
+    dirOk: { fwd: true, rev: true },
+  };
+  const words = new Map([['w0', { term: 'mater', translations: ['moeder'], lists: ['latin-ch04'] }]]);
+  const cards = new Map([['w0', ready]]);
+  const tests = [{ id: 't1', title: 'toets', date: '2026-09-11', lists: ['latin-ch04'], targetRecalls: 3, directions: 'both' }];
+
+  assert.ok(idsOf(badgeContext({ words, cards, tests, now: AT('09') })).includes('ready-early'),
+    'ready with two days to spare');
+  assert.ok(!idsOf(badgeContext({ words, cards, tests, now: AT('11') })).includes('ready-early'),
+    'ready on the morning of the test is not the same achievement');
+});
+
+test('not being ready yet earns nothing', () => {
+  const words = new Map([['w0', { term: 'mater', translations: ['moeder'], lists: ['latin-ch04'] }]]);
+  const tests = [{ id: 't1', title: 'toets', date: '2026-09-11', lists: ['latin-ch04'], targetRecalls: 3, directions: 'both' }];
+  assert.ok(!idsOf(badgeContext({ words, cards: new Map(), tests })).includes('ready-early'));
 });

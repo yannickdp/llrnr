@@ -88,7 +88,7 @@ export function createLesson({
   const firstContact = new Set();
 
   const tally = {
-    presented: 0, answered: 0, correct: 0,
+    presented: 0, answered: 0, correct: 0, typed: 0,
     graduated: 0, promoted: 0, held: 0, dropped: 0, learned: 0, parked: 0,
     droppedWords: [], graduatedWords: [], learnedWords: [],
   };
@@ -309,6 +309,7 @@ export function createLesson({
     firstContact.delete(id);
     asked++;
     tally.answered++;
+    if (current.mode === 'typed') tally.typed++;
     if (grade === 'correct') tally.correct++;
     if (outcome in tally) tally[outcome]++;
     if (outcome === 'dropped') tally.droppedWords.push(word.term);

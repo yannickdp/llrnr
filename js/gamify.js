@@ -9,6 +9,7 @@
    clock comes in, a new value comes out. */
 
 import { studyDay } from './schedule.js';
+import { daysLeft, isActive, readiness } from './cram.js';
 
 /** What lasting progress is worth. Nothing else pays. */
 export const XP = {
@@ -152,3 +153,81 @@ export function awardLesson(progress, results, now = Date.now()) {
     frozen,
   };
 }
+
+/* ============================================================ badges ===== */
+
+/**
+ * What each badge is for. Ids are English and never change; names are what she
+ * reads. Every one of them rewards something that took real work — there is
+ * deliberately no badge for opening the app or for answering a lot.
+ */
+export const BADGES = [
+  {
+    id: 'first-learned',
+    name: 'Eerste woord gekend',
+    why: 'Een woord dat je in beide richtingen kent.',
+    earned: c => c.learnedCount >= 1,
+  },
+  {
+    id: 'ten-learned',
+    name: 'Tien woorden gekend',
+    why: 'Tien woorden die je beide kanten op kent.',
+    earned: c => c.learnedCount >= 10,
+  },
+  {
+    id: 'chapter-learned',
+    name: 'Hoofdstuk uitgespeeld',
+    why: 'Elk woord van een hoofdstuk gekend.',
+    earned: c => c.lists.some(list =>
+      list.words.length > 0
+      && list.words.every(word => c.cards.get(word.id)?.phase === 'learned')),
+  },
+  {
+    id: 'streak-7',
+    name: 'Zeven dagen op rij',
+    why: 'Een week lang elke dag geoefend.',
+    earned: c => c.streak.current >= 7,
+  },
+  {
+    id: 'streak-30',
+    name: 'Dertig dagen op rij',
+    why: 'Een maand lang elke dag geoefend.',
+    earned: c => c.streak.current >= 30,
+  },
+  {
+    id: 'flawless-lesson',
+    name: 'Les zonder terugval',
+    why: 'Een hele les zonder één woord kwijt te raken.',
+    earned: c => c.results.answered >= 8 && c.results.dropped === 0,
+  },
+  {
+    id: 'typed-100',
+    name: 'Honderd keer getypt',
+    why: 'Honderd antwoorden zelf uitgeschreven.',
+    earned: c => c.typedTotal >= 100,
+  },
+  {
+    /* The one that rewards not cramming — PLAN section 3 singles it out. */
+    id: 'ready-early',
+    name: 'Klaar met een dag over',
+    why: 'Alles op tijd geleerd, niet de avond ervoor.',
+    earned: c => c.tests.some(test => {
+      if (!isActive(test, c.now) || daysLeft(test, c.now) < 1) return false;
+      const summary = readiness(c.cards, c.words, test, c.now);
+      return summary.total > 0 && summary.ready === summary.total;
+    }),
+  },
+];
+
+/**
+ * Which badges she has just earned — those whose condition now holds and that
+ * she does not already have.
+ *
+ * @param {object} context  {cards, words, lists, streak, results, tests, typedTotal, now}
+ * @param {string[]} already  badge ids already awarded
+ */
+export function newBadges(context, already = []) {
+  const have = new Set(already);
+  return BADGES.filter(badge => !have.has(badge.id) && badge.earned(context));
+}
+
