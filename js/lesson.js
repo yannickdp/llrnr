@@ -227,6 +227,10 @@ export function createLesson({
       const word = words.get(id);
       const dir = pickDirection(card);
       const mode = firstContact.has(id) ? 'choice' : 'typed';
+      /* The option that is right, kept so the tap can be graded against it
+         rather than re-read as free text: an option shows the canonical answer
+         ("moeder / mama"), which is not any single accepted translation. */
+      const correctOption = dir === 'fwd' ? word.answer : word.term;
 
       current = {
         kind: 'ask',
@@ -234,8 +238,9 @@ export function createLesson({
         direction: dir,
         mode,
         prompt: promptFor(word, dir),
+        correctOption: mode === 'choice' ? correctOption : null,
         options: mode === 'choice'
-          ? shuffle([dir === 'fwd' ? word.answer : word.term, ...distractors(word, dir)], random)
+          ? shuffle([correctOption, ...distractors(word, dir)], random)
           : null,
       };
       return current;
@@ -282,7 +287,16 @@ export function createLesson({
     if (current?.kind !== 'ask') throw new Error('nothing to answer');
 
     const { id, word, direction: dir } = current;
-    const grade = check({ typed, word, direction: dir, pool: words });
+
+    /* An option shows the canonical answer — "moeder / mama" — which is not any
+       single accepted translation, so running a tap through the matcher alone
+       marked the right option wrong for every word with alternatives. The
+       option that was correct is therefore accepted outright, on top of
+       everything the matcher would accept anyway. */
+    const grade = current.mode === 'choice'
+      && normalize(typed) === normalize(current.correctOption)
+      ? 'correct'
+      : check({ typed, word, direction: dir, pool: words });
     /* The direction goes to the scheduler because the *evidence* is
        per-direction even though the scheduling clock is shared. */
     const { card, outcome } = review(cards.get(id), {

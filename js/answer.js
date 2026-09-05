@@ -65,6 +65,10 @@ export function check({ typed, word, direction, pool = null }) {
 
   const accepted = expectedFor(word, direction).map(normalize);
 
+  /* The whole field as written counts too, so typing "moeder / mama" for a word
+     with both is right rather than nearly right. */
+  if (direction === 'fwd' && word.answer) accepted.push(normalize(word.answer));
+
   /* Several Latin words can share a Dutch translation: prompt "zeggen" and
      both dicere and narrare are right. Marking one of them wrong is the
      fastest way to make her stop trusting the app, so any pool word that the

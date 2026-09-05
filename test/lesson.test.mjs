@@ -845,3 +845,65 @@ test('with no test the lesson behaves exactly as before', () => {
   const step = l.next(START);
   assert.equal(step.kind, 'present', 'every chapter is fair game again');
 });
+
+/* ============================================ grading a tapped option ==== */
+
+test('tapping the right option is correct, even when the word has alternatives', () => {
+  /* The option shows the canonical answer, "moeder / mama", which is not any
+     single accepted translation — so grading it as free text marked the right
+     answer wrong for every word with a "/" in it. */
+  const words = corpus('mater | matris, f. | moeder / mama');
+  const l = createLesson({ words, direction: 'fwd', now: START, random: () => 0.5 });
+
+  l.next(START);
+  l.acknowledge(START);
+  const step = l.next(START + 5 * S);
+
+  assert.equal(step.mode, 'choice');
+  assert.ok(step.options.includes('moeder / mama'));
+
+  const result = l.answer('moeder / mama', START + 5 * S);
+  assert.equal(result.grade, 'correct');
+  assert.equal(result.outcome, 'advanced');
+});
+
+test('tapping a wrong option is still wrong', () => {
+  const words = corpus();
+  const l = createLesson({ words, direction: 'fwd', now: START, random: () => 0.5 });
+  l.next(START);
+  l.acknowledge(START);
+  const step = l.next(START + 5 * S);
+
+  const wrong = step.options.find(option => option !== step.correctOption);
+  assert.equal(l.answer(wrong, START + 5 * S).grade, 'wrong');
+});
+
+test('every option offered is gradeable, right or wrong', () => {
+  /* Whatever she taps must produce a sensible verdict — no option may fall
+     through the matcher and be marked wrong by accident. */
+  const words = corpus();
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const l = createLesson({
+      words, direction: attempt % 2 ? 'rev' : 'fwd', now: START, random: () => (attempt + 1) / 8,
+    });
+    l.next(START);
+    l.acknowledge(START);
+    const step = l.next(START + 5 * S);
+
+    for (const option of step.options) {
+      const fresh = createLesson({
+        words, direction: attempt % 2 ? 'rev' : 'fwd', now: START, random: () => (attempt + 1) / 8,
+      });
+      fresh.next(START);
+      fresh.acknowledge(START);
+      const same = fresh.next(START + 5 * S);
+      const grade = fresh.answer(option, START + 5 * S).grade;
+
+      if (option === same.correctOption) {
+        assert.equal(grade, 'correct', `the right option "${option}" was graded ${grade}`);
+      } else {
+        assert.notEqual(grade, 'correct', `the wrong option "${option}" was graded correct`);
+      }
+    }
+  }
+});

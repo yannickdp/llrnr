@@ -227,3 +227,8 @@ test('recording evidence never mutates the card it was given', () => {
   review(card, { grade: 'correct', direction: 'fwd', now });
   assert.deepEqual(card, before);
 });
+
+test('typing the whole field, alternatives and all, is right not nearly right', () => {
+  assert.equal(grade('moeder / mama'), 'correct');
+  assert.equal(grade('moeder/mama'), 'wrong', 'but only as written — no clever fuzzy joining');
+});
