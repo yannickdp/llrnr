@@ -305,9 +305,14 @@ export function fromDraw({ id, w, h, paint }) {
  * @param {string} spec.id
  * @param {Object<string, string|null>} spec.palette  character to colour; null is transparent
  * @param {string[]} spec.px  the rows
+ * @param {(g: object, x: number, groundY: number) => void} [spec.lights]
+ *   Runs after the grid is painted, to register glow targets and fires. A grid
+ *   can only paint, and `Ara` — the fifth unlock — is a grid that has to burn;
+ *   without this it would have to become a draw function for the sake of one
+ *   line, or the fire would have to live outside the sprite that owns it.
  * @returns {object} sprite
  */
-export function fromGrid({ id, palette, px }) {
+export function fromGrid({ id, palette, px, lights }) {
   if (!Array.isArray(px) || px.length === 0) throw new Error(`sprite ${id}: px must be rows`);
 
   const h = px.length;
@@ -336,9 +341,170 @@ export function fromGrid({ id, palette, px }) {
         col += run;
       }
     }
+    lights?.(g, x, groundY);
   };
 
   return makeSprite({ id, w, h, paint });
+}
+
+/* ================================================================ fire ==== */
+
+/* The fire system belongs with stage 1, not with "life" later on.
+ *
+ * `Ara` is the fifth building she ever unlocks — inside the first week — and
+ * until stage 2 arrives it is the only thing in the city that moves. Without a
+ * flame, stage 1 is five static brown shapes on a hill. It pays off a second
+ * time at `Templum Vestae`, whose catalogue line is that the sacred fire was
+ * never allowed to go out; it should be burning while she reads that.
+ *
+ * Every coordinate here is fractional — `cx - width / 2` — which is exactly why
+ * `P` rounds edges rather than sizes. */
+
+/** One tapering teardrop of flame, swaying. Three of these stacked is a fire. */
+function flameLayer(g, cx, by, w, h, colour, t, seed) {
+  const rows = Math.max(1, Math.round(h));
+  for (let i = 0; i < rows; i++) {
+    const up = i / rows;                                   // 0 at the base, 1 at the tip
+    const width = Math.max(1, Math.round(w * (1 - up * up)));
+    const sway = Math.round(Math.sin(t * 7 + seed + up * 3) * up * w * 0.6);
+    g.P(cx - width / 2 + sway, by - i, width, 1, colour);
+  }
+}
+
+/**
+ * A fire, from an emitter. Deep, mid and core stacked, each narrower and
+ * shorter than the last, so the shape reads as hot in the middle.
+ *
+ * Drawn above the night tint on purpose: a flame that dims at night looks
+ * painted on, where the whole point of it is that it is the light source.
+ *
+ * @param {object} g       painter
+ * @param {object} emitter `{x, by, size, seed}` as registered by a building
+ * @param {number} t       seconds
+ */
+export function drawFlame(g, { x, by, size = 1, seed = 0 }, t) {
+  const flick = 1 + Math.sin(t * 9 + seed) * 0.15;
+  flameLayer(g, x, by, size * 2.0, size * 3.4 * flick, C.flameDeep, t, seed);
+  flameLayer(g, x, by, size * 1.4, size * 2.6 * flick, C.flame, t, seed + 1);
+  flameLayer(g, x, by, size * 0.8, size * 1.7 * flick, C.flameCore, t, seed + 2);
+}
+
+/**
+ * Smoke rising off the fires. Kept as its own object because particles are the
+ * one thing in the city with state that outlives a frame.
+ *
+ * Note the seeding: `hash` again, off a spawn counter rather than off
+ * coordinates. The determinism rule exists so the *scene* is identical every
+ * time she opens the app; smoke is transient motion, and a puff that always
+ * takes the same path would look mechanical. Using `hash` anyway keeps one
+ * source of randomness in the file instead of two.
+ *
+ * @param {object} [options]
+ * @param {number} [options.max]  hard cap, so a long-running tab cannot grow
+ * @returns {{particles: object[], update: Function, draw: Function, clear: Function}}
+ */
+export function smokeField({ max = 90 } = {}) {
+  const particles = [];
+  let sinceSpawn = 0;
+  let spawned = 0;
+
+  return {
+    particles,
+
+    /**
+     * @param {number} dt        seconds since the last update
+     * @param {object[]} emitters the painter's registry
+     */
+    update(dt, emitters = []) {
+      sinceSpawn += dt;
+      if (sinceSpawn >= 0.26) {
+        sinceSpawn = 0;
+        emitters.forEach((e, i) => {
+          /* A torch smokes less than an altar. */
+          if (e.size < 1.5 && hash(spawned, i) < 0.5) return;
+          if (particles.length >= max) return;
+          const r1 = hash(spawned, i * 7 + 1);
+          const r2 = hash(spawned + 1, i * 7 + 2);
+          const r3 = hash(spawned + 2, i * 7 + 3);
+          particles.push({
+            x: e.x,
+            y: e.by - e.size * 3,
+            vx: r1 * 2 - 1,
+            vy: -2.4 - r2,
+            age: 0,
+            life: 2.4 + r3,
+            size: 1,
+          });
+          spawned++;
+        });
+      }
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.age += dt;
+        if (p.age >= p.life) {
+          particles.splice(i, 1);
+          continue;
+        }
+        p.x += (p.vx + Math.sin(p.age * 2) * 1.1) * dt;
+        p.y += p.vy * dt;
+        p.size = 1 + p.age * 1.2;
+      }
+    },
+
+    /** One translucent grey square per particle, fading as it ages. */
+    draw(g) {
+      if (particles.length === 0) return;
+      const { ctx } = g;
+      ctx.save();
+      for (const p of particles) {
+        ctx.globalAlpha = 0.42 * (1 - p.age / p.life);
+        g.P(p.x, p.y, p.size, p.size, C.smoke);
+      }
+      ctx.restore();
+    },
+
+    clear() {
+      particles.length = 0;
+      sinceSpawn = 0;
+    },
+  };
+}
+
+/* ======================================================= scale props ===== */
+
+/**
+ * An Italian cypress: a tall dark teardrop. Its height comes from its own x, so
+ * a row of them is varied and never rearranges itself.
+ */
+export function drawCypress(g, x, groundY) {
+  const h = 9 + Math.floor(hash(x, 31) * 4);
+  for (let i = 0; i < h; i++) {
+    const w = Math.max(1, Math.round(3 * (1 - i / h)));
+    for (let dx = 0; dx < w; dx++) {
+      let colour = C.cypress;
+      if (dx === 0) colour = C.cypressLite;
+      else if (dx === w - 1) colour = C.cypressDark;
+      g.dot(x - ((w - 1) >> 1) + dx, groundY - i, colour);
+    }
+  }
+}
+
+/**
+ * A citizen: two pixels wide, five tall, with a walking bob. Nothing sells the
+ * scale of a monument like a person who is five pixels tall standing next to
+ * it — and the population is a second, free reading of progress once the count
+ * tracks words learned.
+ *
+ * @param {number} t     seconds; 0 for a still frame under reduced motion
+ * @param {number} seed  so a crowd does not bob in unison
+ */
+export function drawFigure(g, x, groundY, robe = C.toga, t = 0, seed = 0) {
+  const y = groundY - Math.round(Math.abs(Math.sin(t * 3 + seed)));
+  g.dot(x, y - 4, C.skin);
+  g.P(x, y - 3, 1, 3, robe);
+  g.dot(x - 1, y - 2, robe);
+  g.dot(x, y, C.stoneDark);
 }
 
 /* ========================================================= the canvas ===== */

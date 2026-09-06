@@ -298,15 +298,45 @@ Two findings for 4b.2, learned from drawing the probe:
   row of slots
 
 ### 4b.2 Stage 1 + the go/no-go *(§3)*
-- [ ] 2. Stage 1's five sprites (character grids — hut, sheepfold, palisade, fig tree,
-      altar) + the hills backdrop
-- [ ] Fire system with stage 1, not later: procedural flame + smoke for `Ara`, the
-      only motion in the city until stage 2 *(§4)*
-- [ ] Slot map for all **25** buildings on paper — `(x, band)`, before the second
-      building is drawn *(§5)*
-- [ ] Throwaway spike of the temple recipe, to see the engine's ceiling
-- [ ] **Stop and look on the phone** — go/no-go on hand-authored art vs a CC0 tileset.
-      Judge it on **stage 1**, the rustic sprites with no recipe, not on the temple
+- [x] 2. Stage 1's five sprites in `js/roma/buildings.js` — `casa-romuli`, `ovile`,
+      `murus-ligneus`, `ficus-ruminalis`, `ara`, all character grids
+- [x] The hills backdrop in `js/roma/render.js` — a far range plus the Palatine,
+      Aventine and Capitoline, each under the stage that belongs to it, with
+      cypresses on the ridges
+- [x] Ground: the plaza, the near street and the Tiber, so **no sprite paints its own
+      earth** (tested by colour, not geometry — a palisade's base is legitimately
+      full width)
+- [x] Fire system with stage 1, not later: `drawFlame` + `smokeField` in engine.js,
+      registered by `Ara` through a new `lights` hook on `fromGrid` — a grid can only
+      paint, and this is a grid that has to burn *(§4)*
+- [x] Slot map for all **25** buildings — `js/roma/catalogue.js`, as data rather than
+      on paper, so the test can check it. `(x, band)`, three bands, all 25 laid out
+      before the second building was drawn *(§5)*
+- [x] Latin name, Dutch meaning and one line of real Dutch history for all 25
+- [x] `js/roma/spike-temple.js` — the throwaway temple, to see the engine's ceiling.
+      **Delete after the go/no-go**
+- [x] Layer split in `render.js`: static layer (sky, hills, ground, finished
+      buildings) cached offscreen; per-frame work is fire and smoke only
+- [x] `test/roma-city.test.mjs` — 37 tests, mostly on the slot map
+- [ ] **Stop and look on the phone** — open `test/roma-stage1.html`. Go/no-go on
+      hand-authored art vs a CC0 tileset. Judge it on **stage 1**, the rustic sprites
+      with no recipe, not on the temple spike. The page carries the five questions
+
+Two findings that came out of building it:
+
+- **The catalogue was breaking PLAN-ROMA's own eight-lesson rule.** Making the slot
+  map data made the gaps checkable, and stage 5's last five steps were 12, 12, 10, 6
+  and **16 lessons** apart — the capstone sat a month of work past the one before it,
+  at exactly the point she is most invested. Re-spaced to 50 000 / 54 000 / 57 500 /
+  61 000 / 65 000; every gap in the catalogue is now eight lessons or fewer and the
+  capstone drops from a notional 74 000 to 65 000. PLAN-ROMA §2 updated to match
+- **`course()` is for masonry, not for ground.** The checkerboard that made the
+  arcade's wall read as blocks turns a 560-pixel plaza into a woven rug. Ground and
+  hillsides use a sparse `hash` scatter instead
+
+Still to reconcile before 4b.3: `gamify.js` stages sit at 0 / 400 / 1200 / 2800 /
+6000, the catalogue assumes 0 / 200 / 4000 / 14000 / 30000 / 50000. Both are marked
+provisional pending step 8, but they have to agree the moment unlocks read real XP.
 
 ### 4b.3 Unlock + the moment
 - [ ] 3. Unlock logic against total XP; Home hero = a 320-wide window on the 560-wide

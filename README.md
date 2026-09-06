@@ -44,17 +44,27 @@ the canvas, recording every `fillRect` against a stub context — for pixel art 
 exact position and size of a rectangle is the thing worth asserting, and reading
 pixels back off a real canvas would only prove the colour landed somewhere.
 
-### The city's engine, by eye
+### The city, by eye
+
+Two pages rather than tests, for the parts of the pixel-art city that a passing
+assertion cannot vouch for. Open both **on the phone**.
 
 ```
-test/roma-probe.html
+test/roma-probe.html     is it crisp?
+test/roma-stage1.html    is it any good?
 ```
 
-A page, not a test: the parts of the pixel-art city that a passing assertion cannot
-vouch for. Open it **on the phone** and look for soft or uneven edges — it reports the
-device pixel ratio and the scale that follows from it, draws the calibration sprite at
-each integer scale, sweeps the construction-progress reveal, and puts a deliberately
-fractional ×2.5 beside a crisp ×3 so there is something to compare against.
+The first reports the device pixel ratio and the scale that follows from it, draws a
+calibration sprite at each integer scale, and puts a deliberately fractional ×2.5
+beside a crisp ×3 so there is something to compare against. Look for soft edges.
+
+The second is the **go/no-go**: stage 1 on the hills with the altar burning, the five
+sprites on their own, and the construction-progress reveal. The question it settles is
+whether hand-authored pixel art is good enough to carry the reward, or whether the
+sprite source should be swapped for a CC0 tileset — which touches `buildings.js` and
+nothing else, because everything is behind `draw(ctx, x, groundY, {scale, progress})`.
+It carries the throwaway temple too, so the verdict is reached knowing what the engine
+can do later.
 
 ## Deploy (GitHub Pages)
 

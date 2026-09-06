@@ -97,25 +97,33 @@ is not decoration — it is what makes the scene composable. See §5.
 | 19 | Theatrum | theater | 42 000 | mid |
 | 20 | Horti *(dec.)* | tuinen | 46 000 | small |
 | **Stage 5 — Roma Aeterna** | | | | |
-| 21 | Colosseum | amfitheater | 52 000 | hero |
-| 22 | Pantheon | Pantheon | 58 000 | hero |
-| 23 | Columna Traiani | zuil van Trajanus | 63 000 | small |
-| 24 | Arcus Triumphalis | triomfboog | 66 000 | mid |
-| 25 | Templum Iovis | tempel van Jupiter | 74 000 | hero |
+| 21 | Colosseum | amfitheater | 50 000 | hero |
+| 22 | Pantheon | Pantheon | 54 000 | hero |
+| 23 | Columna Traiani | zuil van Trajanus | 57 500 | small |
+| 24 | Arcus Triumphalis | triomfboog | 61 000 | mid |
+| 25 | Templum Iovis | tempel van Jupiter | 65 000 | hero |
 
 **`Arcus Triumphalis` is new**, added because the drawing spec ships a complete
 triumphal-arch recipe (plan-roma-updates §8.4) and it would be perverse to leave a
 finished, instantly recognisable Roman monument on the floor. That makes the
-catalogue **25 buildings**, not 24, and pushes the capstone from 70 000 to 74 000 XP.
-Both numbers were always estimates — see below.
+catalogue **25 buildings**, not 24.
+
+**Stage 5 was re-spaced in 4b.1's wake**, and this is worth recording because the
+table failed its own rule. Building the catalogue as data made the gaps checkable, and
+the last five steps were 12, 12, 10, 6 and **16 lessons** apart — the capstone sat a
+month of work beyond the one before it, at exactly the point she is most invested.
+Rule 2 below is not a nicety, and the table published underneath it was breaking it.
+Compressing those five to 50 000 / 54 000 / 57 500 / 61 000 / 65 000 brings every gap
+in the catalogue to eight lessons or fewer, and drops the capstone from a notional
+74 000 to **65 000** — about 130 lessons, still a school year of steady use.
 
 ### How those numbers were chosen — and why they will need retuning
 
 Working from the main plan's XP rates (25 per word graduated out of acquire, 15 per
 box promotion, 50 for `learned`, first lesson of the day doubled), a ten-minute lesson
 that graduates ~8 new words and promotes ~15 lands somewhere around **400–600 XP**.
-At four lessons a week over a school year — roughly 150 lessons — that is about
-**70 000 XP**, which is roughly where the capstone sits.
+At four lessons a week over a school year — roughly 130 to 150 lessons — that is
+somewhere around **65 000 XP**, which is where the capstone sits.
 
 So the whole city is achievable in one school year of steady use, and the last temple
 is a genuine achievement rather than a formality.

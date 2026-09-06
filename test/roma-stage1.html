@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Roma — stage 1, go / no-go</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0;
+    padding: 16px calc(16px + env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom))
+             calc(16px + env(safe-area-inset-left));
+    background: #12161f;
+    color: #e7e3d8;
+    font: 15px/1.45 system-ui, sans-serif;
+  }
+  h1 { font-size: 1.05rem; margin: 0 0 4px; }
+  h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: .1em; color: #8b93a3;
+       margin: 0 0 8px; font-weight: 700; }
+  p { margin: 0 0 14px; color: #9aa3b2; font-size: 0.8125rem; }
+  section { margin-block-end: 26px; }
+  canvas { image-rendering: pixelated; display: block; border-radius: 4px; }
+  .scene-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch;
+                border-radius: 6px; background: #0b0e14; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+  .cell { display: flex; flex-direction: column; gap: 4px; }
+  .cell canvas { background: #cfe3ef; }
+  .cap { font-size: 0.6875rem; color: #8b93a3; }
+  .la { color: #e6b64a; font-weight: 700; }
+  .verdict { border: 1px solid #3c4870; background: #1a2030; border-radius: 8px;
+             padding: 12px 14px; font-size: 0.8125rem; }
+  .verdict ol { margin: 8px 0 0; padding-inline-start: 20px; }
+  .verdict li { margin-block-end: 5px; color: #cfd6e6; }
+  button { font: inherit; color: #f0ead9; background: #2a3450; border: 1px solid #3c4870;
+           padding: 8px 14px; border-radius: 8px; }
+  button:focus-visible { outline: 2px solid #ffd67a; outline-offset: 2px; }
+</style>
+</head>
+<body>
+
+<h1>Roma — stage 1, go / no-go</h1>
+<p>
+  PLAN-ROMA step 2. The five sprites she meets in her first weeks, on the hills, with
+  the altar burning. <strong>Look at this on the phone and decide</strong>: charming, or
+  amateurish? Judge it on the rustic grids below — they are the hardest kind of pixel
+  art and the drawing spec had no recipe for any of them.
+</p>
+
+<section>
+  <h2>The city, stage 1</h2>
+  <div class="scene-wrap"><canvas id="scene"></canvas></div>
+  <p style="margin-block-start:8px" id="scene-note"></p>
+  <button id="toggle">Pauzeer beweging</button>
+</section>
+
+<section>
+  <h2>The five, on their own</h2>
+  <div class="row" id="sprites"></div>
+</section>
+
+<section>
+  <h2>Under construction — the teaser</h2>
+  <p style="margin-block-end:8px">
+    Each at 30%, 60% and finished. This is what an unbuilt plot will look like as XP
+    accrues, and the same call the unlock reveal sweeps to 1.
+  </p>
+  <div class="row" id="progress"></div>
+</section>
+
+<section>
+  <h2>The engine's ceiling — throwaway temple</h2>
+  <p style="margin-block-end:8px">
+    <strong>Not a building and not in the catalogue.</strong> Written from the drawing
+    spec's own recipe so that the verdict above is made knowing what the engine can do
+    later. If stage 1 disappoints but this does not, the problem is the subject and not
+    the tooling. Delete this file either way.
+  </p>
+  <div class="row" id="spike"></div>
+</section>
+
+<section>
+  <h2>The verdict</h2>
+  <div class="verdict">
+    <strong>Go</strong> — carry on hand-authoring, 4b.3 next.<br>
+    <strong>No-go</strong> — keep the engine, swap the sprite source for a CC0
+    Roman/antiquity tileset. The interface is
+    <code>draw(ctx, x, groundY, {scale, progress})</code>, so that touches
+    <code>buildings.js</code> and nothing else.
+    <ol>
+      <li>Do the huts read as huts at arm's length, or as brown blobs?</li>
+      <li>Does the thatch look like thatch — is the lit/shadow split doing any work?</li>
+      <li>Is the palisade twenty stakes, or one brown slab?</li>
+      <li>Is the flame convincing, and is it enough motion to carry stage 1 alone?</li>
+      <li>Do the five sit together as one place, or as five separate drawings?</li>
+    </ol>
+  </div>
+</section>
+
+<script type="module">
+import { painter, fitCanvas, drawFlame } from '../js/roma/engine.js';
+import { SCENE, CATALOGUE } from '../js/roma/catalogue.js';
+import { SPRITES } from '../js/roma/buildings.js';
+import { spikeTemple } from '../js/roma/spike-temple.js';
+import { createScene } from '../js/roma/render.js';
+
+const dpr = window.devicePixelRatio || 1;
+const STAGE1 = CATALOGUE.filter(e => e.stage === 0);
+
+/* ---- the whole scene, animated ------------------------------------------ */
+const sceneCanvas = document.getElementById('scene');
+/* The scene is 560 logical px on a ~360px phone, so it scrolls: this is the
+   full width, not the 320 window Home will show. */
+const sceneScale = Math.max(1, Math.min(3, Math.floor((window.innerWidth - 32) / 200)));
+
+const scene = createScene(sceneCanvas, {
+  scale: sceneScale,
+  motion: !matchMedia('(prefers-reduced-motion: reduce)').matches,
+});
+scene.show(STAGE1.map(e => e.id));
+scene.start();
+
+document.getElementById('scene-note').textContent =
+  `${SCENE.w}x${SCENE.h} logical at x${sceneScale}, dpr ${dpr}. `
+  + `${scene.lights.emitters.length} fire(s), ${scene.lights.glowTargets.length} lit opening(s). `
+  + `Scroll sideways — Home will show a ${SCENE.window}px window of this.`;
+
+let running = true;
+document.getElementById('toggle').onclick = e => {
+  running = !running;
+  if (running) scene.start(); else scene.stop();
+  e.target.textContent = running ? 'Pauzeer beweging' : 'Start beweging';
+};
+
+/* ---- one sprite, one canvas -------------------------------------------- */
+const PAD = 2;
+
+function cell(sprite, { scale = 4, progress = 1, caption = '', latin = '' } = {}) {
+  const wrap = document.createElement('div');
+  wrap.className = 'cell';
+
+  const canvas = document.createElement('canvas');
+  const w = sprite.w + PAD * 2;
+  const h = sprite.h + PAD * 2;
+  wrap.append(canvas);
+
+  if (latin) {
+    const tag = document.createElement('span');
+    tag.className = 'cap';
+    tag.innerHTML = `<span class="la">${latin}</span>`;
+    wrap.append(tag);
+  }
+  if (caption) {
+    const cap = document.createElement('span');
+    cap.className = 'cap';
+    cap.textContent = caption;
+    wrap.append(cap);
+  }
+
+  const ctx = fitCanvas(canvas, { w, h, scale, dpr });
+  const g = painter(ctx, scale);
+  sprite.draw(ctx, PAD, h - PAD - 1, { scale, progress, painter: g });
+
+  /* Anything that registered a fire gets one still frame of it, so the altar
+     is not a bare slab in this row. Nothing registers while progress < 1, so
+     the unfinished ones correctly show no flame. */
+  for (const emitter of g.emitters) drawFlame(g, emitter, 0.4);
+
+  return wrap;
+}
+
+const spriteRow = document.getElementById('sprites');
+for (const entry of STAGE1) {
+  const sprite = SPRITES[entry.id];
+  if (!sprite) continue;
+  spriteRow.append(cell(sprite, {
+    latin: entry.latin,
+    caption: `${entry.dutch} — ${sprite.w}x${sprite.h}, ${entry.band}`,
+  }));
+}
+
+const progressRow = document.getElementById('progress');
+for (const entry of STAGE1) {
+  const sprite = SPRITES[entry.id];
+  if (!sprite) continue;
+  for (const p of [0.3, 0.6, 1]) {
+    progressRow.append(cell(sprite, {
+      scale: 3,
+      progress: p,
+      caption: `${entry.latin} ${Math.round(p * 100)}%`,
+    }));
+  }
+}
+
+document.getElementById('spike').append(
+  cell(spikeTemple, { scale: 3, caption: `throwaway — ${spikeTemple.w}x${spikeTemple.h}` }),
+);
+</script>
+
+</body>
+</html>
