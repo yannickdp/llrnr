@@ -165,6 +165,14 @@ recall. So every question is:
 4. **Reveal** — the correct answer, all its accepted alternatives, and the grammar
    form.
 
+**Nothing is ever added to step 2.** The gap is silent by design: all feedback,
+encouragement and celebration belongs to step 4 or to the Results screen, never to the
+gap. The clearest illustration is the coach that was designed for step 4 and then
+parked ([PLAN-ROMA.md](PLAN-ROMA.md) §9) — it was barred from step 2 outright, because
+a mascot is exactly the distraction the gap exists to remove, and a Latin motto on
+screen during a Latin retrieval task can leak the answer. That rule stands whether or
+not anything is ever added to step 4.
+
 Consequences:
 
 - **Typed recall is the default.** It is real retrieval, it is objective (no
@@ -318,6 +326,14 @@ Dutch meaning, so the reward screen teaches the subject it is rewarding. The cit
 lives at the top of the Home screen and is the app's single canonical picture of
 progress.
 
+**A short-arc counterpart was designed and parked** (PLAN-ROMA §9): a coach — a pixel
+Roman appearing on the reveal with one line of Flemish Dutch encouragement and a real
+Latin motto, *Errare humanum est* on a slip, *Summa cum laude* on a flawless one. It is
+kept, not discarded, and §9 holds the test that would revive it. The reason for parking
+it is worth remembering: the city already exists as the reward, XP and badges and
+stages already ship, and a second reward layer is a guess about what motivates her
+until she has actually used the app. Nothing below depends on the coach.
+
 - **XP is awarded for lasting progress, never per answer.** With micro-ladder
   repeats a word can be answered correctly four times in ten minutes, so paying per
   answer would make 5-second churn the optimal way to farm XP. Instead:
@@ -329,6 +345,11 @@ progress.
   visible city are two abstractions doing one job; the city wins, and the stage names
   are themselves vocabulary. Stages: *Roma Quadrata → Regnum → Res Publica →
   Imperium → Roma Aeterna*.
+- **One ladder, and only one.** Any future reward layer reads the stage rather than
+  inventing a scale of its own. The parked coach is the worked example: its own spec
+  proposes XP thresholds of 120/350/750/1600/3200, which at these rates would *all* be
+  passed inside two weeks, so its ranks were re-bound to the five stages instead
+  (PLAN-ROMA §9). A third progress scale is exactly what this bullet exists to prevent.
 - **Streak**: consecutive days with at least one finished lesson. One "freeze" per
   week so a single busy day does not wipe a 30-day streak — this matters a lot for
   morale.
@@ -344,8 +365,10 @@ progress.
 - **Progress is shown as position, not percentage.** Each word is a dot on the
   new → acquire → box 1–5 → learned track, so she can see exactly what moved today.
 - **The next reward is always visible.** The building she is working toward is drawn
-  as a dim silhouette in its empty plot with the XP remaining under it. A reward she
-  can see just out of reach motivates far more than a surprise.
+  in its plot **as a construction site that rises as XP accrues**, with the XP
+  remaining under it. A reward she can see just out of reach motivates far more than a
+  surprise — and a site that grows every lesson beats a silhouette that only changes
+  at the threshold (PLAN-ROMA §5).
 - **No punishment**: never lose XP. A wrong answer costs box position, and that is
   re-earnable in the same session by design.
 
@@ -567,12 +590,14 @@ malformed list is the single most maddening bug this app could have.
    two if she wants to drill a side. If a test is active and words are solid only one
    way, this screen recommends that direction and says why.
 3. **Lesson** — lesson time remaining, a small marker showing which way round the
-   current question is, the prompt, the anticipation ring, the answer field, then the
-   reveal with the grammar form and any other accepted translations. No back button
-   mid-lesson, just an X that asks to confirm.
+   current question is, the prompt, the anticipation ring (empty and silent), the
+   answer field, then the reveal with the grammar form and any other accepted
+   translations. No back button mid-lesson, just an X that asks to confirm.
 4. **Results** — words graduated, boxes climbed, XP, badge popups, and the words
    that dropped back. During a test run-up, the change in readiness ("+4 test-ready
-   today") is the top line.
+   today") is the top line. **This screen owns every celebration** — building unlocks
+   and stage crossings land here, never mid-lesson, and anything added later follows
+   the same rule.
 5. **Words** — chapters, each showing how its words spread across new → learned plus
    a **one-way** count with a button that starts a lesson in the missing direction; a
    toggle for which chapters are in the pool; and **Add list**: paste the text of a
@@ -630,6 +655,10 @@ llrnr/
       buildings.js           #   draw functions + character grids, one interface
       render.js              #   scene layers, integer scaling, layer cache, night
       roma.js                #   unlock logic against total XP
+    coach/                   # PARKED, unbuilt — the reveal-beat coach, PLAN-ROMA §9
+      coach.js               #   present() / setXp() / setWait(), mood + rank
+      characters.js          #   the six parametric Roman busts
+      messages.js            #   Dutch + Latin message data, no logic
   data/
     index.json               # available lists: id, file, rev
     latin-chapter-01.txt
@@ -697,6 +726,14 @@ the paste-in flow, so there is no second code path to keep in sync.
 Strictly downstream of item 14 — the city cannot unlock anything before XP exists.
 Its own build order stops at a useful point after four steps, so a half-finished
 catalogue is never a broken feature.
+
+**Phase 4c — the coach — parked** *(PLAN-ROMA §9)*
+
+The pixel Roman on the reveal beat: designed in full, demo working, deliberately not
+scheduled. Kept because it is cheap to revive — it needs item 14 and the 4b engine and
+nothing else — and because its design settled two rules the app keeps regardless (see
+§2.3 and the Results screen in §5). §9 carries the test that decides whether it is ever
+built: does she read the reveal, or tap straight through it?
 
 **Later, if wanted**
 

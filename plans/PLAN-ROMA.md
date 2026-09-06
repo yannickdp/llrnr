@@ -1,15 +1,27 @@
-# Roma Crescens — the pixel-art reward city
+# Roma Crescens — the pixel-art reward city and the coach
 
-A sub-plan of [PLAN.md](PLAN.md), covering the gamification reward: a pixel-art Rome
-that grows from a few huts on the Palatine to the imperial city as XP accumulates.
+A sub-plan of [PLAN.md](PLAN.md), covering the pixel-art half of the gamification:
 
-Read section 3 of the main plan first — the XP rules there are what drives this.
+- **The city** (§1–§8) — a Rome that grows from a few huts on the Palatine to the
+  imperial city as XP accumulates. The long-arc reward, paying out every few lessons.
+  **This is the one being built.**
+- **The coach** (§9) — a pixel Roman who reacts after every answer with Flemish Dutch
+  encouragement and a real Latin motto. The short-arc reward, paying out constantly.
+  **Parked**: fully designed and kept, deliberately not scheduled. §9 carries the
+  reasoning and the test that would revive it.
+
+Read section 3 of the main plan first — the XP rules there are what drives both.
 
 The rendering technique is specified in full in
-[pixel-art-plan.md](pixel-art-plan.md): engine primitives, palette, per-building
-recipes, day/night and fire systems. This document decides *what* Rome is and *when*
-it grows; that one decides *how* a Roman building is drawn. Where they overlap, that
-one is the authority on drawing code.
+[plan-roma-updates.md](plan-roma-updates.md): engine primitives, palette, per-building
+recipes, day/night and fire systems, and the coach (its §14). This document decides
+*what* Rome is and *when* it grows; that one decides *how* a Roman building is drawn.
+Where they overlap, that one is the authority on drawing code.
+
+> **[plan-roma-updates.md](plan-roma-updates.md) supersedes `pixel-art-plan.md`.** It
+> is the same document plus two things: the night-order fix folded into §6 below, and
+> the coach spec. `pixel-art-plan.md` is now redundant and can be deleted; if the two
+> ever disagree, the updates file wins.
 
 ---
 
@@ -92,7 +104,7 @@ is not decoration — it is what makes the scene composable. See §5.
 | 25 | Templum Iovis | tempel van Jupiter | 74 000 | hero |
 
 **`Arcus Triumphalis` is new**, added because the drawing spec ships a complete
-triumphal-arch recipe (pixel-art-plan §8.4) and it would be perverse to leave a
+triumphal-arch recipe (plan-roma-updates §8.4) and it would be perverse to leave a
 finished, instantly recognisable Roman monument on the floor. That makes the
 catalogue **25 buildings**, not 24, and pushes the capstone from 70 000 to 74 000 XP.
 Both numbers were always estimates — see below.
@@ -132,7 +144,7 @@ There are two ways to author a building from code, and this plan uses both.
 
 ### Mode A — a draw function (the default)
 
-Taken from [pixel-art-plan.md](pixel-art-plan.md): a building is a short function
+Taken from [plan-roma-updates.md](plan-roma-updates.md): a building is a short function
 built from five shared primitives, painting logical rectangles onto the canvas.
 
 ```js
@@ -218,7 +230,7 @@ Keeping that seam clean is worth more than any individual sprite.
 ## 4. The engine
 
 Shared code that every building leans on. Full listings and coordinates are in
-[pixel-art-plan.md](pixel-art-plan.md) §3–§4 and §7; this is what matters at plan
+[plan-roma-updates.md](plan-roma-updates.md) §3–§4 and §7; this is what matters at plan
 level.
 
 ### Five primitives, and that is all
@@ -231,17 +243,30 @@ level.
 | `bloom(…)` | translucent halo + lit core | every light source at night |
 | `arch(cx, topY, w, h, col)` | semicircle + shaft opening | **the** Roman primitive; six buildings are mostly this |
 
-`hash()` deserves a note: **all randomness is derived from coordinates**, never from
-`Math.random()` and never stored. The city therefore looks pixel-identical every time
-she opens the app, which is the difference between a place and a screensaver.
+`hash()` deserves a note: **all randomness in the city is derived from coordinates**,
+never from `Math.random()` and never stored. The city therefore looks pixel-identical
+every time she opens the app, which is the difference between a place and a
+screensaver.
 
-### One palette for the whole city
+**Scope that rule to the art.** It is a property the *rendered scene* needs, not a
+project-wide ban — the parked coach in §9 deliberately uses `Math.random()` to vary
+its messages, since one that says the same thing every time is worthless. Do not
+"fix" either to match the other.
+
+### One palette for the whole app
 
 The spec's warm-stone palette (marble / travertine / terracotta / water / foliage /
 fire, each in a lit / base / shadow triple) lives in **one module, imported by every
 building**. This is not a style preference, it is the mechanism that makes twenty-five
 independently authored buildings read as one city. A building that hardcodes a colour
 is a bug.
+
+The rule is written as "the whole app" rather than "the whole city" on purpose. The
+coach's demo carries its own `K` palette that overlaps this one heavily (skin, gold,
+bronze, red, laurel) with slightly different hexes — so **if §9 is ever revived, merge
+them rather than shipping both**: `palette.js` gains a figures/armour group and the
+coach imports from there. Two near-identical palettes is how the two halves of one app
+end up looking like two different games.
 
 The three-tone rule — lit tone upper-left, base, shadow lower-right — is what makes
 flat pixels read as volume, and it is the single highest-leverage habit in the whole
@@ -353,9 +378,31 @@ building implements; adding it after ten buildings exist means editing all ten.
 ## 6. Day and night
 
 The spec's lighting pass is a genuinely cheap win: one translucent dark rectangle over
-the finished scene, then a `bloom()` for each entry in `glowTargets` and `emitters`,
-then moon and twinkling stars. Perhaps sixty lines, because the buildings already
-registered their own lights in §4.
+the finished scene, then a `bloom()` for each entry in `glowTargets` and `emitters`.
+Perhaps sixty lines, because the buildings already registered their own lights in §4.
+
+### The night-order rule — get this right the first time
+
+**Moon and stars belong to the background sky, not the night pass.** Draw them
+immediately after `drawSky()` and *before* any building, so the buildings **occlude**
+them:
+
+```js
+drawSky()
+if (night) drawMoonStars(t)   // background — behind everything
+drawScene(t)                  // hills, buildings, props; registers lights
+if (night) nightPass(t)       // tint + blooms only. No moon, no stars.
+drawFlames(t); drawSmoke()
+```
+
+Drawn in the night pass instead, the moon floats *in front of* the Pantheon — a
+tell-tale amateur-hour bug, and one that is much cheaper to avoid than to notice
+later. The tint dims the already-drawn moon along with everything else, which is
+correct; **use `rgba(12,16,44,0.45)`**, not the 0.55 the first draft of the spec
+had, or the moon goes muddy.
+
+This ordering constraint is the reason the render pipeline is a fixed nine-step list
+in the spec rather than something each building decides for itself.
 
 **Drive it from the real clock, not a timer.** Homework happens in the evening; if the
 city is lit up with the Vesta flame and torchlit arcades when she opens it after
@@ -458,6 +505,10 @@ js/roma/
   buildings.js   # the draw functions and character grids, behind one interface
   render.js      # scene layers, integer scaling, layer cache, night pass, animation
   roma.js        # unlock logic against total XP, new-since-last-seen
+js/coach/         # PARKED, unbuilt — see §9
+  coach.js       # present() / setXp() / setWait(), mood + rank state
+  characters.js  # drawCharacter: torso, arms, head, headgear, gestures, flourish
+  messages.js    # MSG.good / .improve / .perfect and UNLOCK — Dutch + Latin, data only
 ```
 
 `render.js` must not know what a building *means*, `catalogue.js` must not know how
@@ -465,12 +516,213 @@ anything is drawn, and `buildings.js` must not know why anything unlocks. That i
 seam that lets the art source be swapped for a CC0 tileset if the hand-authored
 sprites disappoint.
 
+`messages.js` is **data, not code** — adding a motto must never mean touching a
+function. That is what makes the coach's content extensible by anyone, including her.
+
 ---
 
-## 9. Build order
+## 9. The coach — parked
 
-This is all downstream of the main plan's Phase 4 XP system — the city cannot unlock
-anything before XP exists. Slot it in as **Phase 4b**.
+> **Status: designed, kept, not being built.** Everything below stands as a finished
+> design; none of it is withdrawn. It is parked because the app is complete except for
+> getting it onto her phone, and both remaining reward features are guesses about what
+> motivates *her* until she has used it for real.
+>
+> **The test that decides it:** does she read the reveal, or tap straight through it?
+> Reading it → the coach costs nothing and should be built. Tapping through → it is
+> friction next to the part that actually teaches, and the city carries the reward
+> instead.
+>
+> Two things that make it cheap to revive: the art risk is already retired by a
+> working demo, and building it forces `engine.js` and `palette.js` into existence —
+> which is §10 step 1 regardless. Its one real weakness (novelty decay, below) is
+> fixable in `messages.js`, which is data, so writing more mottos is worth doing any
+> time and needs no code.
+>
+> The parts of this section that outlived the decision are the standing rules, and
+> they hold whether or not the coach is ever built: **nothing is added to the
+> anticipation gap**, and **the Results screen owns every celebration**.
+
+A pixel Roman bust who appears **after an answer**, says one encouraging line in
+Flemish Dutch, and pairs it with a real Latin motto and its translation. Spec:
+[plan-roma-updates.md](plan-roma-updates.md) §14; working demo:
+[roman-coach.html](roman-coach.html).
+
+The city and the coach are deliberately different instruments. The city pays out once
+every few lessons and is the long arc. The coach pays out **dozens of times per
+lesson**, which makes it the higher-value feature per line of code written — she will
+see the coach a hundred times before the second building appears. It is also the
+smaller build: one canvas, six characters, three message arrays, no composition
+problem.
+
+The mottos matter for the same reason the building names do. `Errare humanum est` on a
+wrong answer, `Repetitio mater studiorum` on a retry — twenty-odd real Latin phrases
+with Dutch translations, absorbed passively at the exact moment she is receptive. It is
+the §1 argument again, delivered more often.
+
+### The one real weakness: novelty decay
+
+The spec ships 21 messages — 8 praise, 8 encouragement, 5 perfect. At roughly fifteen
+appearances a lesson she has seen **the entire repertoire inside two lessons**. After a
+week the coach is decoration rather than reward.
+
+This is the honest asymmetry between the two instruments, and it is why the city is
+the one that got built first. The city keeps producing genuinely new things for a
+school year; the coach produces novelty for a week and then coasts on charm. Decay
+into pleasant texture is a survivable outcome — it is not the same as failure — but it
+should be expected rather than discovered.
+
+Mitigation is cheap and needs no code: `messages.js` is data, so sixty mottos instead
+of twenty-one buys a month instead of a week. It never becomes a year-long arc, and it
+should not be asked to be one.
+
+There is also a structural risk worth naming, separate from decay: **the coach is the
+only reward feature that touches the lesson loop.** The city sits safely on the Home
+screen. If anything in the reward layer is going to damage the part that actually
+teaches, it is this. The rules below exist to contain that, and they are not optional
+details.
+
+### The one hard rule: not in the anticipation gap
+
+The main plan's §2.3 gap — prompt, then four seconds of nothing, then she types — is
+**silence on purpose**: "this silence is the exercise, not dead time." The coach must
+never appear there. Three reasons, in order of severity:
+
+1. **A Latin motto on screen during a Latin retrieval task can leak the answer.** Even
+   with twenty fixed mottos this will eventually collide with the card being asked.
+2. Retrieval under a countdown is the exercise; a talking mascot is exactly the
+   distraction the gap exists to eliminate.
+3. The coach's own API proves it belongs elsewhere — every mood
+   (`good` / `improve` / `perfect`) is a *judgement on an answer already given*. There
+   is nothing for it to say before she answers.
+
+So the coach owns the **post-reveal beat**, and the spec's phrase "the Pimsleur wait"
+means that beat, not the anticipation gap. Concretely: prompt → gap (silent) → she
+types → reveal + coach together → next.
+
+Cheap safety check to write once: **skip any motto sharing a word with the current
+card.**
+
+### The timing arithmetic — do this before building it
+
+The demo defaults to `waitMs = 5000`. A ten-minute lesson has roughly sixty answers in
+it. Sixty five-second coach beats is **five minutes** — half the lesson spent watching
+a mascot. That default cannot ship, and the failure would be invisible in a demo where
+you press the buttons yourself.
+
+Three fixes, all needed:
+
+- **Concurrent, not additional.** The reveal step already exists and she already dwells
+  on it to read the answer, alternatives and grammar form. The coach renders *beside*
+  the reveal in that same beat and adds no time of its own.
+- **`waitMs` is a cap, not a wait.** ~1200 ms, and **any tap advances immediately**.
+  `onComplete` must be callable early; it must never be the only way forward.
+- **Not on every answer.** Sixty appearances a lesson is wallpaper, not a reward. Show
+  it always on a `perfect`, always on a drop-back, always on a rank-up — and otherwise
+  roughly one answer in four. Scarcity is the whole mechanism.
+
+If coach dwell ever does become significant, it should not eat the lesson's time box
+(PLAN §1.4); but keeping the beat this short is the simpler fix and the one to try
+first.
+
+### Mood mapping
+
+The coach's three moods map onto the answer outcomes the main plan already defines
+(§2.3, and `answer.js`):
+
+| Answer outcome | Mood | Why |
+|---|---|---|
+| Clean recall — first attempt, no hint, no almost | `perfect` | triggers the victory flourish |
+| Correct, but with a hint or a retry | `good` | credit without the fanfare |
+| **Almost** (Levenshtein 1) or wrong | `improve` | the reveal already says *"bijna! het is mater"*; the coach carries the encouragement, not the correction |
+
+Both *almost* and *wrong* map to `improve` on purpose: the specific diagnosis belongs
+to the reveal, and the coach's job is only to make an error survivable.
+
+### Ranks: bind them to the five stages, not to their own XP ladder
+
+The spec's rank ladder is `servus` 0 / `gladiator` 120 / `centurion` 350 /
+`magister` 750 / `senator` 1600 / `emperor` 3200 XP. **Those numbers cannot ship**, and
+this is the most important finding in this section.
+
+At the main plan's XP rates — 400–600 XP a lesson, four lessons a week — 3 200 XP is
+reached in **about eight lessons**. She would be Imperator inside two weeks, and then
+the coach never changes again for the remaining thirty-odd weeks of the school year. A
+progression that completes in 5% of its lifetime is not a progression.
+
+Worse, it is a *third* progress ladder in an app that §1 already trimmed to one. XP
+level → replaced by stages. City buildings → driven by stages. Coach ranks must not
+reintroduce an independent scale.
+
+So **the coach's rank is the city's stage.** Six ranks fit six states exactly:
+
+| Rank | City state | From XP |
+|---|---|---|
+| **Servus** | before the first building | 0 |
+| **Gladiator** | Roma Quadrata | 200 |
+| **Centurio** | Regnum | 4 000 |
+| **Magister** | Res Publica | 14 000 |
+| **Senator** | Imperium | 30 000 |
+| **Imperator** | Roma Aeterna | 52 000 |
+
+`Servus` occupies the first lesson only, which is the right feel: she starts as
+nobody. `Imperator` arrives with the Colosseum, at the point the city becomes
+imperial — the rank and the skyline say the same thing, which is the entire reason to
+collapse the two ladders. And retuning the XP table (§2) automatically retunes the
+coach, for free, because there is only one set of numbers.
+
+### Rank-up belongs on the Results screen
+
+§7 already fixed the rule: celebrations happen on the Results screen, *never*
+mid-lesson. The spec's §14.9 does the opposite — it detects the threshold inside
+`present({xp})`, so a rank-up fires in the middle of a lesson, and collides with the
+stage-crossing moment §7 already schedules for the same event.
+
+The spec hands us the fix in its own API. Use it:
+
+- **`setXp(xp)` once at lesson start.** It updates the rank *silently*, which is
+  exactly what is wanted — the coach's identity is then fixed for the whole lesson.
+- **Never pass `xp` to `present()` during a lesson.** Mood only. No threshold
+  detection, no mid-lesson fanfare.
+- **The Results screen owns the rank-up**, shown together with the stage crossing and
+  the building unlock, because they are now one event by construction.
+
+### Two smaller corrections to the spec
+
+- **One coach per lesson, not per answer.** `charForXp()` rerolls on every `present()`,
+  so the character can change between consecutive questions. A mascot that shape-shifts
+  mid-lesson is unsettling and reads as a bug. Roll once at lesson start; keep the
+  growing-pool idea (every rank she has earned stays eligible, higher ranks favoured)
+  as the *lesson-start* draw.
+- **The coach is text, not speech.** §14 says "spoken feedback", but the demo renders
+  HTML text and the main plan keeps audio off the critical path. Text for v1; the
+  message bubble is HTML rather than pixels precisely so it stays readable and
+  translatable. Dutch `speechSynthesis` voices do exist on iOS, so reading the motto
+  aloud is a plausible **Later** item (§11) — the coach must be fully useful silent.
+
+Two things the demo already gets right and should be kept: `lang="nl-BE"` on the
+document, which matters for hyphenation now and for voice selection later; and
+`prefers-reduced-motion` honoured with a static sprite while the wait bar still
+counts. Do drop the demo's reduced-motion `setTimeout(…, 200)` loop, though — under
+reduced motion, render once and let CSS animate the bar. §8's rule applies: a loop
+nobody is looking at is just battery.
+
+---
+
+## 10. Build order
+
+This is all downstream of the main plan's Phase 4 XP system — neither the city nor the
+coach can react before XP exists. Slot the city in as **Phase 4b**; the coach is
+**Phase 4c and is parked** (§9).
+
+**Before either: ship what exists.** The app is complete through the main plan's Phase
+4.5 — XP, stages, streak, badges, sounds, the word track, offline, export/import,
+settings. What it has never had is a real word list and a real user. The city and the
+coach are both guesses about what motivates her, and one afternoon of watching her use
+the app is worth more than either plan. Get it onto her phone with her chapter 1
+first; build the city second; revisit the coach only against the test in §9.
+
+### The city
 
 1. **Engine and renderer skeleton** — the five primitives, the palette module, the
    two registries, canvas with integer scaling and dpr sizing, one hardcoded sprite,
@@ -490,16 +742,37 @@ anything before XP exists. Slot it in as **Phase 4b**.
    aqueduct, colosseum, arch — finishing with `Templum Iovis`.
 7. **Life and light** — citizens scaling with words learned, smoke, a boat, birds,
    water shimmer, and the day/night pass driven by the real clock, all inside the
-   suspendable loop.
-8. **Retune the XP table** against a week of real lesson data.
+   suspendable loop. Get the night-order rule right (§6).
+8. **Retune the XP table** against a week of real lesson data — which would retune the
+   coach's ranks at the same time, since §9 gave them no numbers of their own.
 
 Stopping after step 4 still leaves something worth having: a small city that grows for
 the first few weeks. Everything after that is extending a working thing, so a
 half-finished catalogue is never a broken feature.
 
+### The coach *(parked — kept for revival, see §9)*
+
+Not scheduled. Recorded in build order so that picking it up is a matter of starting at
+step 1 rather than re-deriving the plan. It needs city step 1 and nothing else.
+
+1. **One character, one mood** — `servus`, drawn from the shared engine and palette,
+   in the Results/reveal beat. Prove the bust reads at phone size before drawing six
+   of them.
+2. **The messages** as data: `MSG.good` / `.improve` / `.perfect`, wired to the answer
+   outcomes in §9's mood table, with the motto-overlap check. This is the point the
+   coach starts being worth having.
+3. **Placement and timing** — beside the reveal, ~1200 ms cap, tap-to-advance, and the
+   one-in-four appearance rule. **Run a real lesson and time it** before adding
+   characters: this is where the five-minutes-of-mascot failure shows up.
+4. **The remaining five characters** and the growing pool, drawn once per lesson.
+5. **The flourish** on `perfect`, and the rank-up celebration on the Results screen
+   alongside the stage crossing.
+
+Stopping after coach step 2 already leaves something better than a silent reveal.
+
 ---
 
-## 10. Later, if it lands
+## 11. Later, if it lands
 
 - **Let her choose** between two or three options at some unlock points. Real agency,
   at the cost of composition control — worth it once the fixed order has proven the
@@ -513,3 +786,10 @@ half-finished catalogue is never a broken feature.
 - **A ruin mode for a neglected city** — the `facadeTop` machinery from §5 run
   backwards. Tempting, and **rejected**: the main plan's rule is that nothing is ever
   taken away, and a decaying city is a punishment. Noted here so it stays rejected.
+- **The coach reads the motto aloud** via `speechSynthesis` in `nl-BE`, on the reveal
+  only — never during the anticipation gap. Rides along with the main plan's existing
+  speech item, and needs the same iOS unlock-on-tap trick.
+- **More mottos, and let her add them.** `messages.js` is data; a paste-in box for her
+  own favourites costs almost nothing and makes the coach hers.
+- **Bake the coach sprites** with the §8 `toDataURL()` trick if six characters ever
+  cost more per frame than they are worth. Measure first.

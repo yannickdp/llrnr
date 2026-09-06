@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="nl-BE">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Romeinse Coach — Latijn leren</title>
+<style>
+  :root{ --marble:#f4efe2; --ink:#33291c; --line:#c9b98f; --gold:#a9741f; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:#1d2436; padding:18px; font-family:system-ui,"Segoe UI",sans-serif; }
+  .card{ width:100%; max-width:420px; display:flex; flex-direction:column; gap:12px; }
+  .bubble{ position:relative; background:var(--marble); border:2px solid var(--line); border-radius:14px;
+    padding:14px 16px; color:var(--ink); box-shadow:0 10px 30px rgba(0,0,0,.35); }
+  .bubble::after{ content:""; position:absolute; left:64px; bottom:-11px; width:18px; height:18px;
+    background:var(--marble); border-right:2px solid var(--line); border-bottom:2px solid var(--line); transform:rotate(45deg); }
+  .who{ font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); font-weight:700; }
+  .msg{ font-size:19px; font-weight:650; margin:3px 0 0; line-height:1.25; }
+  .latin{ margin-top:10px; padding-top:9px; border-top:1px dashed var(--line); }
+  .latin .la{ font-family:Georgia,"Times New Roman",serif; font-style:italic; font-size:16px; color:var(--gold); }
+  .latin .tr{ font-size:13px; opacity:.75; margin-top:1px; }
+  .latin.hidden{ display:none; }
+  canvas{ width:100%; max-width:420px; height:auto; image-rendering:pixelated;
+    background:linear-gradient(#cfe3ef,#eaf3f8); border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.35); }
+  .wait{ background:#2a3450; border:1px solid #3c4870; border-radius:10px; padding:8px 10px; color:#dfe6f5; }
+  .wait .lbl{ font-size:12px; display:flex; justify-content:space-between; margin-bottom:5px; opacity:.85; }
+  .track{ height:8px; background:#10162a; border-radius:6px; overflow:hidden; }
+  .fill{ height:100%; width:0%; background:linear-gradient(90deg,#c9633f,#e6b64a); transition:width .1s linear; }
+  .rank{ color:#e6d3a0; font-size:13px; text-align:center; }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  button{ font:inherit; flex:1; min-width:96px; color:#f0ead9; background:#2a3450; border:1px solid #3c4870;
+    padding:10px 12px; border-radius:9px; cursor:pointer; }
+  button:hover{ background:#36426a; }
+  button.good{ background:#2e6b3f; border-color:#3f8a52; }
+  button.improve{ background:#8a4b2f; border-color:#b5633f; }
+  button.perfect{ background:#8a6b18; border-color:#c9a13a; }
+  label{ display:flex; align-items:center; gap:6px; color:#cfd6e6; font-size:13px; }
+  input[type=range]{ width:100%; }
+  button:focus-visible,input:focus-visible{ outline:2px solid #ffd67a; outline-offset:2px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="bubble">
+      <div class="who" id="who">Servus</div>
+      <div class="msg" id="msg">Salve! Klaar om Latijn te leren?</div>
+      <div class="latin hidden" id="latinBox">
+        <div class="la" id="la"></div>
+        <div class="tr" id="tr"></div>
+      </div>
+    </div>
+
+    <canvas id="c" width="384" height="384"></canvas>
+
+    <div class="wait">
+      <div class="lbl"><span>Nieuw woord komt eraan…</span><span id="count">5s</span></div>
+      <div class="track"><div class="fill" id="fill"></div></div>
+    </div>
+
+    <div class="rank" id="rank">Rang: Servus (0 XP)</div>
+    <div class="row">
+      <label style="flex:1">XP&nbsp;<input type="range" id="xp" min="0" max="4000" value="0"></label>
+      <button id="bXp" style="flex:0 0 auto;min-width:auto">+250 XP</button>
+    </div>
+
+    <div class="row">
+      <button class="good" id="bGood">👍 Goed</button>
+      <button class="improve" id="bImp">💪 Kom op</button>
+      <button class="perfect" id="bPerf">🏆 Perfect</button>
+    </div>
+    <div class="row">
+      <button id="bNext">↻ Volgende</button>
+      <label><input type="checkbox" id="auto" checked> Automatisch (wachttijd)</label>
+    </div>
+  </div>
+
+<script>
+/* ============================================================
+   ROMAN COACH — motivational Roman characters (Flemish Dutch)
+   Host-app API:
+     romanCoach.present({ mood:'good'|'improve'|'perfect', xp, waitMs, onComplete })
+     romanCoach.setXp(xp)      // sets the learner's XP -> chooses the character rank
+     romanCoach.setWait(ms)
+   Character rank scales with XP (Servus -> ... -> Imperator).
+   'perfect' triggers a victory flourish (both arms up + gold confetti).
+   ============================================================ */
+const GRID=64, SCALE=6;
+const cvs=document.getElementById("c"), ctx=cvs.getContext("2d");
+ctx.imageSmoothingEnabled=false;
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function P(x,y,w,h,col){ if(!col)return; ctx.fillStyle=col;
+  ctx.fillRect(Math.round(x*SCALE),Math.round(y*SCALE),Math.round(w*SCALE),Math.round(h*SCALE)); }
+function bloom(lx,ly,lw,lh,color,k){ const x=lx*SCALE,y=ly*SCALE,w=lw*SCALE,h=lh*SCALE,s=SCALE;
+  ctx.save(); ctx.globalAlpha=0.16*k; ctx.fillStyle=color; ctx.fillRect(x-3*s,y-3*s,w+6*s,h+6*s);
+  ctx.globalAlpha=0.24*k; ctx.fillRect(x-1.5*s,y-1.5*s,w+3*s,h+3*s); ctx.restore(); }
+
+const K={
+  skin:"#e0ac7e", skinLite:"#f0c79a", skinShade:"#c68b5e",
+  hairBrown:"#5a3a22", hairDark:"#33230f", hairGrey:"#bcb4a4", hairGreyD:"#8f887c",
+  eye:"#3a2a1a", white:"#f6f1e6", mouth:"#8a3b2f",
+  iron:"#b9c0c9", ironD:"#7f8894", ironL:"#e0e6ec",
+  bronze:"#c8912f", bronzeD:"#8f6320", gold:"#e6b64a", goldL:"#ffd76b",
+  red:"#c0392b", redD:"#8f2c22",
+  tunic:"#efe7d6", tunicD:"#d5cab2",
+  toga:"#f4efe4", togaD:"#dcd3c2", purple:"#6d2c72", purpleL:"#8c3d92",
+  leather:"#8a5a34", leatherD:"#5f3c20",
+  scroll:"#efe2be", scrollD:"#d3c398",
+  drab:"#94855f", drabD:"#6f6244",
+  laurel:"#3f8f45", laurelL:"#5cb35a",
+  auraGood:"#8fe0a0", auraImp:"#ffce74", bg1:"#cfe3ef",
+};
+const NAMES={servus:"Servus", gladiator:"Gladiator", centurion:"Centurio", magister:"Magister", senator:"Senator", emperor:"Imperator"};
+
+/* XP -> rank ladder (low to high). Imperator only at the very top. */
+const TIERS=[
+  {min:0,    type:"servus"},
+  {min:120,  type:"gladiator"},
+  {min:350,  type:"centurion"},
+  {min:750,  type:"magister"},
+  {min:1600, type:"senator"},
+  {min:3200, type:"emperor"},
+];
+function tierIndex(xp){ let i=0; for(let k=0;k<TIERS.length;k++) if(xp>=TIERS[k].min) i=k; return i; }
+function charForXp(xp){ const top=tierIndex(xp);
+  if(top===0 || Math.random()<0.6) return TIERS[top].type;      // usually your current rank
+  return TIERS[Math.floor(Math.random()*(top+1))].type;         // sometimes a lower rank, for variety
+}
+
+/* ---------- sprite helpers ---------- */
+function hairColorFor(type){ return type==="magister"?K.hairGrey : type==="servus"?K.hairDark : K.hairBrown; }
+function sleeveOf(t){ return t==="magister"?K.tunic : t==="centurion"?K.red : t==="emperor"?K.purpleL : t==="senator"?K.toga : t==="servus"?K.drab : K.skin; }
+function sleeveDOf(t){ return t==="magister"?K.tunicD : t==="centurion"?K.redD : t==="emperor"?K.purple : t==="senator"?K.togaD : t==="servus"?K.drabD : K.skinShade; }
+
+function torso(type){
+  const baseMap={magister:K.tunic,senator:K.toga,emperor:K.purple,servus:K.drab,gladiator:K.skin,centurion:K.iron};
+  const liteMap={magister:K.tunic,senator:K.toga,emperor:K.purpleL,servus:K.drab,gladiator:K.skinLite,centurion:K.ironL};
+  const darkMap={magister:K.tunicD,senator:K.togaD,emperor:K.purple,servus:K.drabD,gladiator:K.skinShade,centurion:K.ironD};
+  const base=baseMap[type],lite=liteMap[type],dark=darkMap[type];
+  for(let y=31;y<=60;y++){ const tt=(y-31)/29, L=Math.round(24-tt*3), R=Math.round(40+tt*3);
+    for(let x=L;x<=R;x++){ let c=base; if(x<=L+1)c=lite; if(x>=R-1)c=dark; P(x,y,1,1,c);} }
+  P(30,29,4,3,K.skinShade); P(30,29,4,1,K.skin);
+  if(type==="centurion"){ for(let y=34;y<=58;y+=3)for(let x=24;x<=40;x++)P(x,y,1,1,(x+y)%2?K.ironD:K.iron);
+    P(21,32,6,3,K.ironL); P(37,32,6,3,K.ironL); P(22,33,3,20,K.red); }
+  else if(type==="senator"){ for(let y=33;y<=58;y++){const x=Math.round(27+(y-33)*0.4); P(x,y,2,1,K.purple);} }
+  else if(type==="emperor"){ P(24,32,17,1,K.goldL); P(30,34,4,3,K.gold); P(31,35,2,1,K.goldL); }
+  else if(type==="magister"){ for(let y=34;y<=58;y+=4)P(26,y,10,1,K.tunicD); }
+  else if(type==="servus"){ for(let y=31;y<=38;y++){ const L=Math.round(24-(y-31)/29*3); const wBare=Math.max(0,7-(y-31));
+      for(let x=L;x<L+wBare;x++) P(x,y,1,1,x===L?K.skinLite:K.skin); } P(24,50,15,1,K.leatherD); }
+  else if(type==="gladiator"){ P(30,40,5,1,K.skinShade); P(31,41,3,1,K.skinShade);
+    P(23,47,18,3,K.leather); P(23,47,18,1,K.leatherD); for(let x=24;x<=40;x+=2)P(x,48,1,1,K.bronze);
+    P(21,31,6,4,K.iron); P(21,31,6,1,K.ironL); }
+}
+
+function head(type,mood,t,talk){
+  const bl=!reduce && Math.sin(t*1.3)>0.94;
+  P(26,16,12,13,K.skin); P(26,16,12,1,K.skinLite); P(37,17,1,12,K.skinShade);
+  P(25,22,1,2,K.skin); P(38,22,1,2,K.skin);
+  const ey=22;
+  if(bl){ P(29,ey,2,1,K.skinShade); P(34,ey,2,1,K.skinShade); }
+  else { P(29,ey,1,1,K.white);P(30,ey,1,1,K.eye); P(34,ey,1,1,K.white);P(35,ey,1,1,K.eye); }
+  const hc=hairColorFor(type);
+  if(mood==="improve"){ P(29,20,2,1,hc); P(34,20,2,1,hc); } else { P(29,21,2,1,hc); P(34,21,2,1,hc); }
+  P(32,23,1,2,K.skinShade);
+  const my=26;
+  if(talk && !reduce && Math.sin(t*13)>0){ P(31,my,3,2,K.mouth); }
+  else if(mood==="good"||mood==="perfect"){ P(30,my,1,1,K.mouth); P(31,my+1,3,1,K.mouth); P(34,my,1,1,K.mouth); }
+  else { P(31,my,3,1,K.mouth); }
+}
+
+function headgear(type,t){
+  const hc=hairColorFor(type);
+  if(type==="magister"){ P(25,16,2,9,K.hairGrey); P(37,16,2,9,K.hairGrey); P(26,15,12,1,K.hairGreyD);
+    P(28,28,8,2,K.hairGreyD); P(29,29,6,1,K.hairGrey); }
+  else if(type==="servus"){ P(25,15,14,2,K.hairDark); P(25,16,2,7,K.hairDark); P(37,16,2,7,K.hairDark); }
+  else if(type==="centurion"){ P(24,13,16,5,K.iron); P(24,13,16,1,K.ironL); P(24,17,16,1,K.bronze);
+    P(24,18,2,6,K.iron); P(38,18,2,6,K.iron);
+    const sway=reduce?0:Math.round(Math.sin(t*2.5)); P(23+sway,9,18,4,K.red);
+    for(let x=24;x<=40;x+=2)P(x+sway,8,1,2,K.redD); }
+  else if(type==="gladiator"){ P(24,13,16,4,K.iron); P(24,13,16,1,K.ironL); P(23,16,18,1,K.bronze);
+    P(24,17,2,7,K.iron); P(38,17,2,7,K.iron); P(32,17,1,4,K.ironD);
+    P(30,8,4,5,K.red); P(31,7,2,1,K.redD); for(let y=9;y<=12;y++)P(29,y,1,1,K.redD); }
+  else { P(25,15,14,2,hc); P(25,16,2,8,hc); P(37,16,2,8,hc);
+    const lc=type==="emperor"?K.gold:K.laurel, ll=type==="emperor"?K.goldL:K.laurelL;
+    for(let x=25;x<=39;x+=2){ P(x,14,1,1,lc); P(x+1,13,1,1,ll); }
+    P(24,15,1,2,lc); P(39,15,1,2,lc); if(type==="emperor")P(31,12,2,1,K.goldL); }
+}
+
+function handG(hx,hy,kind){
+  P(hx,hy+2,3,3,K.skin); P(hx,hy+2,1,3,K.skinLite);
+  if(kind==="thumb"){ P(hx-1,hy+1,1,2,K.skin); P(hx-1,hy+1,1,1,K.skinLite); }
+  else if(kind==="index"){ P(hx+1,hy-2,1,3,K.skin); P(hx+1,hy-2,1,1,K.skinLite); }
+  else { P(hx,hy-1,3,1,K.skin); P(hx,hy-2,1,1,K.skin); P(hx+2,hy-2,1,1,K.skin); }
+}
+function raisedArm(x,type,kind){
+  if(type==="gladiator"){ for(let y=24;y<=33;y++)P(x,y,3,1,(y%2)?K.ironD:K.iron); P(x,24,3,1,K.ironL); }
+  else { const sl=sleeveOf(type), sd=sleeveDOf(type); P(x,24,3,10,sl); P(x,24,1,10,sd); P(x,24,3,1,sd); }
+  handG(x,18,kind);
+}
+function arms(type,mood,t,flourish){
+  const sl=sleeveOf(type), sd=sleeveDOf(type);
+  const bob=reduce?0:Math.round(Math.abs(Math.sin(t*3)));
+  if(flourish){
+    const b2=reduce?0:Math.round(Math.abs(Math.sin(t*10))*1.5);
+    ctx.save(); ctx.translate(0,-(bob+b2)*SCALE);
+    raisedArm(21,type,"open");
+    if(type==="gladiator"){ for(let y=24;y<=33;y++)P(40,y,3,1,(y%2)?K.ironD:K.iron); P(40,24,3,1,K.ironL); }
+    else { P(40,24,3,10,sl); P(42,24,1,10,sd); }
+    handG(40,18,"open"); ctx.restore(); return;
+  }
+  P(41,34,3,16,sl); P(43,34,1,16,sd); P(42,49,3,3,K.skin);
+  if(type==="magister"){ P(44,45,2,9,K.scroll); P(44,45,1,9,K.scrollD); P(43,44,4,1,K.leather); P(43,54,4,1,K.leather); }
+  else if(type==="centurion"){ P(45,32,1,20,K.leather); }
+  else if(type==="gladiator"){ P(42,49,4,1,K.bronze); P(43,50,2,9,K.iron); }
+  ctx.save(); ctx.translate(0,-bob*SCALE);
+  raisedArm(21,type, mood==="improve"?"index":"thumb");
+  ctx.restore();
+}
+
+function drawCharacter(type,mood,t,talk,flourish){
+  const breathe=reduce?0:Math.round(Math.sin(t*2));
+  const bounce=(flourish&&!reduce)?Math.round(Math.abs(Math.sin(t*8))*2):0;
+  const aura=flourish?K.goldL:(mood==="good"||mood==="perfect"?K.auraGood:K.auraImp);
+  bloom(30,18,6,10,aura,(flourish?0.9:0.5)+0.2*Math.sin(t*3));
+  ctx.save(); ctx.translate(0,(breathe-bounce)*SCALE);
+  torso(type); arms(type,mood,t,flourish); head(type,mood,t,talk); headgear(type,t);
+  ctx.restore();
+  P(24,61,17,1,"#b9c6cf");
+}
+
+/* ---------- victory flourish particles ---------- */
+let flourishUntil=0, parts=[];
+function startFlourish(){ flourishUntil=performance.now()/1000+2.0;
+  const cols=[K.gold,K.goldL,K.laurelL,K.red];
+  for(let i=0;i<26;i++){ const a=Math.random()*Math.PI*2, sp=8+Math.random()*14;
+    parts.push({x:32,y:24,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-6,age:0,life:1.4+Math.random()*0.8,c:cols[i%4]}); } }
+function updateParts(dt){ for(const p of parts){ p.age+=dt; p.vy+=22*dt; p.x+=p.vx*dt; p.y+=p.vy*dt; }
+  parts=parts.filter(p=>p.age<p.life); }
+function drawParts(){ for(const p of parts){ const k=Math.max(0,1-p.age/p.life);
+  ctx.save(); ctx.globalAlpha=k; P(p.x,p.y,1,1,p.c); ctx.restore(); } }
+
+/* ---------- messages (Flemish Dutch + Latin) ---------- */
+const MSG={
+  good:[
+    {nl:"Uitstekend! Zo ken ik je."},
+    {nl:"Schitterend gedaan!", la:"Veni, vidi, vici", tr:"Ik kwam, zag en overwon."},
+    {nl:"Perfect — Caesar zou trots zijn."},
+    {nl:"Knap werk, blijf zo doorgaan!", la:"Per aspera ad astra", tr:"Door tegenspoed naar de sterren."},
+    {nl:"Je Latijn wordt sterk!", la:"Fortes fortuna adiuvat", tr:"Het geluk helpt de dapperen."},
+    {nl:"Allez, goe bezig!"},
+    {nl:"Magnifiek uitgesproken!", la:"Carpe diem", tr:"Pluk de dag."},
+    {nl:"Een echte Romein waardig!"},
+  ],
+  improve:[
+    {nl:"Kom op, je kan dit!", la:"Errare humanum est", tr:"Vergissen is menselijk."},
+    {nl:"Bijna! Probeer nog eens.", la:"Repetitio mater studiorum", tr:"Herhaling is de moeder van de studie."},
+    {nl:"Niet opgeven — oefening baart kunst!", la:"Nulla dies sine linea", tr:"Geen dag zonder oefening."},
+    {nl:"Rustig aan, je geraakt er wel.", la:"Festina lente", tr:"Haast je langzaam."},
+    {nl:"Concentreer je, je bent er bijna."},
+    {nl:"Allez, doorzetten!", la:"Non scholae sed vitae discimus", tr:"We leren niet voor school, maar voor het leven."},
+    {nl:"Nog een poging, discipulus!"},
+    {nl:"Blijf oefenen, het komt wel goed."},
+  ],
+  perfect:[
+    {nl:"PERFECT! Vlekkeloos gedaan!", la:"Summa cum laude", tr:"Met de hoogste lof."},
+    {nl:"Onberispelijk! Een god waardig.", la:"Ad astra!", tr:"Naar de sterren!"},
+    {nl:"Foutloos! Jupiter lacht.", la:"Victoria!", tr:"Overwinning!"},
+    {nl:"Meesterlijk! Impeccabel gedaan."},
+    {nl:"Zo doet een keizer het!", la:"Aquila non capit muscas", tr:"De adelaar vangt geen vliegen."},
+  ],
+};
+
+/* One-time rank-up messages, shown when XP crosses a tier threshold. */
+const UNLOCK={
+  gladiator:{nl:"Je bent nu Gladiator! Vecht voor je Latijn.", la:"Ad arenam!", tr:"Naar de arena!"},
+  centurion:{nl:"Rang behaald: Centurio! Leid je woorden.", la:"Sequere me", tr:"Volg mij."},
+  magister:{nl:"Je bent nu Magister! Ware wijsheid wacht.", la:"Scientia potentia est", tr:"Kennis is macht."},
+  senator:{nl:"Verheven tot Senator! De stad luistert.", la:"Pro bono publico", tr:"Voor het algemeen belang."},
+  emperor:{nl:"Ave, Imperator! Je heerst over het Latijn.", la:"Alea iacta est", tr:"De teerling is geworpen."},
+};
+
+/* ---------- state + wait timer ---------- */
+let cur={type:"servus",mood:"good"}, currentXp=0, lastTier=0;
+let talkUntil=0, waitMs=5000, waitStart=0, waiting=false, onDone=null, lastMsg=-1;
+function pick(arr,not){ let i; do{ i=Math.floor(Math.random()*arr.length); }while(arr.length>1&&i===not); return i; }
+
+function unlockCelebration(ti,opts={}){
+  const type=TIERS[ti].type, m=UNLOCK[type]||MSG.perfect[0];
+  cur={type,mood:"perfect"};
+  document.getElementById("who").textContent=NAMES[type];
+  document.getElementById("msg").textContent=m.nl;
+  const lb=document.getElementById("latinBox");
+  if(m.la){ lb.classList.remove("hidden"); document.getElementById("la").textContent="« "+m.la+" »"; document.getElementById("tr").textContent=m.tr; }
+  else lb.classList.add("hidden");
+  document.querySelector(".bubble").style.borderColor="#d8b24a";
+  talkUntil=performance.now()/1000+1.8;
+  startFlourish(); startFlourish();          // extra confetti for a rank-up
+  if(opts.waitMs) waitMs=opts.waitMs;
+  onDone=opts.onComplete||null;
+  waitStart=performance.now(); waiting=true;
+}
+function present(opts={}){
+  const mood=opts.mood||"good";
+  if(typeof opts.xp==="number"){
+    const prev=lastTier; currentXp=opts.xp; updateRank(); document.getElementById("xp").value=currentXp;
+    const nt=tierIndex(currentXp);
+    if(nt>prev){ lastTier=nt; return unlockCelebration(nt,opts); }   // crossed a threshold
+    lastTier=nt;
+  }
+  const type=charForXp(currentXp);
+  const list=MSG[mood]||MSG.good;
+  const mi=pick(list,lastMsg); lastMsg=mi; const m=list[mi];
+  cur={type,mood};
+  document.getElementById("who").textContent=NAMES[type];
+  document.getElementById("msg").textContent=m.nl;
+  const lb=document.getElementById("latinBox");
+  if(m.la){ lb.classList.remove("hidden"); document.getElementById("la").textContent="« "+m.la+" »"; document.getElementById("tr").textContent=m.tr; }
+  else lb.classList.add("hidden");
+  document.querySelector(".bubble").style.borderColor = mood==="perfect"?"#d8b24a" : mood==="good"?"#7bbf88" : "#e0a15f";
+  talkUntil=performance.now()/1000+1.4;
+  if(mood==="perfect"||opts.perfect) startFlourish();
+  if(opts.waitMs) waitMs=opts.waitMs;
+  onDone=opts.onComplete||null;
+  waitStart=performance.now(); waiting=true;
+}
+function setWait(ms){ waitMs=ms; }
+function setXp(xp){ currentXp=xp; lastTier=tierIndex(xp); updateRank(); document.getElementById("xp").value=xp; }
+function updateRank(){ document.getElementById("rank").textContent="Rang: "+NAMES[TIERS[tierIndex(currentXp)].type]+" ("+currentXp+" XP)"; }
+
+/* ---------- loop ---------- */
+const fill=document.getElementById("fill"), count=document.getElementById("count");
+let lastNow=performance.now();
+function stepWait(now){ if(!waiting)return;
+  const el=now-waitStart, p=Math.min(1,el/waitMs);
+  fill.style.width=(p*100)+"%"; count.textContent=Math.max(0,Math.ceil((waitMs-el)/1000))+"s";
+  if(p>=1){ waiting=false; const cb=onDone; if(cb)cb();
+    if(document.getElementById("auto").checked){ const r=Math.random();
+      present({mood: r<0.15?"perfect": r<0.6?"good":"improve"}); } } }
+
+function frame(now){ const dt=Math.min(0.05,(now-lastNow)/1000); lastNow=now; const t=now/1000;
+  ctx.fillStyle=K.bg1; ctx.fillRect(0,0,cvs.width,cvs.height);
+  const flo=t<flourishUntil;
+  drawCharacter(cur.type,cur.mood,t,t<talkUntil,flo);
+  updateParts(dt); drawParts();
+  stepWait(now); requestAnimationFrame(frame);
+}
+function tickReduced(){ const now=performance.now();
+  ctx.fillStyle=K.bg1; ctx.fillRect(0,0,cvs.width,cvs.height);
+  drawCharacter(cur.type,cur.mood,0,false, performance.now()/1000<flourishUntil);
+  stepWait(now); setTimeout(tickReduced,200); }
+
+/* ---------- controls + public API ---------- */
+document.getElementById("bGood").onclick=()=>present({mood:"good"});
+document.getElementById("bImp").onclick =()=>present({mood:"improve"});
+document.getElementById("bPerf").onclick=()=>present({mood:"perfect"});
+document.getElementById("bNext").onclick=()=>present({mood:cur.mood});
+document.getElementById("xp").oninput=(e)=>{ currentXp=+e.target.value; updateRank(); };
+document.getElementById("xp").onchange=(e)=>present({mood:cur.mood, xp:+e.target.value});
+document.getElementById("bXp").onclick=()=>present({mood:"good", xp:Math.min(4000,currentXp+250)});
+window.romanCoach={ present, setWait, setXp, addXp:(d)=>present({mood:"good", xp:Math.min(4000,currentXp+(d||0))}) };
+
+updateRank();
+present({mood:"good"});
+if(reduce) tickReduced(); else requestAnimationFrame(frame);
+</script>
+</body>
+</html>

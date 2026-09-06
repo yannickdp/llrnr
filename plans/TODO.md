@@ -7,6 +7,9 @@ Mark `[x]` as things land. Section references point at the plan text that define
 Phases are ordered but not strictly gated: Phase 3 is the differentiator and must not
 slip behind Phase 4.
 
+**Phase 4c (the coach) is parked** — designed, kept, deliberately not scheduled. See
+its own note for the test that decides whether it ever gets built.
+
 **Standing rule — the app speaks Dutch.** Every user-visible string is Dutch: screens,
 buttons, badge names, the readiness panel, error messages and the parser's
 rejected-line reasons. Code stays English (identifiers, card fields, comments, these
@@ -247,13 +250,13 @@ screen inherits this without saying so again.
 
 ## Phase 4b — the reward city *(downstream of 4.1; see [PLAN-ROMA.md](PLAN-ROMA.md))*
 
-Drawing technique is specified in [pixel-art-plan.md](pixel-art-plan.md) — engine
+Drawing technique is specified in [plan-roma-updates.md](plan-roma-updates.md) — engine
 primitives, palette, and complete recipes for the temple, Colosseum, aqueduct and
 triumphal arch. Section refs below point at PLAN-ROMA.
 
 ### 4b.1 Engine *(PLAN-ROMA §4)*
 - [ ] 1. `js/roma/engine.js` — the five primitives `P` / `hash` / `blob` / `bloom` /
-      `arch` (pixel-art-plan §3)
+      `arch` (plan-roma-updates §3)
 - [ ] `js/roma/palette.js` — the one shared palette; **no building hardcodes a colour**
 - [ ] Three-tone shading rule (lit upper-left / base / shadow lower-right) applied
       throughout
@@ -299,6 +302,9 @@ triumphal arch. Section refs below point at PLAN-ROMA.
       read *(§4)*
 - [ ] 7. Day/night pass driven by the **real clock**, not an auto-cycling timer
       *(§6)*
+- [ ] 7. **Night-order rule**: moon + stars drawn right after `drawSky()`, *before*
+      the buildings, so buildings occlude them — never in the night pass; tint
+      `rgba(12,16,44,0.45)` *(§6)*
 - [ ] 8. Retune the XP table against a week of real lesson data — the capstone moved to
       74 000 with `Arcus Triumphalis` and was always an estimate *(§2)*
 
@@ -317,6 +323,85 @@ triumphal arch. Section refs below point at PLAN-ROMA.
 
 ---
 
+## Phase 4c — the coach — **PARKED, not scheduled**
+
+> **Decided: not being built for now.** Nothing here is abandoned or wrong — the
+> design is finished, the art risk is already retired by a working demo, and the whole
+> section is kept ready to pick up. It is parked because the app is finished except
+> for shipping it, and both remaining reward features are guesses about what motivates
+> *her* until she has actually used it.
+>
+> **The test that decides it**, from her first real lessons: **does she read the
+> reveal, or tap straight through it?** Reading it → the coach lands in a beat she is
+> already dwelling in and costs nothing; build it. Tapping through → it is pure
+> friction; leave it parked for good and let the city carry the reward.
+>
+> If it is picked up: it needs 4.1 + 4b.1 only — no catalogue, no composition — so it
+> slots in before 4b.4–4b.6. Building it also forces `engine.js` and `palette.js` into
+> existence, which is 4b.1 anyway, so it is not a detour from the city.
+>
+> Known weakness to fix *if* it is built: 21 messages at ~15 appearances a lesson is
+> the whole repertoire seen inside two lessons. `messages.js` is data, so more mottos
+> is the cheap mitigation — and the one task here that can be done any time, with no
+> engine and no decision. See [PLAN-ROMA.md](PLAN-ROMA.md) §9.
+
+Spec: [plan-roma-updates.md](plan-roma-updates.md) §14 · demo:
+[roman-coach.html](roman-coach.html).
+
+### 4c.1 The bust
+- [ ] 1. `js/coach/characters.js` — `servus` only, from the shared `engine.js` `P`
+      and `bloom`, on a 64-grid canvas. Prove it reads at phone size first
+- [ ] Coach imports `palette.js` — **merge the demo's `K` palette into it**, don't
+      ship two near-identical palettes *(§4)*
+- [ ] `bloom()` reconciled to one signature in `engine.js` (demo's differs)
+- [ ] `lang="nl-BE"` on the document (hyphenation now, voice selection later)
+
+### 4c.2 Messages — the point at which it earns its keep
+- [ ] 2. `js/coach/messages.js` as **data, not code**: `MSG.good` / `.improve` /
+      `.perfect` + `UNLOCK`, Dutch line + optional Latin motto + Dutch translation
+- [ ] Mood mapping: clean recall → `perfect`; correct with hint/retry → `good`;
+      **almost or wrong → `improve`** (the reveal carries the correction, the coach
+      carries the encouragement) *(§9)*
+- [ ] **Skip any motto sharing a word with the current card** — answer-leak guard
+
+### 4c.3 Placement and timing — where this feature fails
+- [ ] 3. Renders **beside the reveal**, concurrent with it, adding no time of its own
+- [ ] 3. **Never in the anticipation gap** — that stays silent and empty *(PLAN §2.3)*
+- [ ] 3. `waitMs` is a **cap of ~1200 ms, not a wait**; any tap advances immediately;
+      `onComplete` callable early and never the only way forward
+- [ ] 3. **Not on every answer** — always on `perfect`, drop-back and rank-up,
+      otherwise ~1 in 4. Sixty appearances a lesson is wallpaper
+- [ ] 3. **Run a real lesson and time it** before adding characters: 60 answers × 5 s
+      of the demo's default would be five minutes of a ten-minute lesson
+
+### 4c.4 The cast
+- [ ] 4. The remaining five busts: gladiator, centurion, magister, senator, emperor
+- [ ] 4. Rank = **the city's stage**, not the spec's own XP ladder: Servus (0) →
+      Gladiator (200) → Centurio (4 000) → Magister (14 000) → Senator (30 000) →
+      Imperator (52 000). The spec's 120/350/750/1600/3200 would all be passed in
+      two weeks *(§9)*
+- [ ] 4. **One coach per lesson, not per answer** — roll `charForXp()` once at lesson
+      start; growing pool (earned ranks stay eligible, higher favoured) applies to
+      that draw
+- [ ] 5. Victory flourish on `perfect` — both arms up, gold confetti
+
+### 4c.5 Rank-up
+- [ ] 5. `setXp(xp)` **once at lesson start** (silent); never pass `xp` to `present()`
+      mid-lesson, so no threshold detection and no mid-lesson fanfare *(§9)*
+- [ ] 5. Rank-up celebrated **on the Results screen**, together with the stage
+      crossing and building unlock — one event, not three
+- [ ] `lastTier` persisted so each threshold fires exactly once
+
+### 4c.6 Invariants
+- [ ] `Math.random()` is **correct** in the coach (variety) and **banned** in the city
+      art (determinism) — don't "fix" either to match the other *(§4)*
+- [ ] `prefers-reduced-motion` → static sprite, wait bar still counts; **no
+      `setTimeout` render loop** — render once, animate the bar in CSS *(§8)*
+- [ ] Text, not speech, for v1 — `speechSynthesis` is a Later item and the coach must
+      be fully useful silent
+
+---
+
 ## Later, if wanted
 
 - [ ] "Test in 3 days, you are 12 words behind" push notification (installed PWA,
@@ -328,8 +413,12 @@ triumphal arch. Section refs below point at PLAN-ROMA.
 - [ ] Roma extras: choice at some unlocks, tap-a-building history, nameplate mode,
       export the city as a PNG (`toBlob()` on the full scene), manual day/night toggle
       in the full-screen view only
+- [ ] Coach extras *(only if the parked Phase 4c is ever picked up)*: read the motto
+      aloud in `nl-BE` **on the reveal only**; a paste-in box so she can add her own
+      mottos; bake the busts with `toDataURL()` if six characters ever cost more per
+      frame than they are worth *(measure first)*
 - [ ] ~~Ruin mode for a neglected city~~ — **rejected** on purpose: nothing is ever
-      taken away (PLAN-ROMA §10)
+      taken away (PLAN-ROMA §11)
 
 ---
 
