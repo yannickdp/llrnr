@@ -255,19 +255,47 @@ primitives, palette, and complete recipes for the temple, Colosseum, aqueduct an
 triumphal arch. Section refs below point at PLAN-ROMA.
 
 ### 4b.1 Engine *(PLAN-ROMA §4)*
-- [ ] 1. `js/roma/engine.js` — the five primitives `P` / `hash` / `blob` / `bloom` /
-      `arch` (plan-roma-updates §3)
-- [ ] `js/roma/palette.js` — the one shared palette; **no building hardcodes a colour**
-- [ ] Three-tone shading rule (lit upper-left / base / shadow lower-right) applied
-      throughout
-- [ ] `glowTargets` + `emitters` registries — buildings push, never read
-- [ ] All randomness from `hash(x, y)`, never `Math.random()`, never stored
-- [ ] Renderer skeleton: canvas, `imageSmoothingEnabled = false`,
-      `image-rendering: pixelated`, integer scale only, `devicePixelRatio` sizing,
-      one hardcoded sprite, **crisp on a real phone**
-- [ ] Fix the interface `draw(ctx, x, groundY, { scale, progress })` **now** — both
-      the grid and the draw-function modes compile to it, and `progress` is expensive
-      to retrofit *(§3, §5)*
+- [x] 1. `js/roma/engine.js` — the five primitives `P` / `hash` / `blob` / `bloom` /
+      `arch`, plus `dot` for the commonest call (plan-roma-updates §3)
+- [x] `js/roma/palette.js` — the one shared palette, frozen; **no building hardcodes
+      a colour**
+- [x] Three-tone shading rule as *data* (`T.marble.lit/base/shadow`), so a recipe asks
+      for a material by name and the test can check none is missing a tone. Two
+      documented exceptions: the ground planes are two-tone, `flame` inverts
+- [x] `glowTargets` + `emitters` registries — buildings push via `g.light()` /
+      `g.fire()`, never read
+- [x] All randomness from `hash(x, y)`, never `Math.random()`, never stored
+- [x] Renderer skeleton: `fitCanvas` (`imageSmoothingEnabled = false`,
+      `devicePixelRatio` sizing) + `chooseScale` (integer only), `.roma-canvas`
+      carrying `image-rendering: pixelated`
+- [x] One hardcoded sprite — `js/roma/probe.js`, a calibration pattern rather than a
+      building, exercising all five primitives and both authoring modes
+- [ ] **Crisp on a real phone** — open `test/roma-probe.html` on the iPhone *(the one
+      item here that cannot be checked from a laptop; it shows dpr, the chosen scale,
+      an integer-scale row, a progress sweep, and a deliberately smeared ×2.5 for
+      comparison)*
+- [x] Fix the interface `draw(ctx, x, groundY, { scale, progress })` — `fromDraw` and
+      `fromGrid` both compile to it; `progress` clips to the bottom rows, so the
+      teaser and the unlock reveal are the same call *(§3, §5)*
+- [x] Painter is bound per canvas (`painter(ctx, scale)`) rather than module-global as
+      in the spec — the Home hero and the full-screen view are two canvases *(§7)*
+- [x] `test/roma-engine.test.mjs` — 45 tests against a recording stub context
+
+Three deviations from the spec, all commented at their definition:
+- `arch` measures its radius at each row's centre (`+ 0.25`). The spec's version gives
+  every arch a **one-pixel crown** — a 5-wide opening steps 1-5-5 and reads as a
+  keyhole with a spike. Now 3-5-5, and 3-5-7-7 at 7 wide. `arch` carries six buildings,
+  so this would have been wrong in a hundred places
+- `P` rounds rectangle *edges*, not sizes, so neighbours never leave a hairline gap at
+  fractional coordinates — and the flame is drawn at `cx - width / 2`
+- Lights are suppressed while `progress < 1`: a half-built temple must not glow through
+  its unfinished wall
+
+Two findings for 4b.2, learned from drawing the probe:
+- **7 is the minimum width for an arch that reads as curved**, not 5
+- An arcade needs solid wall between its openings more than it needs another opening:
+  three 7-wide arches need a 29-wide wall, and forcing them into 22 butts them into a
+  row of slots
 
 ### 4b.2 Stage 1 + the go/no-go *(§3)*
 - [ ] 2. Stage 1's five sprites (character grids — hut, sheepfold, palisade, fig tree,
@@ -285,6 +313,9 @@ triumphal arch. Section refs below point at PLAN-ROMA.
       scene *(§5, §7)*
 - [ ] 3. Teaser is a **construction site**, not a dim silhouette: `progress` driven by
       XP, scaffolding on top, XP remaining underneath *(§5)*
+- [ ] 3. Add `js/roma/*.js` to the service worker's `SHELL` — left out in 4b.1 on
+      purpose, because `addAll` is atomic and the list should name only what the app
+      actually loads. The moment Home imports the city, the city must work offline
 - [ ] 4. The unlock moment — pan, scaffolding off, completion reveal via clip rect,
       chime, name card *(stopping point: still worth having)*
 

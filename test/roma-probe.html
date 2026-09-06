@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Roma — engine probe</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0;
+    padding: 16px calc(16px + env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom))
+             calc(16px + env(safe-area-inset-left));
+    background: #12161f;
+    color: #e7e3d8;
+    font: 15px/1.45 system-ui, sans-serif;
+  }
+  h1 { font-size: 1.05rem; margin: 0 0 4px; }
+  p { margin: 0 0 16px; color: #9aa3b2; font-size: 0.8125rem; }
+  section { margin-block-end: 22px; }
+  h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: .1em; color: #8b93a3;
+       margin: 0 0 8px; font-weight: 700; }
+  canvas {
+    /* The other half of a crisp scale: without this the browser is free to
+       smooth when the CSS box and the backing store disagree. */
+    image-rendering: pixelated;
+    display: block;
+    background: #cfe3ef;
+    border-radius: 4px;
+  }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .cell { display: flex; flex-direction: column; gap: 4px; }
+  .cap { font-size: 0.6875rem; color: #8b93a3; font-variant-numeric: tabular-nums; }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 0;
+       font-size: 0.8125rem; }
+  dt { color: #8b93a3; }
+  dd { margin: 0; font-variant-numeric: tabular-nums; }
+  code { background: #1c2230; padding: 1px 4px; border-radius: 3px; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<h1>Roma — engine probe</h1>
+<p>
+  PLAN-ROMA step 1. Not the city: a calibration sprite whose only job is to prove the
+  pixels are crisp on a real phone before anything real gets drawn. Look for soft or
+  uneven edges — everything should be hard-edged blocks at every scale.
+</p>
+
+<section>
+  <h2>This device</h2>
+  <dl id="env"></dl>
+</section>
+
+<section>
+  <h2>Integer scales</h2>
+  <div class="row" id="scales"></div>
+</section>
+
+<section>
+  <h2>Construction progress (the teaser, and the unlock reveal)</h2>
+  <div class="row" id="progress"></div>
+</section>
+
+<section>
+  <h2>Fractional scale — what we are avoiding</h2>
+  <p style="margin-block-end:8px">
+    The left is scale 3. The right is the same sprite at 2.5, which is what a
+    &ldquo;fit to width&rdquo; layout would pick. If they look equally good, something is
+    wrong with the test, not with the renderer.
+  </p>
+  <div class="row" id="fractional"></div>
+</section>
+
+<script type="module">
+import { chooseScale, fitCanvas } from '../js/roma/engine.js';
+import { PROBE_SPRITES, probeArcade } from '../js/roma/probe.js';
+
+const PAD = 2;                     // logical breathing room around a sprite
+const dpr = window.devicePixelRatio || 1;
+
+/** One canvas showing one sprite, at a stated scale and progress. */
+function cell(sprite, scale, progress, caption) {
+  const wrap = document.createElement('div');
+  wrap.className = 'cell';
+
+  const canvas = document.createElement('canvas');
+  const w = sprite.w + PAD * 2;
+  const h = sprite.h + PAD * 2;
+  wrap.append(canvas);
+
+  const cap = document.createElement('span');
+  cap.className = 'cap';
+  cap.textContent = caption;
+  wrap.append(cap);
+
+  const ctx = fitCanvas(canvas, { w, h, scale, dpr });
+  /* groundY is the bottom row the sprite stands on, so the padding below it is
+     what PAD buys. */
+  sprite.draw(ctx, PAD, h - PAD - 1, { scale, progress });
+
+  return wrap;
+}
+
+/* ---- what this device reports ------------------------------------------- */
+const scene = 320;                                  // the eventual Home window
+const fits = chooseScale(scene, document.body.clientWidth - 32);
+document.getElementById('env').innerHTML = '';
+for (const [label, value] of [
+  ['devicePixelRatio', String(dpr)],
+  ['CSS width', `${document.body.clientWidth}px`],
+  ['scale for a 320px scene', `x${fits}`],
+  ['backing store then', `${320 * fits * dpr} x ${180 * fits * dpr}`],
+]) {
+  const dt = document.createElement('dt');
+  dt.textContent = label;
+  const dd = document.createElement('dd');
+  dd.textContent = value;
+  document.getElementById('env').append(dt, dd);
+}
+
+/* ---- integer scales ----------------------------------------------------- */
+for (const sprite of PROBE_SPRITES) {
+  for (const scale of [2, 3, 4]) {
+    document.getElementById('scales').append(cell(sprite, scale, 1, `${sprite.id} x${scale}`));
+  }
+}
+
+/* ---- the progress sweep ------------------------------------------------- */
+for (const p of [0.25, 0.5, 0.75, 1]) {
+  document.getElementById('progress').append(
+    cell(probeArcade, 3, p, `${Math.round(p * 100)}%`),
+  );
+}
+
+/* ---- the counter-example ------------------------------------------------ */
+document.getElementById('fractional').append(
+  cell(probeArcade, 3, 1, 'x3 — integer'),
+  cell(probeArcade, 2.5, 1, 'x2.5 — smeared'),
+);
+</script>
+
+</body>
+</html>

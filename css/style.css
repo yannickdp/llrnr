@@ -680,3 +680,17 @@ textarea { min-block-size: 9rem; font-family: ui-monospace, SFMono-Regular, Menl
   color: var(--accent-fg);
   font-weight: 600;
 }
+
+/* ============================================================ the city === */
+
+/* The other half of a crisp integer scale. The canvas is sized so its backing
+   store and its CSS box agree exactly (see fitCanvas in js/roma/engine.js), but
+   browsers are still free to smooth when they disagree by a rounding error, and
+   smoothed pixel art reads as bad art rather than as a bug. Belt and braces. */
+
+.roma-canvas {
+  display: block;
+  image-rendering: pixelated;
+  /* No touch-action override here: the Home hero is a static picture until
+     4b.3 gives it a full-screen view to pan. */
+}

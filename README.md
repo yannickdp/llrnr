@@ -39,7 +39,22 @@ scheduler that follows it, are pure functions — they are the parts most likely
 tuned, and the only parts where a quiet mistake would corrupt her progress rather
 than just look wrong. `test/lists.test.mjs` stubs `fetch` with an in-memory set of
 files, so the cross-chapter cases (a word revisited, a homograph split over two
-chapters) are covered without a server.
+chapters) are covered without a server. `test/roma-engine.test.mjs` does the same for
+the canvas, recording every `fillRect` against a stub context — for pixel art the
+exact position and size of a rectangle is the thing worth asserting, and reading
+pixels back off a real canvas would only prove the colour landed somewhere.
+
+### The city's engine, by eye
+
+```
+test/roma-probe.html
+```
+
+A page, not a test: the parts of the pixel-art city that a passing assertion cannot
+vouch for. Open it **on the phone** and look for soft or uneven edges — it reports the
+device pixel ratio and the scale that follows from it, draws the calibration sprite at
+each integer scale, sweeps the construction-progress reveal, and puts a deliberately
+fractional ×2.5 beside a crisp ×3 so there is something to compare against.
 
 ## Deploy (GitHub Pages)
 
