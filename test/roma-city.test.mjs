@@ -980,3 +980,44 @@ test('a fixed-view scene ignores zoom', async () => {
     globalThis.document = previous;
   }
 });
+
+/* ====================================================== the module seam = */
+
+test('the module seam holds', async () => {
+  /* PLAN-ROMA §8: `render.js` must not know what a building means,
+     `catalogue.js` must not know how anything is drawn, and `buildings.js`
+     must not know why anything unlocks. That is what lets the art source be
+     swapped wholesale, and it is only ever one careless import away from
+     being untrue — so it is checked rather than trusted. */
+  const { readFile } = await import('node:fs/promises');
+  const { fileURLToPath } = await import('node:url');
+  const { dirname, resolve } = await import('node:path');
+
+  const roma = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'js', 'roma');
+  const importsOf = async file => {
+    const source = await readFile(resolve(roma, file), 'utf8');
+    return [...source.matchAll(/from\s+'\.\/([\w-]+)\.js'/g)].map(m => m[1]);
+  };
+
+  const forbidden = {
+    /* The drawing layer must not reach for the unlock rules. */
+    render: ['roma'],
+    /* Names, history and slots — and nothing about pixels. */
+    catalogue: ['engine', 'buildings', 'render', 'roma'],
+    /* Sprites know how to draw themselves and nothing else. */
+    buildings: ['catalogue', 'render', 'roma'],
+    /* The unlock rules know the catalogue and nothing about drawing. */
+    roma: ['engine', 'buildings', 'render'],
+    /* The primitives are the bottom of the stack. */
+    engine: ['catalogue', 'buildings', 'render', 'roma'],
+    palette: ['engine', 'catalogue', 'buildings', 'render', 'roma'],
+  };
+
+  for (const [file, banned] of Object.entries(forbidden)) {
+    const imports = await importsOf(`${file}.js`);
+    for (const bad of banned) {
+      assert.ok(!imports.includes(bad),
+        `${file}.js imports ${bad}.js — the seam in PLAN-ROMA §8 is broken`);
+    }
+  }
+});

@@ -84,6 +84,8 @@ export function paintHome({ due, fresh, streak, warning, stage, ring, next }) {
 
 let hero = null;
 let unlockView = null;
+/* Whether the hero canvas is actually within the scroll viewport. */
+let heroOnScreen = true;
 
 const REDUCED = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -101,11 +103,26 @@ export function paintCity({ unlocked, next, built, stage = 0, learned = 0 }) {
 
   if (!hero) {
     hero = createScene(canvas, { view: SCENE.window, motion: !REDUCED() });
-    /* Only run while she can actually see it. */
+
+    /* Three ways to stop looking at it, and all three stop the loop. On a
+       phone an animation nobody can see is just battery.
+
+       The tab going away, and Home not being the screen she is on, are handled
+       by `visibilitychange` and by `cityVisible` off the router. Neither
+       catches the third: Home scrolls, so the city can be off the top of the
+       screen while she reads the word track further down. */
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) hero.stop();
-      else if (!$('screen-home').hidden) hero.start();
+      else if (heroOnScreen && !$('screen-home').hidden) hero.start();
     });
+
+    if (typeof IntersectionObserver === 'function') {
+      new IntersectionObserver(([entry]) => {
+        heroOnScreen = entry.isIntersecting;
+        if (!heroOnScreen || document.hidden) hero.stop();
+        else if (!$('screen-home').hidden) hero.start();
+      }, { threshold: 0.1 }).observe(canvas);
+    }
   }
 
   /* The building going up is shown at its real progress, so the plot changes
@@ -131,7 +148,7 @@ export function paintCity({ unlocked, next, built, stage = 0, learned = 0 }) {
 /** Start or stop the hero's flame, as Home comes and goes. */
 export function cityVisible(visible) {
   if (!hero) return;
-  if (visible && !document.hidden) hero.start();
+  if (visible && heroOnScreen && !document.hidden) hero.start();
   else hero.stop();
 }
 

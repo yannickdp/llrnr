@@ -586,17 +586,26 @@ somewhere it has been zoomed.
 - [x] Nothing tappable on the hero itself beyond opening this
 
 ### 4b.7 Invariants
-- [ ] Layer cache: sky, hills and finished buildings offscreen, invalidated on unlock;
-      per-tick redraw limited to fire, smoke, water, citizens *(§8 — required at
-      560×180, not an optimisation)*
-- [ ] Loop suspended on `visibilitychange` and by `IntersectionObserver`
-- [ ] `prefers-reduced-motion` → one static frame, no flame flicker, no smoke, no bob
-- [ ] Module seam holds: `render.js` knows no meanings, `catalogue.js` knows no
-      drawing, `buildings.js` knows no unlock rules *(§8)*
-- [ ] `roma.unlocked` / `stage` treated as caches: if they disagree with `xp`, **`xp` wins**
-- [ ] `roma.seenXp` powers "what is new since she last looked?"
-- [ ] Nothing about the art is persisted — `progress`, citizen count and time of day
-      are derived at render time
+- [x] Layer cache: sky, celestials, hills, ground and finished buildings offscreen,
+      invalidated on unlock; per-frame redraw is water, boat, citizens, birds, the
+      night tint and the fires. Measured at **1:70** *(§8 — required at 560×180, not
+      an optimisation)*
+- [x] Loop suspended three ways: `visibilitychange`, leaving the Home screen, **and an
+      `IntersectionObserver`** — Home scrolls, so the city can be off the top while
+      she reads the word track below, and neither of the other two catches that
+- [x] The full-screen view stops the hero's loop while it is up: two canvases
+      animating the same city is twice the battery for one thing to look at
+- [x] `prefers-reduced-motion` → one static frame, no flame flicker, no smoke, no bob;
+      the unlock reveal shows the finished building instead of animating
+- [x] Module seam holds, and it is **tested** rather than trusted — the import graph
+      is checked, since the seam is only ever one careless import away from being
+      untrue *(§8)*
+- [x] `roma.unlocked` / `stage` treated as caches: if they disagree with `xp`, **`xp`
+      wins**. Reconciled on boot and after every award, tested in both directions
+- [x] `roma.seenXp` powers "what is new since she last looked?", and only advances once
+      the unlock moment has actually played
+- [x] Nothing about the art is persisted — `progress`, the citizen count, the era's
+      hill details, the groves and the time of day are all derived at render time
 
 ---
 
