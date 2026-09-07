@@ -595,7 +595,12 @@ Two layout faults reported from the phone:
   fills exactly. Tested at seven card widths, exact at every one; a wider frame shows
   more city rather than a stretched one
 - **The building count sat inside the city frame** and read as part of the picture
-  rather than as a label on it. Moved out, below the card
+  rather than as a label on it. It is off Home altogether now and lives in the
+  full-screen view, with the era's Latin name beside it — that is where the whole city
+  is on screen, so a count is context for what she is looking at rather than a second
+  label. On Home the XP bar immediately below the hero already names the building she
+  is working toward, which is the more useful of the two, and Home is the most crowded
+  screen in the app
 - [x] `refit(cssWidth)` — the hero re-measures on rotation, on a font landing, and on
       the first real layout after boot, since `paintCity` runs while the page is still
       settling and a card measured too early is a canvas that never reaches the edges.

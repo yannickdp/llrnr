@@ -431,12 +431,13 @@ function refreshHome() {
   }
 
   const next = nextAt(store.progress.xp);
+  const stage = stageFor(store.progress.xp);
 
   paintHome({
     due,
     fresh: [...active.keys()].filter(id => !store.cards.has(id)).length,
     streak: store.progress.streak.current,
-    stage: stageFor(store.progress.xp),
+    stage,
     ring,
     next,
     warning: store.status.ok ? null : store.status.message,
@@ -447,6 +448,9 @@ function refreshHome() {
     next,
     built: cityProgress(store.progress.xp),
     stage: store.progress.roma.stage,
+    /* For the full-screen view's one context line, since Home is not on
+       screen behind it to say which era this is. */
+    stageName: stage.stage.name,
     /* The crowd on the street grows with the words she knows — a second,
        free reading of progress that costs one number (PLAN-ROMA §4). */
     learned: [...store.cards.values()].filter(card => card.phase === 'learned').length,

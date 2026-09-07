@@ -713,11 +713,6 @@ textarea { min-block-size: 9rem; font-family: ui-monospace, SFMono-Regular, Menl
   margin-inline: auto;
 }
 
-.city-caption {
-  margin-block: 6px 0;
-  text-align: center;
-}
-
 /* The unlock moment. Gold-edged, because it is the one card on the Results
    screen that is a reward rather than a report. */
 
@@ -796,6 +791,17 @@ textarea { min-block-size: 9rem; font-family: ui-monospace, SFMono-Regular, Menl
 .city-stage .roma-canvas {
   will-change: transform;
   transform-origin: center center;
+}
+
+.city-count {
+  margin: 0;
+  text-align: center;
+  font-size: var(--t-caption);
+  color: var(--fg-dim);
+}
+
+.city-count b {
+  color: var(--fg);
 }
 
 .city-hint {

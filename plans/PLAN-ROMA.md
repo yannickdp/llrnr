@@ -452,7 +452,13 @@ moment must feel right first.
 
 ## 7. Where it lives
 
-**Rome is the top of the Home screen, not a separate tab.** The main plan's tab bar
+**Rome is the top of the Home screen, not a separate tab.** And nothing else is up
+there with it: the hero is the city edge to edge, the XP bar underneath names the
+building being worked toward, and the *"x of 25 buildings"* count belongs in the
+full-screen view rather than on Home. Two labels under one picture make both of them
+wallpaper, and Home is the most crowded screen in the app.
+
+ The main plan's tab bar
 stays at four items. The city occupies the hero area of Home — a 320-wide window onto
 the 560-wide scene — so it is the first thing she sees on opening the app, with the XP
 bar beneath it doubling as "progress to the next building". Tapping it opens a

@@ -97,7 +97,7 @@ const REDUCED = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
  * @param {object|null} city.next   `nextAt(xp)` — the building under construction
  * @param {object} city.built       `cityProgress(xp)`
  */
-export function paintCity({ unlocked, next, built, stage = 0, learned = 0 }) {
+export function paintCity({ unlocked, next, built, stage = 0, stageName = '', learned = 0 }) {
   const canvas = $('city-home');
   if (!canvas) return;
 
@@ -153,13 +153,15 @@ export function paintCity({ unlocked, next, built, stage = 0, learned = 0 }) {
   const focus = next?.entry ?? entryFor(unlocked.at(-1) ?? '') ?? null;
   if (focus) hero.focus(focus);
 
-  /* The count only. The XP bar right underneath already names the next
-     building, and saying it twice on one screen makes both lines wallpaper. */
-  $('city-caption').textContent = `${built.built} van de ${built.total} gebouwen`;
+  /* No caption under the hero. The XP bar immediately below already names the
+     building she is working toward, which is the more useful of the two, and
+     Home is the most crowded screen in the app — so the count moved to the
+     full-screen view, where the whole city is on screen and a count is
+     actually context rather than a second label.
 
-  /* Kept so a tap on the hero can open the full view without app.js having to
-     hand it the same thing twice. */
-  bigCity = { unlocked, next, stage, learned };
+     Kept here so a tap on the hero can open that view without app.js having
+     to hand it the same thing twice. */
+  bigCity = { unlocked, next, built, stage, stageName, learned };
 }
 
 /** Start or stop the hero's flame, as Home comes and goes. */
@@ -330,6 +332,11 @@ export function openCityView(city = bigCity) {
   const ids = city.next ? [...city.unlocked, city.next.entry.id] : city.unlocked;
   bigView.show(ids, { progress, stage: city.stage, learned: city.learned });
   if (city.next) bigView.focus(city.next.entry);
+
+  const count = $('city-count');
+  count.textContent = '';
+  if (city.stageName) count.append(el('b', null, city.stageName), ' — ');
+  count.append(`${city.built?.built ?? 0} van de ${city.built?.total ?? 0} gebouwen`);
 
   showBuilding(null);
   paintCityControls(bigView);
