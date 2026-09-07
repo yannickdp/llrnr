@@ -484,7 +484,7 @@ as `latin-chapter-01.txt?v=3`.
   "stage": 1,
   "streak": { "current": 5, "best": 12, "lastDay": "2026-09-04", "freezes": 1 },
   "badges": ["first10", "streak7"],
-  "roma": { "unlocked": ["casa-romuli", "ovile"], "seenXp": 1150 },
+  "roma": { "unlocked": ["casa-romuli", "ovile"], "stage": 0, "seenXp": 1150 },
   "settings": {
     "lessonMinutes": 10,
     "newPerLesson": 8,

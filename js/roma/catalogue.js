@@ -205,6 +205,28 @@ export const BY_ID = Object.freeze(
 );
 
 /**
+ * Where each growth stage begins, in XP — derived, never typed twice.
+ *
+ * A stage begins when its first building appears, which is the only definition
+ * that keeps the name and the skyline saying the same thing: she is told
+ * "Regnum" on the same lesson the Forum shows up. So the catalogue is the
+ * single source of these numbers and `gamify.js` imports them rather than
+ * carrying its own copy — the two used to disagree (0/400/1200/2800/6000
+ * against these), which would have shown up as a stage name that changed
+ * nowhere near a building.
+ *
+ * Stage 1 is the exception and starts at 0 rather than at 200: she is in
+ * *Roma Quadrata* from the moment she opens the app, and the first hut arrives
+ * a couple of hundred XP into it.
+ */
+export const STAGE_XP = Object.freeze(
+  CATALOGUE.reduce((firsts, entry) => {
+    if (firsts[entry.stage] === undefined) firsts[entry.stage] = entry.stage === 0 ? 0 : entry.xp;
+    return firsts;
+  }, []),
+);
+
+/**
  * The ground row a building in this band stands on.
  * @param {string} band
  * @returns {number}

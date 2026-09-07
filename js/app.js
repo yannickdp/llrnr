@@ -13,10 +13,12 @@ import { createLesson } from './lesson.js';
 import { exportBackup, inspectBackup, openStore } from './store.js';
 import { isDue, isOneWay, missingDirection } from './schedule.js';
 import { activeTest, makeTest, readiness } from './cram.js';
-import { awardLesson, goalMetToday, newBadges, stageFor } from './gamify.js';
+import { awardLesson, goalMetToday, newBadges, stageFor, STAGES } from './gamify.js';
+import { cityProgress, markSeen, nextAt, reconcile, unlockedBy } from './roma/roma.js';
 import { setSoundEnabled } from './sound.js';
 import {
-  $, DIRECTION_LABEL, el, importPreview, paintHome, paintResults, plural, progressTrack,
+  $, DIRECTION_LABEL, cityUnlockMoment, cityVisible, el, importPreview, paintCity,
+  paintHome, paintResults, plural, progressTrack,
   readinessPanel, runLesson,
 } from './ui.js';
 
@@ -53,6 +55,10 @@ export function show(name) {
     if (tab.dataset.goto === lastTab) tab.setAttribute('aria-current', 'page');
     else tab.removeAttribute('aria-current');
   }
+
+  /* The city's flame only burns while she can see it. On a phone a render loop
+     nobody is looking at is just battery. */
+  cityVisible(name === 'home');
 
   /* Lets CSS and later modules react to where we are without re-querying. */
   document.documentElement.dataset.screen = name;
@@ -410,13 +416,22 @@ function refreshHome() {
     };
   }
 
+  const next = nextAt(store.progress.xp);
+
   paintHome({
     due,
     fresh: [...active.keys()].filter(id => !store.cards.has(id)).length,
     streak: store.progress.streak.current,
     stage: stageFor(store.progress.xp),
     ring,
+    next,
     warning: store.status.ok ? null : store.status.message,
+  });
+
+  paintCity({
+    unlocked: store.progress.roma.unlocked,
+    next,
+    built: cityProgress(store.progress.xp),
   });
 
   /* Switching every chapter off leaves nothing to teach, so Start goes dead
@@ -499,6 +514,7 @@ function finishLesson(lesson, test, readyBefore) {
   /* XP is paid on transitions, so this is the one place it can be awarded:
      when the lesson is over and its tally is final. */
   const now = Date.now();
+  const xpBefore = store.progress.xp;
   const award = awardLesson(store.progress, results, now);
   store.progress.xp = award.xp;
   store.progress.streak = award.streak;
@@ -520,6 +536,12 @@ function finishLesson(lesson, test, readyBefore) {
   }, store.progress.badges);
 
   store.progress.badges.push(...earned.map(badge => badge.id));
+
+  /* What this lesson built, taken from the XP either side of it rather than
+     from the stored list — that is the fact that cannot be corrupted. */
+  const rose = unlockedBy(xpBefore, award.xp);
+  const { changed: _drift, ...city } = reconcile(store.progress.roma, award.xp);
+  store.progress.roma = city;
   store.save();
 
   paintResults(results, { test, gained, award, badges: earned });
@@ -527,6 +549,21 @@ function finishLesson(lesson, test, readyBefore) {
   renderChapters();
   renderReadiness();
   show('results');
+
+  /* The unlock moment, after the screen is up so she watches it happen rather
+     than arriving to find it already over. Never mid-lesson: PLAN-ROMA 7 is
+     explicit that it would break the flow the anticipation gap depends on.
+
+     Awaited so that `seenXp` only moves once she has actually seen it — that
+     watermark is the whole reason the city keeps a cache at all. */
+  cityUnlockMoment(rose.buildings, {
+    unlocked: store.progress.roma.unlocked,
+    stageCrossed: rose.stageCrossed,
+    stage: rose.stageCrossed ? STAGES[rose.stageCrossed.to] : null,
+  }).then(() => {
+    store.progress.roma = markSeen(store.progress.roma, store.progress.xp);
+    store.save();
+  });
 }
 
 /**
@@ -726,6 +763,15 @@ async function reloadCorpus() {
 }
 
 async function boot() {
+  /* Total XP wins. `roma.unlocked` and `roma.stage` are a cache kept only so
+     that "what is new since she last looked?" is answerable, so a stored list
+     that disagrees with the XP is recomputed rather than believed. A botched
+     write must never cost her a building — nothing else in this app is allowed
+     to take something away either. */
+  const { changed, ...city } = reconcile(store.progress.roma, store.progress.xp);
+  store.progress.roma = city;
+  if (changed) store.save();
+
   show(TABS[0]);
 
   /* Start stays disabled until there are words to teach. A button that looks

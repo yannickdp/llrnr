@@ -28,7 +28,7 @@ screen inherits this without saying so again.
 - [x] Disable double-tap zoom and text selection on buttons
 - [x] Local dev server documented (`npx serve` / `python -m http.server`)
 - [x] Git repo initialised, scaffolding committed on `main`
-- [ ] Add the GitHub `origin` remote and enable Pages *(needs the repo URL)*
+- [x] Add the GitHub `origin` remote and enable Pages — `github.com/yannickdp/llrnr`
 
 ---
 
@@ -100,8 +100,8 @@ screen inherits this without saying so again.
 - [x] `icons/icon-180.png` (apple-touch-icon), `icon-192.png`, `icon-512.png`,
       drawn by `icons/make-icons.py` (stdlib only, re-run to redraw)
 - [x] `<link rel="manifest">` + `apple-touch-icon`, verified served and fetchable
-- [ ] Add the GitHub `origin` remote and push *(needs the repo URL)*
-- [ ] Turn on Pages: Settings → Pages → branch `main`, folder `/`
+- [x] Add the GitHub `origin` remote and push
+- [x] Turn on Pages: Settings → Pages → branch `main`, folder `/`
 - [ ] **Install on her iPhone from Safari and run one real lesson**
 
 ---
@@ -270,10 +270,8 @@ triumphal arch. Section refs below point at PLAN-ROMA.
       carrying `image-rendering: pixelated`
 - [x] One hardcoded sprite — `js/roma/probe.js`, a calibration pattern rather than a
       building, exercising all five primitives and both authoring modes
-- [ ] **Crisp on a real phone** — open `test/roma-probe.html` on the iPhone *(the one
-      item here that cannot be checked from a laptop; it shows dpr, the chosen scale,
-      an integer-scale row, a progress sweep, and a deliberately smeared ×2.5 for
-      comparison)*
+- [x] **Crisp on a real phone** — confirmed on the iPhone via
+      `test/roma-probe.html`. Integer scaling and the dpr sizing are right
 - [x] Fix the interface `draw(ctx, x, groundY, { scale, progress })` — `fromDraw` and
       `fromGrid` both compile to it; `progress` clips to the bottom rows, so the
       teaser and the unlock reveal are the same call *(§3, §5)*
@@ -318,9 +316,12 @@ Two findings for 4b.2, learned from drawing the probe:
 - [x] Layer split in `render.js`: static layer (sky, hills, ground, finished
       buildings) cached offscreen; per-frame work is fire and smoke only
 - [x] `test/roma-city.test.mjs` — 37 tests, mostly on the slot map
-- [ ] **Stop and look on the phone** — open `test/roma-stage1.html`. Go/no-go on
-      hand-authored art vs a CC0 tileset. Judge it on **stage 1**, the rustic sprites
-      with no recipe, not on the temple spike. The page carries the five questions
+- [x] **Stop and look on the phone** — done. **GO**: it reads very well on the
+      phone, so the art stays hand-authored and the CC0-tileset fallback is retired.
+      The seam that made it a cheap fallback stays anyway — it is also what keeps
+      `render.js` from knowing what a building means
+- [x] Spike deleted, having done its job. `drawColumn` in it is worth recovering
+      from commit `cbfb25d` when `Templum Vestae` is drawn in 4b.4
 
 Two findings that came out of building it:
 
@@ -339,15 +340,46 @@ Still to reconcile before 4b.3: `gamify.js` stages sit at 0 / 400 / 1200 / 2800 
 provisional pending step 8, but they have to agree the moment unlocks read real XP.
 
 ### 4b.3 Unlock + the moment
-- [ ] 3. Unlock logic against total XP; Home hero = a 320-wide window on the 560-wide
-      scene *(§5, §7)*
-- [ ] 3. Teaser is a **construction site**, not a dim silhouette: `progress` driven by
-      XP, scaffolding on top, XP remaining underneath *(§5)*
-- [ ] 3. Add `js/roma/*.js` to the service worker's `SHELL` — left out in 4b.1 on
-      purpose, because `addAll` is atomic and the list should name only what the app
-      actually loads. The moment Home imports the city, the city must work offline
-- [ ] 4. The unlock moment — pan, scaffolding off, completion reveal via clip rect,
-      chime, name card *(stopping point: still worth having)*
+- [x] 3. `js/roma/roma.js` — unlock logic against total XP: `unlockedAt`, `nextAt`,
+      `stageAt`, `unlockedBy`, `newSince`, `reconcile`, `markSeen`. Pure, like
+      `schedule.js` and `cram.js`
+- [x] 3. **Total XP wins.** `roma.unlocked` / `stage` reconciled on boot and after
+      every award; a cache that disagrees is recomputed and discarded *(§8)*
+- [x] 3. Home hero = a 320-wide window on the 560-wide scene, panning to follow the
+      work *(§5, §7)*
+- [x] 3. Teaser is a **construction site**, not a dim silhouette: `progress` from XP,
+      scaffolding with a working platform at the height reached, XP remaining
+      underneath *(§5)*
+- [x] 3. The XP bar under the city now measures the next **building** rather than the
+      next stage — a stage is five buildings wide, so a bar against it barely moves
+      per lesson *(PLAN §5)*
+- [x] 3. Added `js/roma/*.js` to the service worker's `SHELL`
+- [x] 4. The unlock moment on the **Results screen** — pan to the plot, scaffolding
+      off, completion reveal via the clip rect, chime, Latin name + Dutch + one line
+      of history. Queued, never overlapping *(§7)*
+- [x] 4. `seenXp` only advances once the moment has actually played, so a lesson
+      finished and closed early still has its buildings waiting
+- [x] Two chimes in `sound.js`: `unlocked` for a building, `stageUp` for an era.
+      Deliberately not the badge fanfare — lower and slower, a bell not a trumpet
+- [x] Hero loop suspended by `visibilitychange` **and** by leaving the Home screen
+- [x] `test/roma-unlock.test.mjs` — 33 tests, most of them on "XP wins"
+
+Two shape fixes that fell out:
+
+- **One ladder, one home.** `gamify.js` carried its own stage thresholds
+  (0/400/1200/2800/6000) against the catalogue's (0/4000/14000/30000/50000). The
+  catalogue wins — a stage begins when its first building appears, which is the only
+  definition that keeps the name and the skyline saying the same thing — so `STAGE_XP`
+  is derived there and `gamify.js` imports it
+- `stage` sat at the top level of the progress blob *and* belonged in `roma`; nothing
+  read the outer one. Now only inside `roma`, with `unlocked` and `seenXp`. PLAN §4
+  updated to match
+
+One bug worth recording: `render.js` used `BY_ID` after an earlier tidy-up removed its
+import. Nothing in the suite reached that code, so it would have thrown on the first
+paint in a browser and nowhere else. There are now three tests that exercise
+`drawStatic` / `drawScaffold` / `drawBuildings` against a stub context for exactly
+that reason.
 
 ### 4b.4 Volume
 - [ ] 5. Stages 2 and 3 (ten buildings) + the stage-crossing moment

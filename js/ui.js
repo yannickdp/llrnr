@@ -8,8 +8,11 @@
    backgrounded tab, so the countdown ring and the lesson clock recompute from
    Date.now() on every animation frame instead of counting ticks down. */
 
-import { fanfare, forGrade } from './sound.js';
+import { fanfare, forGrade, unlocked as unlockedChime, stageUp } from './sound.js';
 import { studyDay, trackPosition, TRACK_STOPS } from './schedule.js';
+import { createScene } from './roma/render.js';
+import { SCENE } from './roma/catalogue.js';
+import { entryFor } from './roma/roma.js';
 
 export const el = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -36,19 +39,23 @@ export function formatClock(ms) {
  * streak on a screen that also shows a real "te herhalen" count teaches her to
  * distrust both.
  */
-export function paintHome({ due, fresh, streak, warning, stage, ring }) {
+export function paintHome({ due, fresh, streak, warning, stage, ring, next }) {
   $('home-due').textContent = String(due);
   $('home-new').textContent = String(fresh);
   $('home-streak').textContent = String(streak);
 
-  /* The bar is progress through the current growth stage. PLAN has it doubling
-     as progress toward the next building; the buildings arrive in Phase 4b,
-     and until they do the caption says what it actually measures. */
+  /* The bar sits under the city and measures the thing the city is about: the
+     next building, not the next stage. PLAN section 5 asks for exactly that,
+     and it was measuring stage progress only because there were no buildings
+     to measure yet.
+     A stage is five or six buildings wide, so a bar against the stage moves
+     imperceptibly per lesson; against the next building it moves visibly every
+     time, which is the whole argument for the construction-site teaser too. */
   $('home-stage').textContent = stage.stage.name;
-  $('home-xp').style.inlineSize = `${Math.round(stage.fraction * 100)}%`;
-  $('home-xp-caption').textContent = stage.next
-    ? `nog ${stage.xpToNext} XP tot ${stage.next.name}`
-    : 'Roma Aeterna — alles bereikt';
+  $('home-xp').style.inlineSize = `${Math.round((next?.progress ?? 1) * 100)}%`;
+  $('home-xp-caption').textContent = next
+    ? `nog ${next.remaining} XP tot ${next.entry.latin}`
+    : 'Roma Aeterna — de stad is af';
 
   /* One ring, two jobs: the daily goal normally, and readiness during a test
      run-up, because that week progress toward Friday is the thing she cares
@@ -60,6 +67,119 @@ export function paintHome({ due, fresh, streak, warning, stage, ring }) {
   const slot = $('home-warning');
   slot.textContent = warning ?? '';
   slot.hidden = !warning;
+}
+
+/* ========================================================= the city ====== */
+
+/* Rome lives at the top of Home, which is the point: the reward should be
+   unavoidable rather than somewhere she has to navigate to.
+
+   Two views, because the unlock moment belongs on the Results screen and the
+   hero belongs on Home. They are separate canvases with separate pans, which
+   is why the drawing engine binds its painter per canvas.
+
+   The hero's loop is suspended whenever it is not being looked at — the tab is
+   backgrounded, or Home is not the visible screen. On a phone an animation
+   nobody can see is just battery. */
+
+let hero = null;
+let unlockView = null;
+
+const REDUCED = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/**
+ * Paint the Home hero.
+ *
+ * @param {object} city
+ * @param {string[]} city.unlocked  ids that exist
+ * @param {object|null} city.next   `nextAt(xp)` — the building under construction
+ * @param {object} city.built       `cityProgress(xp)`
+ */
+export function paintCity({ unlocked, next, built }) {
+  const canvas = $('city-home');
+  if (!canvas) return;
+
+  if (!hero) {
+    hero = createScene(canvas, { view: SCENE.window, motion: !REDUCED() });
+    /* Only run while she can actually see it. */
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) hero.stop();
+      else if (!$('screen-home').hidden) hero.start();
+    });
+  }
+
+  /* The building going up is shown at its real progress, so the plot changes
+     a little after every lesson rather than only at the threshold. */
+  const progress = next ? { [next.entry.id]: next.progress } : {};
+  const ids = next ? [...unlocked, next.entry.id] : unlocked;
+  hero.show(ids, progress);
+
+  /* Follow the work: the window sits on whatever is being built, or on the
+     newest thing standing once the city is finished. */
+  const focus = next?.entry ?? entryFor(unlocked.at(-1) ?? '') ?? null;
+  if (focus) hero.focus(focus);
+
+  /* The count only. The XP bar right underneath already names the next
+     building, and saying it twice on one screen makes both lines wallpaper. */
+  $('city-caption').textContent = `${built.built} van de ${built.total} gebouwen`;
+}
+
+/** Start or stop the hero's flame, as Home comes and goes. */
+export function cityVisible(visible) {
+  if (!hero) return;
+  if (visible && !document.hidden) hero.start();
+  else hero.stop();
+}
+
+/**
+ * The unlock moment: pan to the plot, take the scaffolding off, and let the
+ * building rise. One at a time — PLAN-ROMA section 7 queues them rather than
+ * overlapping, because two buildings appearing at once is a mess and neither
+ * gets its moment.
+ *
+ * @param {object[]} buildings   catalogue entries, in unlock order
+ * @param {object} options
+ * @param {string[]} options.unlocked  everything that exists after the lesson
+ * @param {object|null} options.stageCrossed
+ * @param {object|null} options.stage  the stage entered, for its Latin name
+ */
+export async function cityUnlockMoment(buildings, { unlocked, stageCrossed, stage }) {
+  const card = $('unlock-card');
+  if (!card || buildings.length === 0) {
+    if (card) card.hidden = true;
+    return;
+  }
+
+  card.hidden = false;
+  const canvas = $('city-unlock');
+  if (!unlockView) {
+    unlockView = createScene(canvas, { view: SCENE.window, motion: !REDUCED() });
+  }
+
+  /* Start from the city as it was *before* these landed, so there is something
+     to reveal. */
+  const before = unlocked.filter(id => !buildings.some(b => b.id === id));
+  unlockView.show(before);
+  unlockView.start();
+
+  for (const entry of buildings) {
+    $('unlock-eyebrow').textContent = stageCrossed && entry === buildings.at(-1)
+      ? `${stage?.name ?? ''} — nieuw tijdperk`
+      : 'Nieuw gebouw';
+    $('unlock-latin').textContent = entry.latin;
+    $('unlock-dutch').textContent = entry.dutch;
+    /* One line of history. One — it is a reward, not a lesson. */
+    $('unlock-note').textContent = entry.note;
+
+    if (stageCrossed && entry === buildings.at(-1)) stageUp();
+    else unlockedChime();
+
+    await unlockView.reveal(entry);
+    /* A beat to read the card before the next building takes the stage. */
+    if (entry !== buildings.at(-1)) await new Promise(r => setTimeout(r, 900));
+  }
+
+  unlockView.stop();
 }
 
 /* ==================================================== the readiness ====== */

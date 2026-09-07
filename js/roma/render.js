@@ -22,7 +22,7 @@ import { C, T } from './palette.js';
 import {
   painter, fitCanvas, chooseScale, drawFlame, drawCypress, drawFigure, smokeField, hash,
 } from './engine.js';
-import { SCENE, BANDS, inDrawOrder } from './catalogue.js';
+import { SCENE, BANDS, BY_ID, inDrawOrder } from './catalogue.js';
 import { SPRITES } from './buildings.js';
 
 /* ============================================================== sky ====== */
@@ -173,10 +173,17 @@ export function drawBuildings(g, ids, { progress = {} } = {}) {
     const sprite = SPRITES[entry.id];
     if (!sprite) continue;                       // not authored yet; simply absent
 
+    const p = progress[entry.id] ?? 1;
     sprite.draw(g.ctx, entry.x, BANDS[entry.band].groundY, {
       scale: g.scale,
-      progress: progress[entry.id] ?? 1,
-      painter: g,                                // one shared set of light registries
+      progress: p,
+      /* One shared set of light registries for the whole scene, so the night
+         pass reads twenty-five buildings' lights in one list — but only from
+         finished ones. Handing an unfinished building the shared painter would
+         let it register a fire it has not built the altar for yet; letting it
+         make its own throwaway painter suppresses that, and dropping those
+         registrations is exactly what should happen to them. */
+      painter: p >= 1 ? g : undefined,
     });
     drawn.push(entry.id);
   }
@@ -202,27 +209,87 @@ export function drawStatic(g, ids, options = {}) {
   return g;
 }
 
+/* ======================================================= scaffolding ===== */
+
 /**
- * A scene bound to a canvas: paints the static layer once, caches it, and then
- * repaints only what moves.
+ * Scaffolding over a building that is still going up.
+ *
+ * The teaser is a construction site rather than a dim silhouette, and this is
+ * what says so. Without it a half-drawn building just looks like a bug — a
+ * chopped-off temple — where poles and a plank read as *not finished yet*,
+ * which is the entire message.
+ *
+ * Drawn only strictly between 0 and 1, so a finished building never carries it.
+ */
+export function drawScaffold(g, entry, progress) {
+  if (!(progress > 0) || progress >= 1) return;
+
+  const { x, w, band } = entry;
+  const groundY = BANDS[band].groundY;
+
+  /* The sprite's own height when it exists, and a plausible one when it does
+     not. Most of the catalogue is unauthored until 4b.4, and the teaser still
+     has to read as a plot with work happening on it. */
+  const height = SPRITES[entry.id]?.h ?? Math.min(28, Math.round(w * 0.8));
+  const built = Math.max(1, Math.round(height * progress));
+  const top = groundY - height;
+
+  /* Two uprights just outside the footprint, so they frame the work rather
+     than hide it, and a plank at the top of the frame. */
+  for (const px of [x - 1, x + w]) {
+    g.P(px, top, 1, groundY - top + 1, C.scaffold);
+  }
+  g.P(x - 1, top, w + 2, 1, C.scaffold);
+
+  /* A working platform at the height the build has actually reached. This is
+     the part that moves between lessons, and the reason the teaser is worth
+     more than a silhouette. */
+  g.P(x - 1, groundY - built, w + 2, 1, C.scaffoldLite);
+}
+
+/* ============================================================= a view ==== */
+
+/**
+ * A view onto the city, bound to one canvas.
+ *
+ * The scene is 560 logical pixels wide and a phone is not, so a view shows a
+ * window onto it and pans. The static layer — sky, hills, ground, finished
+ * buildings — is cached at full scene width once per unlock; the window is a
+ * blit out of that cache, which makes panning free. Only fire and smoke are
+ * repainted per frame.
+ *
+ * Two of these exist at once: the Home hero and the unlock moment on the
+ * Results screen. That is exactly why the painter is bound per canvas rather
+ * than being module-global.
  *
  * @param {HTMLCanvasElement} canvas
  * @param {object} [options]
+ * @param {number} [options.view]    logical width of the window; default the whole scene
  * @param {number} [options.scale]   omit to fit the element's width
  * @param {boolean} [options.motion] false for a still frame (reduced motion)
- * @returns {object} the scene
+ * @returns {object} the view
  */
-export function createScene(canvas, { scale, motion = true, night = false } = {}) {
-  const chosen = scale ?? chooseScale(SCENE.w, canvas.clientWidth || SCENE.w);
-  const ctx = fitCanvas(canvas, { w: SCENE.w, h: SCENE.h, scale: chosen });
+export function createScene(canvas, {
+  view = SCENE.w, scale, motion = true, night = false,
+} = {}) {
+  const viewW = Math.min(view, SCENE.w);
+  const chosen = scale ?? chooseScale(viewW, canvas.clientWidth || viewW);
+  const ctx = fitCanvas(canvas, { w: viewW, h: SCENE.h, scale: chosen });
+  const dpr = canvas.width / (viewW * chosen);
 
   const smoke = smokeField();
-  let cache = null;         // the static layer, as an offscreen canvas
+  let cache = null;         // the whole scene, as an offscreen canvas
   let lights = { glowTargets: [], emitters: [] };
   let ids = [];
   let progress = {};
+  let live = null;          // {id, progress} drawn per frame, not cached
+  let panX = 0;
+  let panTarget = 0;
   let running = false;
   let last = 0;
+
+  const maxPan = Math.max(0, SCENE.w - viewW);
+  const clampPan = x => Math.min(maxPan, Math.max(0, x));
 
   /** Repaint the static layer. Called on unlock, not per frame. */
   function invalidate() {
@@ -230,41 +297,140 @@ export function createScene(canvas, { scale, motion = true, night = false } = {}
        already assumes — but a cache is an optimisation, and an optimisation
        that can throw is worse than none. A plain detached canvas caches just
        as well. */
+    const w = Math.round(SCENE.w * chosen * dpr);
+    const h = Math.round(SCENE.h * chosen * dpr);
     const off = typeof OffscreenCanvas === 'function'
-      ? new OffscreenCanvas(canvas.width, canvas.height)
-      : Object.assign(document.createElement('canvas'),
-        { width: canvas.width, height: canvas.height });
+      ? new OffscreenCanvas(w, h)
+      : Object.assign(document.createElement('canvas'), { width: w, height: h });
     const offCtx = off.getContext('2d');
-    offCtx.setTransform(ctx.getTransform());
+    offCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     offCtx.imageSmoothingEnabled = false;
 
     const g = painter(offCtx, chosen);
-    drawStatic(g, ids, { night, progress });
+    const shown = live ? ids.filter(id => id !== live.id) : ids;
+    drawStatic(g, shown, { night, progress });
+
+    /* Scaffolding over whatever is under construction. */
+    for (const [id, p] of Object.entries(progress)) {
+      const entry = BY_ID[id];
+      if (entry && p > 0 && p < 1) drawScaffold(g, entry, p);
+    }
+
     lights = { glowTargets: [...g.glowTargets], emitters: [...g.emitters] };
     cache = off;
   }
 
-  /** Blit the cached city, then paint the handful of things that move. */
+  /** Blit the visible slice of the cache, then paint what moves. */
   function paint(t) {
+    const sliceX = Math.round(panX * chosen * dpr);
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (cache) ctx.drawImage(cache, 0, 0);
+    if (cache) {
+      ctx.drawImage(cache, sliceX, 0, canvas.width, canvas.height,
+        0, 0, canvas.width, canvas.height);
+    }
     ctx.restore();
 
+    /* Everything after this is in scene coordinates, shifted by the pan. */
+    ctx.save();
+    ctx.translate(-panX * chosen, 0);
     const g = painter(ctx, chosen);
-    for (const emitter of lights.emitters) drawFlame(g, emitter, t);
+
+    /* The building being revealed is drawn here rather than cached, because it
+       changes every frame for the ~800 ms the reveal lasts. */
+    if (live) {
+      const entry = BY_ID[live.id];
+      const sprite = SPRITES[live.id];
+      if (entry && sprite) {
+        sprite.draw(ctx, entry.x, BANDS[entry.band].groundY, {
+          scale: chosen,
+          progress: live.progress,
+          /* Same rule as the static pass: it lights up on the frame it is
+             finished, not while it is still rising. Which is the right moment
+             anyway — the altar catching is the end of the animation. */
+          painter: live.progress >= 1 ? g : undefined,
+        });
+      }
+    }
+
+    for (const emitter of [...lights.emitters, ...g.emitters]) drawFlame(g, emitter, t);
     smoke.draw(g);
+    ctx.restore();
   }
 
   return {
     get scale() { return chosen; },
     get lights() { return lights; },
+    get pan() { return panX; },
+    get viewWidth() { return viewW; },
 
     /** Which buildings exist, and how far along any unfinished one is. */
     show(nextIds, nextProgress = {}) {
       ids = [...nextIds];
       progress = nextProgress;
+      invalidate();
+      paint(0);
+    },
+
+    /** Move the window. Clamped, so it can be handed a raw building x. */
+    panTo(x, { animate = false } = {}) {
+      panTarget = clampPan(x);
+      if (!animate || !motion) {
+        panX = panTarget;
+        paint(0);
+      }
+      return panTarget;
+    },
+
+    /** Centre the window on a slot, which is what a caller actually wants. */
+    focus(entry, options) {
+      return this.panTo(entry.x + entry.w / 2 - viewW / 2, options);
+    },
+
+    /**
+     * The unlock moment: pan to the slot, then complete the building from the
+     * ground up.
+     *
+     * Resolves when it has finished, so a lesson that landed two buildings can
+     * await them one after another rather than playing both at once.
+     *
+     * @param {object} entry     catalogue entry
+     * @param {object} [options]
+     * @param {number} [options.duration]  ms; PLAN-ROMA section 7 says ~800
+     * @returns {Promise<void>}
+     */
+    async reveal(entry, { duration = 800 } = {}) {
+      /* Reduced motion gets the finished building and no animation at all —
+         it is a celebration, not information, so there is nothing to lose. */
+      if (!motion) {
+        live = null;
+        ids = [...new Set([...ids, entry.id])];
+        this.focus(entry);
+        this.show(ids, progress);
+        return;
+      }
+
+      this.focus(entry);
+      live = { id: entry.id, progress: 0 };
+      ids = [...new Set([...ids, entry.id])];
+      invalidate();
+
+      await new Promise(resolve => {
+        const started = performance.now();
+        const step = now => {
+          const p = Math.min(1, (now - started) / duration);
+          live.progress = p;
+          paint(now / 1000);
+          if (p < 1) requestAnimationFrame(step);
+          else resolve();
+        };
+        requestAnimationFrame(step);
+      });
+
+      /* Fold it into the cache now that it is finished, so the per-frame path
+         goes back to fire and smoke only. */
+      live = null;
       invalidate();
       paint(0);
     },
@@ -292,6 +458,9 @@ export function createScene(canvas, { scale, motion = true, night = false } = {}
         const dt = Math.min(0.05, (now - last) / 1000);
         last = now;
         smoke.update(dt, lights.emitters);
+        /* Ease toward the pan target, so a jump to a new building glides. */
+        if (Math.abs(panTarget - panX) > 0.4) panX += (panTarget - panX) * 0.12;
+        else panX = panTarget;
         paint(now / 1000);
         requestAnimationFrame(tick);
       };

@@ -28,8 +28,10 @@
     <!-- Friday outranks the reward: this pushes above the city (PLAN 5.1). -->
     <div id="readiness-home"></div>
 
+    <!-- The reward is unavoidable, not somewhere she has to navigate to. -->
     <div class="card card-hero">
-      <p class="placeholder">Hier komt de pixelstad.</p>
+      <canvas class="roma-canvas" id="city-home" aria-label="Rome, jouw stad"></canvas>
+      <p class="caption city-caption" id="city-caption"></p>
     </div>
 
     <div class="meter" role="presentation">
@@ -249,6 +251,14 @@
 
     <section class="screen" id="screen-results" data-screen="results" data-title="Resultaat" hidden>
       <p class="lede" id="results-lede"></p>
+      <!-- The unlock moment lands here, never mid-lesson (PLAN-ROMA 7). -->
+      <div class="card card-unlock" id="unlock-card" hidden>
+        <canvas class="roma-canvas" id="city-unlock" aria-hidden="true"></canvas>
+        <p class="eyebrow" id="unlock-eyebrow"></p>
+        <p class="unlock-latin" id="unlock-latin"></p>
+        <p class="caption" id="unlock-dutch"></p>
+        <p class="caption unlock-note" id="unlock-note"></p>
+      </div>
       <div class="stack" id="results-body"></div>
       <button class="btn btn-primary btn-lg" data-goto="home">Klaar</button>
     </section>

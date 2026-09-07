@@ -15,7 +15,6 @@ import {
 import { SPRITES } from '../js/roma/buildings.js';
 import { painter, smokeField, drawFlame, drawCypress, drawFigure } from '../js/roma/engine.js';
 import { C } from '../js/roma/palette.js';
-import { spikeTemple } from '../js/roma/spike-temple.js';
 
 function fakeCtx() {
   const ops = [];
@@ -382,25 +381,8 @@ test('a figure bobs when time runs and stands still when it does not', () => {
   assert.deepEqual(at(0), at(0), 'a still frame should be stable');
   const moved = Array.from({ length: 8 }, (_, i) => JSON.stringify(at(i * 0.2)));
   assert.ok(new Set(moved).size > 1, 'the walk bob does nothing');
-});
+});/* =============================================================== spike === */
 
-/* =============================================================== spike === */
-
-test('the temple spike is not in the catalogue', () => {
-  /* It is a throwaway to show the engine's ceiling while stage 1 is judged.
-     If it ever appears here, someone has shipped it by accident. */
-  assert.equal(BY_ID['spike-temple'], undefined);
-  assert.equal(SPRITES['spike-temple'], undefined);
-});
-
-test('the temple spike stays inside its box and lights itself', () => {
-  const ctx = fakeCtx();
-  const g = spikeTemple.draw(ctx, 0, spikeTemple.h - 1, { scale: 1 });
-  for (const r of rects(ctx)) {
-    assert.ok(r.x >= 0 && r.x + r.w <= spikeTemple.w, 'the spike paints outside its width');
-    assert.ok(r.y >= 0 && r.y + r.h - 1 <= spikeTemple.h - 1, 'outside its height');
-  }
-  assert.equal(Math.min(...rects(ctx).map(r => r.y)), 0, 'declared h does not match the art');
-  assert.equal(g.glowTargets.length, 1, 'the cella should be lit');
-  assert.equal(g.emitters.length, 3, 'an altar and two braziers');
-});
+/* The throwaway temple that showed the engine's ceiling during the go/no-go has
+   been deleted, along with the two tests that guarded it. `drawColumn` from it
+   is worth recovering out of commit cbfb25d when Templum Vestae is drawn. */

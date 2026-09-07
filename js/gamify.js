@@ -10,6 +10,7 @@
 
 import { studyDay } from './schedule.js';
 import { daysLeft, isActive, readiness } from './cram.js';
+import { STAGE_XP } from './roma/catalogue.js';
 
 /** What lasting progress is worth. Nothing else pays. */
 export const XP = {
@@ -24,15 +25,26 @@ export const XP = {
  * and a visible city are two abstractions doing one job; the city wins, and
  * these names are themselves vocabulary.
  *
- * The thresholds are provisional. PLAN-ROMA step 8 retunes them against a week
- * of real lesson data, which is the only way to get them right.
+ * The names live here because they are what she reads; the thresholds come from
+ * the catalogue, because a stage begins when its first building appears and
+ * there should be exactly one place that decides when that is. This file used
+ * to carry its own numbers — 0/400/1200/2800/6000 against the catalogue's
+ * 0/4000/14000/30000/50000 — and two ladders for one number would have shown up
+ * as a stage name changing nowhere near a building.
+ *
+ * Yes, this makes the XP core import from the reward city. That is the right
+ * direction: PLAN-ROMA is explicit that the city is the canonical picture of
+ * progress, so the city is what defines a stage.
+ *
+ * The thresholds are still provisional. PLAN-ROMA step 8 retunes them against a
+ * week of real lesson data, and editing the catalogue now moves both.
  */
 export const STAGES = [
-  { name: 'Roma Quadrata', dutch: 'de eerste muren', xp: 0 },
-  { name: 'Regnum', dutch: 'het koninkrijk', xp: 400 },
-  { name: 'Res Publica', dutch: 'de republiek', xp: 1200 },
-  { name: 'Imperium', dutch: 'het keizerrijk', xp: 2800 },
-  { name: 'Roma Aeterna', dutch: 'het eeuwige Rome', xp: 6000 },
+  { name: 'Roma Quadrata', dutch: 'de eerste muren', xp: STAGE_XP[0] },
+  { name: 'Regnum', dutch: 'het koninkrijk', xp: STAGE_XP[1] },
+  { name: 'Res Publica', dutch: 'de republiek', xp: STAGE_XP[2] },
+  { name: 'Imperium', dutch: 'het keizerrijk', xp: STAGE_XP[3] },
+  { name: 'Roma Aeterna', dutch: 'het eeuwige Rome', xp: STAGE_XP[4] },
 ];
 
 /** Where `xp` sits: the stage reached, and how far into the next one. */

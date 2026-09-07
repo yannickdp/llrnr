@@ -73,4 +73,20 @@ export const fanfare = () => {
   [523, 659, 784, 1047].forEach((freq, i) => note(freq, i * 0.09, 0.20, 0.07));
 };
 
+/**
+ * A building rising. Deliberately not the badge fanfare: a badge is a pat on
+ * the back and this is a piece of Rome appearing, so it is lower, slower and
+ * only three notes — closer to a bell than to a trumpet. It plays under the
+ * ~800 ms reveal, so it has to last about that long and not outstay it.
+ */
+export const unlocked = () => {
+  [392, 523, 784].forEach((freq, i) => note(freq, i * 0.16, 0.34, 0.06));
+};
+
+/** A new stage. The one moment that earns both sounds at once. */
+export const stageUp = () => {
+  unlocked();
+  [1047, 1319].forEach((freq, i) => note(freq, 0.5 + i * 0.12, 0.4, 0.05));
+};
+
 export const forGrade = grade => ({ correct, wrong, almost }[grade]?.());

@@ -51,6 +51,13 @@ export const C = Object.freeze({
   gold: '#e6b64a',
   bronze: '#6f9c86', // patinated, not fresh: Roman bronze outdoors goes green
 
+  /* Timber, and the one addition to the spec's list. Scaffolding is drawn by
+     the renderer rather than by a sprite — it belongs to the plot, not to the
+     building going up on it — so unlike the thatch and wattle of stage 1 it
+     cannot live in a sprite's local palette. */
+  scaffold: '#7a5c34',
+  scaffoldLite: '#a8814d',
+
   /* ---- ground and nature ---------------------------------------------- */
   plaza: '#cfc2a2',
   plazaDark: '#b4a682',

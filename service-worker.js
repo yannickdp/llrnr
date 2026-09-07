@@ -34,6 +34,14 @@ const SHELL = [
   'js/sound.js',
   'js/store.js',
   'js/ui.js',
+  /* The city. Left out until Home actually imported it, because addAll is
+     atomic and this list should name only what the app really loads. */
+  'js/roma/engine.js',
+  'js/roma/palette.js',
+  'js/roma/catalogue.js',
+  'js/roma/buildings.js',
+  'js/roma/render.js',
+  'js/roma/roma.js',
   'icons/icon-180.png',
   'icons/icon-192.png',
   'icons/icon-512.png',

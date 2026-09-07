@@ -201,10 +201,16 @@ test('the stored blob has the shape PLAN section 4 describes', () => {
   const storage = fakeStorage();
   openStore({ storage }).save();
 
-  assert.deepEqual(Object.keys(JSON.parse(storage.peek(KEY))).sort(), [
-    'badges', 'cards', 'roma', 'settings', 'stage', 'streak', 'tests',
+  const blob = JSON.parse(storage.peek(KEY));
+  assert.deepEqual(Object.keys(blob).sort(), [
+    'badges', 'cards', 'roma', 'settings', 'streak', 'tests',
     'typedAnswers', 'version', 'xp',
   ]);
+
+  /* `stage` lives inside `roma` with the city's other caches, and no longer
+     beside them at the top level as well. Both were derived from `xp` and
+     nothing ever read the outer one. */
+  assert.deepEqual(Object.keys(blob.roma).sort(), ['seenXp', 'stage', 'unlocked']);
 });
 
 /* ============================================================= backup ==== */

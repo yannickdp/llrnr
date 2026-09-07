@@ -289,10 +289,14 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   border-radius: var(--radius);
 }
 
+/* The city fills this now, so the canvas sets the height. The aspect-ratio
+   that used to hold the empty box open would fight it. */
 .card-hero {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 2 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+  overflow: hidden;
   background: var(--bg-sunken);
 }
 
@@ -693,4 +697,49 @@ textarea { min-block-size: 9rem; font-family: ui-monospace, SFMono-Regular, Menl
   image-rendering: pixelated;
   /* No touch-action override here: the Home hero is a static picture until
      4b.3 gives it a full-screen view to pan. */
+}
+
+/* The hero is a window onto a scene wider than the phone. Panning is the
+   renderer's job, so the canvas is never scrollable here — a horizontally
+   scrollable hero would fight the tab swipe. */
+
+.card-hero .roma-canvas {
+  max-inline-size: 100%;
+}
+
+.city-caption {
+  padding: 6px 10px 8px;
+  text-align: center;
+}
+
+/* The unlock moment. Gold-edged, because it is the one card on the Results
+   screen that is a reward rather than a report. */
+
+.card-unlock {
+  padding: 0;
+  overflow: hidden;
+  border-color: var(--accent);
+  text-align: center;
+}
+
+.card-unlock .roma-canvas {
+  max-inline-size: 100%;
+  margin-block-end: 8px;
+}
+
+.card-unlock .eyebrow,
+.card-unlock .caption {
+  padding-inline: 12px;
+}
+
+.unlock-latin {
+  margin: 2px 0 0;
+  padding-inline: 12px;
+  font-size: var(--t-lede);
+  font-weight: 700;
+}
+
+.unlock-note {
+  padding-block: 6px 12px;
+  color: var(--fg-dim);
 }

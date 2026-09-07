@@ -47,13 +47,16 @@ export function emptyProgress() {
   return {
     version: VERSION,
     xp: 0,
-    stage: 0,
     /* Answers she typed out herself, ever. Tapped multiple-choice answers do
        not count: the badge is for writing them. */
     typedAnswers: 0,
     streak: { current: 0, best: 0, lastDay: null, freezes: 1, freezeWeek: null },
     badges: [],
-    roma: { unlocked: [], seenXp: 0 },
+    /* `unlocked` and `stage` are both caches of `xp` and are kept only so that
+       "what is new since she last looked?" is answerable via `seenXp`. If they
+       ever disagree with the XP, the XP wins — see roma.js. `stage` used to sit
+       at the top level as well, unread by anything; one fact, one home. */
+    roma: { unlocked: [], stage: 0, seenXp: 0 },
     settings: { ...DEFAULT_SETTINGS },
     tests: [],
     cards: {},
