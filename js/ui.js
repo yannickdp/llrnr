@@ -95,7 +95,7 @@ const REDUCED = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
  * @param {object|null} city.next   `nextAt(xp)` — the building under construction
  * @param {object} city.built       `cityProgress(xp)`
  */
-export function paintCity({ unlocked, next, built }) {
+export function paintCity({ unlocked, next, built, stage = 0 }) {
   const canvas = $('city-home');
   if (!canvas) return;
 
@@ -112,7 +112,7 @@ export function paintCity({ unlocked, next, built }) {
      a little after every lesson rather than only at the threshold. */
   const progress = next ? { [next.entry.id]: next.progress } : {};
   const ids = next ? [...unlocked, next.entry.id] : unlocked;
-  hero.show(ids, progress);
+  hero.show(ids, { progress, stage });
 
   /* Follow the work: the window sits on whatever is being built, or on the
      newest thing standing once the city is finished. */
@@ -143,7 +143,7 @@ export function cityVisible(visible) {
  * @param {object|null} options.stageCrossed
  * @param {object|null} options.stage  the stage entered, for its Latin name
  */
-export async function cityUnlockMoment(buildings, { unlocked, stageCrossed, stage }) {
+export async function cityUnlockMoment(buildings, { unlocked, stageCrossed, stage, stageIndex = 0 }) {
   const card = $('unlock-card');
   if (!card || buildings.length === 0) {
     if (card) card.hidden = true;
@@ -159,7 +159,7 @@ export async function cityUnlockMoment(buildings, { unlocked, stageCrossed, stag
   /* Start from the city as it was *before* these landed, so there is something
      to reveal. */
   const before = unlocked.filter(id => !buildings.some(b => b.id === id));
-  unlockView.show(before);
+  unlockView.show(before, { stage: stageIndex });
   unlockView.start();
 
   for (const entry of buildings) {

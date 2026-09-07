@@ -209,13 +209,44 @@ test('draw order is back band first, then left to right', () => {
 
 /* ============================================================= sprites === */
 
-test('every stage 1 building has a sprite', () => {
-  /* And nothing later does yet, which is what makes a half-finished catalogue
-     a working feature rather than a broken one. */
-  for (const e of CATALOGUE.filter(e => e.stage === 0)) {
-    assert.ok(SPRITES[e.id], `${e.id} has no sprite`);
+test('every building of every authored stage has a sprite', () => {
+  /* Stages 1 to 3 are drawn; 4 and 5 are not yet, and that is fine — a
+     catalogue entry with no sprite is simply absent from the scene, which is
+     what makes a half-finished catalogue a working feature rather than a
+     broken one. What must not happen is a stage half-drawn, because then one
+     unlock in a run would silently produce nothing. */
+  const AUTHORED = [0, 1, 2];
+  for (const stage of AUTHORED) {
+    for (const e of CATALOGUE.filter(e => e.stage === stage)) {
+      assert.ok(SPRITES[e.id], `${e.id} has no sprite`);
+    }
   }
-  assert.equal(Object.keys(SPRITES).length, 5);
+  const drawn = new Set(Object.keys(SPRITES));
+  for (const e of CATALOGUE) {
+    if (AUTHORED.includes(e.stage)) continue;
+    assert.ok(!drawn.has(e.id), `${e.id} is drawn but its stage is not finished`);
+  }
+  assert.equal(drawn.size, CATALOGUE.filter(e => AUTHORED.includes(e.stage)).length);
+});
+
+test('every band is used and none is empty', () => {
+  /* The water band was added for the bridge and the drain; if a refactor ever
+     empties a band, the geometry it defines is dead weight. */
+  for (const band of Object.keys(BANDS)) {
+    assert.ok(
+      CATALOGUE.some(e => e.band === band),
+      `nothing stands in the ${band} band`,
+    );
+  }
+});
+
+test('the river buildings stand in the water, not on the pavement', () => {
+  /* The near street is above the waterline, so a bridge anchored there would
+     span dry land — the reason the water band exists at all. */
+  for (const id of ['pons-sublicius', 'cloaca-maxima']) {
+    assert.equal(BY_ID[id].band, 'water', `${id} is not in the water band`);
+  }
+  assert.ok(BANDS.water.groundY > BANDS.near.groundY);
 });
 
 test('every sprite id matches its catalogue entry', () => {
@@ -416,3 +447,33 @@ test('a figure bobs when time runs and stands still when it does not', () => {
 /* The throwaway temple that showed the engine's ceiling during the go/no-go has
    been deleted, along with the two tests that guarded it. `drawColumn` from it
    is worth recovering out of commit cbfb25d when Templum Vestae is drawn. */
+
+/* ==================================================== the viewer pages == */
+
+/* The city is judged by eye on two HTML pages, and nothing else loads them —
+   so when 4b.3 deleted the throwaway temple, the page that imported it stayed
+   broken for two commits and would only have shown up as a blank screen on a
+   phone. These check the one thing a unit test can check about a page it
+   cannot run: that every module it imports is actually there. */
+
+test('every module the viewer pages import exists', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { existsSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  const { dirname, resolve } = await import('node:path');
+
+  const here = dirname(fileURLToPath(import.meta.url));
+
+  for (const page of ['roma-probe.html', 'roma-city.html']) {
+    const html = await readFile(resolve(here, page), 'utf8');
+    const imports = [...html.matchAll(/from\s+'([^']+)'/g)].map(m => m[1]);
+    assert.ok(imports.length > 0, `${page} imports nothing — has it been gutted?`);
+
+    for (const spec of imports) {
+      assert.ok(
+        existsSync(resolve(here, spec)),
+        `${page} imports ${spec}, which does not exist`,
+      );
+    }
+  }
+});

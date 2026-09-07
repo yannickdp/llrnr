@@ -37,8 +37,16 @@ export const BANDS = Object.freeze({
   far: Object.freeze({ groundY: 126, z: 0 }),
   /* The main street. Most of the catalogue. */
   mid: Object.freeze({ groundY: 150, z: 1 }),
-  /* The Tiber, the road, the cypresses, the citizens. */
+  /* The near street: the road, the cypresses, the citizens. */
   near: Object.freeze({ groundY: 166, z: 2 }),
+  /* The Tiber itself, which is the bottom edge of the scene.
+     PLAN-ROMA §5 lumps the river in with the near band, and drawing the first
+     two river buildings showed why it cannot be: the near street stands at 166
+     and the water starts at 170, so a bridge anchored to `near` would span dry
+     land, and the drain outlet would empty onto the pavement. Anything whose
+     footing is the river gets this band instead, and being last it is drawn in
+     front of the water rather than behind it. */
+  water: Object.freeze({ groundY: 179, z: 3 }),
 });
 
 /**
@@ -124,7 +132,7 @@ export const CATALOGUE = Object.freeze([
   {
     id: 'cloaca-maxima', latin: 'Cloaca Maxima', dutch: 'hoofdriool',
     note: 'De grote riool legde het Forum droog en doet vandaag nog dienst.',
-    xp: 10500, lesson: 16, stage: 1, band: 'near', x: 100, w: 12,
+    xp: 10500, lesson: 16, stage: 1, band: 'water', x: 100, w: 12,
   },
   {
     id: 'templum-vestae', latin: 'Templum Vestae', dutch: 'tempel van Vesta',
@@ -134,7 +142,7 @@ export const CATALOGUE = Object.freeze([
   {
     id: 'pons-sublicius', latin: 'Pons Sublicius', dutch: 'eerste brug',
     note: 'De oudste brug van Rome, van hout en zonder ijzeren nagels.',
-    xp: 17500, lesson: 24, stage: 1, band: 'near', x: 130, w: 24,
+    xp: 17500, lesson: 24, stage: 1, band: 'water', x: 130, w: 24,
   },
   {
     id: 'carcer', latin: 'Carcer', dutch: 'gevangenis',

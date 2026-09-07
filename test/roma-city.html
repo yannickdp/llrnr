@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Roma — the city, by eye</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0;
+    padding: 16px calc(16px + env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom))
+             calc(16px + env(safe-area-inset-left));
+    background: #12161f;
+    color: #e7e3d8;
+    font: 15px/1.45 system-ui, sans-serif;
+  }
+  h1 { font-size: 1.05rem; margin: 0 0 4px; }
+  h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: .1em; color: #8b93a3;
+       margin: 0 0 8px; font-weight: 700; }
+  p { margin: 0 0 14px; color: #9aa3b2; font-size: 0.8125rem; }
+  section { margin-block-end: 26px; }
+  canvas { image-rendering: pixelated; display: block; border-radius: 4px; }
+  .scene-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch;
+                border-radius: 6px; background: #0b0e14; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+  .cell { display: flex; flex-direction: column; gap: 4px; }
+  .cell canvas { background: #cfe3ef; }
+  .cap { font-size: 0.6875rem; color: #8b93a3; }
+  .la { color: #e6b64a; font-weight: 700; }
+  button { font: inherit; color: #f0ead9; background: #2a3450; border: 1px solid #3c4870;
+           padding: 7px 12px; border-radius: 8px; }
+  button[aria-pressed="true"] { background: #8a6b18; border-color: #c9a13a; }
+  button:focus-visible { outline: 2px solid #ffd67a; outline-offset: 2px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 6px; margin-block-end: 10px; }
+</style>
+</head>
+<body>
+
+<h1>Roma — the city, by eye</h1>
+<p>
+  The parts of the pixel-art city a passing assertion cannot vouch for. Open it
+  <strong>on the phone</strong>. Pick an era to see the city as it stands at that point,
+  hill details and all; the whole scene is wider than the screen, so it scrolls.
+</p>
+
+<section>
+  <h2>The city</h2>
+  <div class="controls" id="eras"></div>
+  <div class="scene-wrap"><canvas id="scene"></canvas></div>
+  <p style="margin-block-start:8px" id="scene-note"></p>
+  <button id="toggle">Pauzeer beweging</button>
+</section>
+
+<section>
+  <h2>Every building, on its own</h2>
+  <div class="row" id="sprites"></div>
+</section>
+
+<section>
+  <h2>Under construction — the teaser</h2>
+  <p style="margin-block-end:8px">
+    30%, 60% and finished, with the scaffolding that says it is a building site rather
+    than a clipped sprite. The same call the unlock reveal sweeps to 1.
+  </p>
+  <div class="row" id="progress"></div>
+</section>
+
+<script type="module">
+import { painter, fitCanvas, drawFlame } from '../js/roma/engine.js';
+import { SCENE, CATALOGUE, BANDS } from '../js/roma/catalogue.js';
+import { SPRITES } from '../js/roma/buildings.js';
+import { createScene, drawScaffold } from '../js/roma/render.js';
+import { STAGES } from '../js/gamify.js';
+
+const dpr = window.devicePixelRatio || 1;
+const PAD = 2;
+
+/* Which stages have art. Anything later is in the catalogue but not drawn yet,
+   and simply does not appear — which is the point of the seam. */
+const authored = CATALOGUE.filter(e => SPRITES[e.id]);
+const lastStage = Math.max(...authored.map(e => e.stage));
+
+/* ---- the whole scene ---------------------------------------------------- */
+const sceneCanvas = document.getElementById('scene');
+const sceneScale = Math.max(1, Math.min(3, Math.floor((window.innerWidth - 32) / 200)));
+const scene = createScene(sceneCanvas, {
+  scale: sceneScale,
+  motion: !matchMedia('(prefers-reduced-motion: reduce)').matches,
+});
+
+let era = lastStage;
+
+function showEra(stage) {
+  era = stage;
+  const ids = authored.filter(e => e.stage <= stage).map(e => e.id);
+  scene.show(ids, { stage });
+
+  document.getElementById('scene-note').textContent =
+    `${STAGES[stage].name} — ${ids.length} of ${CATALOGUE.length} buildings. `
+    + `${SCENE.w}x${SCENE.h} logical at x${sceneScale}, dpr ${dpr}. `
+    + `${scene.lights.emitters.length} fire(s), ${scene.lights.glowTargets.length} lit opening(s). `
+    + `Home shows a ${SCENE.window}px window of this.`;
+
+  for (const button of document.querySelectorAll('#eras button')) {
+    button.setAttribute('aria-pressed', String(Number(button.dataset.stage) === stage));
+  }
+}
+
+for (let stage = 0; stage <= lastStage; stage++) {
+  const button = document.createElement('button');
+  button.textContent = STAGES[stage].name;
+  button.dataset.stage = String(stage);
+  button.onclick = () => showEra(stage);
+  document.getElementById('eras').append(button);
+}
+
+showEra(lastStage);
+scene.start();
+
+let running = true;
+document.getElementById('toggle').onclick = event => {
+  running = !running;
+  if (running) scene.start(); else scene.stop();
+  event.target.textContent = running ? 'Pauzeer beweging' : 'Start beweging';
+};
+
+/* ---- one sprite, one canvas -------------------------------------------- */
+
+function cell(entry, { scale = 4, progress = 1, caption = '', latin = '' } = {}) {
+  const sprite = SPRITES[entry.id];
+  const wrap = document.createElement('div');
+  wrap.className = 'cell';
+
+  const canvas = document.createElement('canvas');
+  const w = sprite.w + PAD * 2;
+  const h = sprite.h + PAD * 2;
+  wrap.append(canvas);
+
+  for (const [cls, text] of [['la', latin], ['', caption]]) {
+    if (!text) continue;
+    const tag = document.createElement('span');
+    tag.className = `cap ${cls}`.trim();
+    tag.textContent = text;
+    wrap.append(tag);
+  }
+
+  const ctx = fitCanvas(canvas, { w, h, scale, dpr });
+  /* Far-band buildings are shown hazed, the way the scene draws them —
+     otherwise the city wall looks like a different building here. */
+  const base = painter(ctx, scale);
+  const g = entry.band === 'far' ? base.hazed(0.42) : base;
+
+  sprite.draw(ctx, PAD, h - PAD - 1, { scale, progress, painter: g });
+  if (progress < 1) drawScaffold(g, { ...entry, x: PAD }, progress);
+  for (const emitter of g.emitters) drawFlame(g, emitter, 0.4);
+
+  return wrap;
+}
+
+const spriteRow = document.getElementById('sprites');
+for (const entry of authored) {
+  spriteRow.append(cell(entry, {
+    scale: entry.w > 60 ? 2 : 4,
+    latin: entry.latin,
+    caption: `${entry.dutch} — ${SPRITES[entry.id].w}x${SPRITES[entry.id].h}, ${entry.band}`,
+  }));
+}
+
+const progressRow = document.getElementById('progress');
+for (const entry of authored.filter(e => e.w <= 30)) {
+  for (const p of [0.3, 0.6, 1]) {
+    progressRow.append(cell(entry, {
+      scale: 3, progress: p, caption: `${entry.latin} ${Math.round(p * 100)}%`,
+    }));
+  }
+}
+</script>
+
+</body>
+</html>

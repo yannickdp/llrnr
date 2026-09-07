@@ -56,6 +56,38 @@ export function hash(x, y) {
   return h / 4294967296;
 }
 
+/* ============================================================== colour === */
+
+const mixCache = new Map();
+
+/**
+ * Blend one hex colour toward another. Memoised, because the far band asks for
+ * the same handful of blends a few thousand times per repaint.
+ *
+ * @param {string} from  #rrggbb
+ * @param {string} to    #rrggbb
+ * @param {number} t     0 = `from`, 1 = `to`
+ * @returns {string} #rrggbb
+ */
+export function mix(from, to, t) {
+  const key = `${from}${to}${t}`;
+  const hit = mixCache.get(key);
+  if (hit) return hit;
+
+  const a = parseInt(from.slice(1), 16);
+  const b = parseInt(to.slice(1), 16);
+  const lerp = (shift) => {
+    const av = (a >> shift) & 255;
+    const bv = (b >> shift) & 255;
+    return Math.round(av + (bv - av) * t);
+  };
+  const out = '#' + [lerp(16), lerp(8), lerp(0)]
+    .map(v => v.toString(16).padStart(2, '0')).join('');
+
+  mixCache.set(key, out);
+  return out;
+}
+
 /* =========================================================== the painter === */
 
 /**
@@ -74,8 +106,18 @@ export function hash(x, y) {
  *   not glow through its unfinished wall
  * @returns {object} the painter
  */
-export function painter(ctx, scale = 1, { lights = true } = {}) {
+export function painter(ctx, scale = 1, {
+  lights = true, haze = 0, glowTargets = [], emitters = [],
+} = {}) {
   const s = scale;
+
+  /* Atmospheric perspective, and the whole of the far band's treatment.
+     PLAN-ROMA §5 asks for the back of the city to have its colours pulled
+     toward `hillFar` so distance reads without any extra art. Doing it here
+     rather than in the sprites means a far-band building is drawn from exactly
+     the same code as a near one — the band decides how hazy it comes out, and
+     the same sprite could stand in either. */
+  const tint = haze > 0 ? (col => mix(col, C.hillFar, haze)) : (col => col);
 
   /* Round the edges and take the difference, so adjacent rectangles always
      share an edge exactly and never leave a seam. */
@@ -88,7 +130,7 @@ export function painter(ctx, scale = 1, { lights = true } = {}) {
     const pw = span(x, x + w);
     const ph = span(y, y + h);
     if (pw <= 0 || ph <= 0) return;
-    ctx.fillStyle = col;
+    ctx.fillStyle = tint(col);
     ctx.fillRect(Math.round(x * s), Math.round(y * s), pw, ph);
   };
 
@@ -163,12 +205,10 @@ export function painter(ctx, scale = 1, { lights = true } = {}) {
     }
   };
 
-  /* ---- the light registries ------------------------------------------- */
-  /* Buildings push; they never read. The night pass and the fire system are
-     the only readers, which is why "add a lit window" stays one line anywhere
-     and why section 6 of PLAN-ROMA does not leak into every recipe. */
-  const glowTargets = [];
-  const emitters = [];
+  /* The light registries are passed in rather than made here, so a derived
+     painter — a hazed one, say — shares them with its parent and the night pass
+     still reads every light in the scene from one list. Buildings push; they
+     never read. */
 
   return {
     ctx,
@@ -197,6 +237,15 @@ export function painter(ctx, scale = 1, { lights = true } = {}) {
     reset() {
       glowTargets.length = 0;
       emitters.length = 0;
+    },
+
+    /**
+     * The same painter, hazed — for the far band. Shares the light registries,
+     * so a distant building can still register a lit window.
+     * @param {number} amount 0..1 toward `hillFar`
+     */
+    hazed(amount) {
+      return painter(ctx, s, { lights, haze: amount, glowTargets, emitters });
     },
   };
 }

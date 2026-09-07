@@ -63,21 +63,19 @@ Two pages rather than tests, for the parts of the pixel-art city that a passing
 assertion cannot vouch for. Open both **on the phone**.
 
 ```
-test/roma-probe.html     is it crisp?
-test/roma-stage1.html    is it any good?
+test/roma-probe.html    is it crisp?
+test/roma-city.html     is it any good?
 ```
 
 The first reports the device pixel ratio and the scale that follows from it, draws a
 calibration sprite at each integer scale, and puts a deliberately fractional ×2.5
 beside a crisp ×3 so there is something to compare against. Look for soft edges.
 
-The second is the **go/no-go**: stage 1 on the hills with the altar burning, the five
-sprites on their own, and the construction-progress reveal. The question it settles is
-whether hand-authored pixel art is good enough to carry the reward, or whether the
-sprite source should be swapped for a CC0 tileset — which touches `buildings.js` and
-nothing else, because everything is behind `draw(ctx, x, groundY, {scale, progress})`.
-It carries the throwaway temple too, so the verdict is reached knowing what the engine
-can do later.
+The second is the city: pick an era and see it as it stood then, hill details and all,
+plus every building on its own and the construction-site teaser. Nothing else loads
+either page, so `test/roma-city.test.mjs` at least checks that the modules they import
+still exist — the first version of that page went two commits importing a file that had
+been deleted, and a broken page shows up as a blank screen and nothing else.
 
 ## Deploy (GitHub Pages)
 

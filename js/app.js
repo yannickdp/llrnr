@@ -432,6 +432,7 @@ function refreshHome() {
     unlocked: store.progress.roma.unlocked,
     next,
     built: cityProgress(store.progress.xp),
+    stage: store.progress.roma.stage,
   });
 
   /* Switching every chapter off leaves nothing to teach, so Start goes dead
@@ -560,6 +561,7 @@ function finishLesson(lesson, test, readyBefore) {
     unlocked: store.progress.roma.unlocked,
     stageCrossed: rose.stageCrossed,
     stage: rose.stageCrossed ? STAGES[rose.stageCrossed.to] : null,
+    stageIndex: store.progress.roma.stage,
   }).then(() => {
     store.progress.roma = markSeen(store.progress.roma, store.progress.xp);
     store.save();

@@ -62,7 +62,68 @@ function rangeTop(x) {
  * the near tone with a lit rim along the top — which is the three-tone rule
  * doing the only thing that separates a hill from a green triangle.
  */
-export function drawHills(g) {
+/* What each stage adds to the skyline.
+ *
+ * PLAN-ROMA §7 asks for the hills to gain a detail when she crosses into a new
+ * era, so the backdrop marks the passage of time and not only the foreground.
+ * Cheap, and it means a stage crossing changes something she will still see on
+ * every visit afterwards — the Latin name on the results card is a moment, this
+ * is a permanent one. Cumulative: stage 3 keeps what stages 1 and 2 added. */
+const HILL_DETAIL = [
+  /* Roma Quadrata — bare hills, a shepherd's landscape. */
+  () => {},
+
+  /* Regnum — cypresses take the ridges. */
+  (g, hill, farGround) => {
+    for (let i = 0; i < 3; i++) {
+      const x = Math.round(hill.cx + (hash(hill.cx, i) - 0.5) * hill.halfW * 1.4);
+      if (x < 2 || x > SCENE.w - 3) return;
+      drawCypress(g, x, ridgeAt(hill, x, farGround) + 1);
+    }
+  },
+
+  /* Res Publica — a farmstead out on the slope: the republic's countryside. */
+  (g, hill, farGround) => {
+    const x = Math.round(hill.cx - hill.halfW * 0.55);
+    const gy = ridgeAt(hill, x, farGround) + 1;
+    g.P(x, gy - 3, 6, 3, C.marbleShade);
+    g.P(x - 1, gy - 5, 8, 2, C.tileDark);
+  },
+
+  /* Imperium — aqueduct arches on the horizon, before the real one arrives. */
+  (g, hill, farGround) => {
+    const y = ridgeAt(hill, hill.cx, farGround) - 6;
+    for (let i = 0; i < 4; i++) {
+      const cx = hill.cx - 18 + i * 12;
+      g.P(cx - 5, y, 11, 5, C.stoneShade);
+      g.arch(cx, y + 1, 5, 4, C.hill);
+    }
+    g.P(hill.cx - 24, y - 1, 48, 1, C.stone);
+  },
+
+  /* Roma Aeterna — a temple crowns the hill. */
+  (g, hill, farGround) => {
+    const gy = ridgeAt(hill, hill.cx, farGround);
+    g.P(hill.cx - 7, gy - 5, 15, 5, C.marble);
+    for (let i = 0; i < 5; i++) g.dot(hill.cx - 5 + i * 3, gy - 4, C.marbleShade);
+    for (let row = 0; row < 4; row++) {
+      g.P(hill.cx - row - 1, gy - 6 - row, (row + 1) * 2 + 1, 1, C.marbleLite);
+    }
+  },
+];
+
+/** The ridge row of a hill at a given column. */
+function ridgeAt(hill, x, farGround) {
+  const u = (x - hill.cx) / hill.halfW;
+  return Math.round(farGround - hill.rise * (1 - u * u));
+}
+
+/**
+ * @param {object} g
+ * @param {object} [options]
+ * @param {number} [options.stage]  0..4; each era adds to the skyline
+ */
+export function drawHills(g, { stage = 0 } = {}) {
   const farGround = BANDS.far.groundY;
   const midGround = BANDS.mid.groundY;
 
@@ -99,17 +160,11 @@ export function drawHills(g) {
     }
   }
 
-  /* A few cypresses on the ridges, for depth and because they are the one
-     plant that says "Italy" in three pixels. Positions from `hash`, so the
+  /* Everything each era has added, oldest first, one hill each so the three
+     do not all sprout the same thing. Positions come from `hash`, so the
      skyline is varied and identical every time she opens the app. */
-  for (const hill of HILLS) {
-    for (let i = 0; i < 3; i++) {
-      const x = Math.round(hill.cx + (hash(hill.cx, i) - 0.5) * hill.halfW * 1.4);
-      if (x < 2 || x > SCENE.w - 3) continue;
-      const u = (x - hill.cx) / hill.halfW;
-      const top = Math.round(farGround - hill.rise * (1 - u * u));
-      drawCypress(g, x, top + 1);
-    }
+  for (let era = 0; era <= stage; era++) {
+    HILL_DETAIL[era]?.(g.hazed(FAR_HAZE * 0.6), HILLS[era % HILLS.length], farGround);
   }
 }
 
@@ -154,6 +209,10 @@ export function drawGround(g) {
 
 /* ======================================================== buildings ====== */
 
+/* How far the far band is pulled toward the hill colour. Enough to read as
+   distance, not so much that a stone wall turns green. */
+const FAR_HAZE = 0.42;
+
 /**
  * Paint a set of buildings at their slots.
  *
@@ -174,6 +233,12 @@ export function drawBuildings(g, ids, { progress = {} } = {}) {
     if (!sprite) continue;                       // not authored yet; simply absent
 
     const p = progress[entry.id] ?? 1;
+    /* The far band is hazed toward the hills, which is all the "reduced
+       detail" treatment PLAN-ROMA §5 asks for and rather better than actually
+       drawing less: the same sprite could stand in any band and the band
+       decides how distant it looks. */
+    const shared = entry.band === 'far' ? g.hazed(FAR_HAZE) : g;
+
     sprite.draw(g.ctx, entry.x, BANDS[entry.band].groundY, {
       scale: g.scale,
       progress: p,
@@ -183,7 +248,7 @@ export function drawBuildings(g, ids, { progress = {} } = {}) {
          let it register a fire it has not built the altar for yet; letting it
          make its own throwaway painter suppresses that, and dropping those
          registrations is exactly what should happen to them. */
-      painter: p >= 1 ? g : undefined,
+      painter: p >= 1 ? shared : undefined,
     });
     drawn.push(entry.id);
   }
@@ -203,7 +268,7 @@ export function drawBuildings(g, ids, { progress = {} } = {}) {
  */
 export function drawStatic(g, ids, options = {}) {
   drawSky(g, options);
-  drawHills(g);
+  drawHills(g, options);
   drawGround(g);
   drawBuildings(g, ids, options);
   return g;
@@ -282,6 +347,7 @@ export function createScene(canvas, {
   let lights = { glowTargets: [], emitters: [] };
   let ids = [];
   let progress = {};
+  let stage = 0;
   let live = null;          // {id, progress} drawn per frame, not cached
   let panX = 0;
   let panTarget = 0;
@@ -308,7 +374,7 @@ export function createScene(canvas, {
 
     const g = painter(offCtx, chosen);
     const shown = live ? ids.filter(id => id !== live.id) : ids;
-    drawStatic(g, shown, { night, progress });
+    drawStatic(g, shown, { night, progress, stage });
 
     /* Scaffolding over whatever is under construction. */
     for (const [id, p] of Object.entries(progress)) {
@@ -365,10 +431,19 @@ export function createScene(canvas, {
     get pan() { return panX; },
     get viewWidth() { return viewW; },
 
-    /** Which buildings exist, and how far along any unfinished one is. */
-    show(nextIds, nextProgress = {}) {
+    /**
+     * Which buildings exist, how far along any unfinished one is, and which era
+     * the skyline should show.
+     *
+     * @param {string[]} nextIds
+     * @param {object} [options]
+     * @param {Object<string, number>} [options.progress]
+     * @param {number} [options.stage]  0..4; the hills gain a detail per era
+     */
+    show(nextIds, { progress: nextProgress = {}, stage: nextStage = stage } = {}) {
       ids = [...nextIds];
       progress = nextProgress;
+      stage = nextStage;
       invalidate();
       paint(0);
     },
@@ -407,7 +482,7 @@ export function createScene(canvas, {
         live = null;
         ids = [...new Set([...ids, entry.id])];
         this.focus(entry);
-        this.show(ids, progress);
+        this.show(ids, { progress, stage });
         return;
       }
 

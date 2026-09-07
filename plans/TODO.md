@@ -405,12 +405,47 @@ unreachable. Tuned for the 500–700 words she is expected to have this year; if
 turns out much lower, the table needs compressing, not patience.
 
 ### 4b.4 Volume
-- [ ] 5. Stages 2 and 3 (ten buildings) + the stage-crossing moment
-- [ ] 5. Far band with the `mini*` silhouette treatment, colours pulled toward
-      `hillFar` for atmospheric perspective — lands with `Murus Servii` *(§5)*
+- [x] 5. **Stage 2 (Regnum)** — `forum`, `cloaca-maxima`, `templum-vestae`,
+      `pons-sublicius`, `carcer`
+- [x] 5. **Stage 3 (Res Publica)** — `curia`, `rostra`, `basilica`, `murus-servii`,
+      `via-appia`. Mostly draw functions: republican Rome is arcades and colonnades,
+      and a loop beats two thousand hand-placed characters
+- [x] 5. Far band: colours pulled toward `hillFar` by a `haze` option on the painter,
+      so a distant building is drawn from *exactly* the same code as a near one and
+      the band decides how far away it looks. Better than the spec's `mini*`
+      silhouettes — no second version of any sprite to keep in step *(§5)*
+- [x] 5. The stage-crossing moment: **the hills gain a detail per era** *(§7)* —
+      cypresses on the ridges, then a farmstead, then aqueduct arches on the horizon,
+      then a temple crowning the hill. Cumulative, so it is a permanent mark of
+      having crossed rather than only a card on the Results screen
+- [x] `masonry()` takes a course datum, so a tower and the wall it stands in share
+      their mortar lines. They did not, and a wall whose courses jog at a tower reads
+      as a mistake rather than as two structures
+- [x] **A `water` band, at the scene floor.** §5 lumps the Tiber in with the near
+      band and the first two river buildings showed why that cannot work: the near
+      street stands at 166 and the water starts at 170, so the bridge would have
+      spanned dry land and the drain emptied onto the pavement
+- [x] `test/roma-stage1.html` replaced by `test/roma-city.html` — an era picker
+      rather than a go/no-go, since that question is settled
 - [ ] 6. Stages 4 and 5 (**ten** buildings, incl. the new `Arcus Triumphalis`), ending
       at `Templum Iovis` — where the spec's recipes are cashed in
 - [ ] `Aqua Appia` drawn as 3–4 arches running off the left edge, not full width *(§5)*
+- [ ] Recover `drawColumn` from commit `cbfb25d` for the two temples *(4b.4 wrote its
+      own two-pixel `column()`, which is right for a colonnade seen at a distance but
+      thin for a hero temple front)*
+
+Three faults this phase turned up, all found by looking rather than by the suite:
+
+- **`test/roma-stage1.html` had been broken since 4b.3** — it imported the throwaway
+  temple that phase deleted, so the only way to see the city was a blank screen. Two
+  commits. There is now a test that every module the viewer pages import exists
+- The temple of Vesta had **seven columns at a pitch of three**, which ran off the
+  right of its own drum and left two bare pixels on the left. Six at four spans
+  twenty-two exactly. Also: draw the colonnade *last*, so the cella door reads as
+  being behind it — a tholos is peripheral, and painting the door last put a flat
+  black slot in front of the columns
+- The Curia's bronze doors were banded every second row, which turned the one thing
+  anybody remembers about the building into a humbug stripe
 
 ### 4b.5 Life, light and tuning
 - [ ] 7. Life — citizens, smoke, a boat, birds, water shimmer, in a suspendable loop
