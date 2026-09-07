@@ -427,12 +427,43 @@ turns out much lower, the table needs compressing, not patience.
       spanned dry land and the drain emptied onto the pavement
 - [x] `test/roma-stage1.html` replaced by `test/roma-city.html` — an era picker
       rather than a go/no-go, since that question is settled
-- [ ] 6. Stages 4 and 5 (**ten** buildings, incl. the new `Arcus Triumphalis`), ending
-      at `Templum Iovis` — where the spec's recipes are cashed in
-- [ ] `Aqua Appia` drawn as 3–4 arches running off the left edge, not full width *(§5)*
-- [ ] Recover `drawColumn` from commit `cbfb25d` for the two temples *(4b.4 wrote its
-      own two-pixel `column()`, which is right for a colonnade seen at a distance but
-      thin for a hero temple front)*
+- [x] 6. **Stage 4 (Imperium)** — `aqua-appia`, `thermae`, `circus-maximus`,
+      `theatrum`, `horti`
+- [x] 6. **Stage 5 (Roma Aeterna)** — `colosseum`, `pantheon`, `columna-traiani`,
+      `arcus-triumphalis`, `templum-iovis`. **All 25 buildings are now drawn**
+- [x] `Aqua Appia` is a continuous two-tier arcade with no finished end either side,
+      so it reads as a length of aqueduct passing through rather than a monument
+      *(§5)*
+- [x] `fatColumn` — the three-pixel fluted column recovered from `cbfb25d`, for the
+      two hero temple fronts. The two-pixel `column()` stays for colonnades seen at a
+      distance
+- [x] `pediment()` shared by the Pantheon and `Templum Iovis` — triangle, terracotta
+      rakes, gilded rosette
+- [x] The finished city is 17 663 rects, 7 fires and 14 lit openings; the static layer
+      builds in ~7 ms and is cached per unlock, so per-frame work stays the fires
+
+**The Colosseum is drawn intact, not ruined.** The spec's recipe removes the upper
+tiers on the right via `facadeTop(x)`, and it is true that the broken silhouette is
+the recognisable one — but the stage is called *Roma Aeterna* and the city is being
+built up, so a half-collapsed monument at the top of the growth curve reads as damage.
+The ruin machinery was not wasted: generalised into `progress`, it is what draws every
+building under construction.
+
+Four faults, all found by rendering to ASCII and looking:
+
+- **The triumphal arch and the Colosseum both had one-pixel piers.** Three arches in
+  24 pixels, and six seven-wide arches in 52, leave no mass between the openings — the
+  arch read as a colander. The arch is single-bay now (perfectly Roman: so is the Arch
+  of Titus) and the Colosseum uses five-wide arches, **knowingly breaking the
+  seven-pixel rule from 4b.2**: for that one building the *number* of arches is what
+  makes it recognisable and the crown curve is not
+- The baths' dome was a whole sphere with nothing under it, so it tapered to a point
+  in mid-air between the wings. It needed a drum
+- The Circus Maximus inset every course of seating and came out a stepped pyramid —
+  a building famous for being long. Only the top three courses draw in now
+- `Templum Iovis` had its colonnade at a pitch of seven, which put the axis a pixel
+  and a half off centre on the capstone of the whole catalogue. Six at eight spans
+  2..46 exactly
 
 Three faults this phase turned up, all found by looking rather than by the suite:
 
@@ -460,7 +491,29 @@ Three faults this phase turned up, all found by looking rather than by the suite
       by re-running `node test/xp-curve.mjs` with numbers matching what her lessons
       actually produce, not by estimating again *(§2)*
 
-### 4b.6 Invariants
+### 4b.6 The full-screen view — zoom and tap *(§7)*
+
+Never a checkbox before this, only prose in §7, which is how it stayed invisible for
+four phases. Zoom and tap are **one** feature: at the hero's scale a building is a
+12–26 pixel target, well under the ~44 px a finger needs, so inspecting one only works
+somewhere it has been zoomed.
+
+- [ ] Tapping the Home hero opens a full-screen city view; pan across the whole
+      560-wide scene
+- [ ] **Zoom snaps to whole numbers** — ×1/×2/×3/×4. Scale the cached bitmap with a
+      CSS transform during the pinch and re-cache once on release; fractional scaling
+      resamples the art into a smear and reads as bad art, not as a bug *(§8)*
+- [ ] `createScene` gains `setScale(n)` — re-runs `fitCanvas` and re-caches. About
+      fifteen lines; nothing a sprite knows has to change
+- [ ] Tap a building → its Latin name, Dutch meaning and one line of history. The
+      catalogue already carries all three and the unlock card already renders exactly
+      that trio, styled
+- [ ] Hit testing is a rectangle test against `(x, w, band)` resolved **front-most
+      first** — the bands overlap on purpose, so reverse `inDrawOrder()` and take the
+      first slot containing the point
+- [ ] Nothing tappable on the hero itself beyond "open the full view"
+
+### 4b.7 Invariants
 - [ ] Layer cache: sky, hills and finished buildings offscreen, invalidated on unlock;
       per-tick redraw limited to fire, smoke, water, citizens *(§8 — required at
       560×180, not an optimisation)*
@@ -562,9 +615,9 @@ Spec: [plan-roma-updates.md](plan-roma-updates.md) §14 · demo:
 - [ ] Silent warm-up utterance on the Start-lesson tap (iOS speech unlock)
 - [ ] Grading grammar forms as a harder mode
 - [ ] A second language list (French / English) to prove the generic model
-- [ ] Roma extras: choice at some unlocks, tap-a-building history, nameplate mode,
-      export the city as a PNG (`toBlob()` on the full scene), manual day/night toggle
-      in the full-screen view only
+- [ ] Roma extras: choice at some unlocks, nameplate mode, export the city as a PNG
+      (`toBlob()` on the full scene), manual day/night toggle in the full-screen view
+      only *(tap-a-building was here and is now Phase 4b.6 — it was asked for)*
 - [ ] Coach extras *(only if the parked Phase 4c is ever picked up)*: read the motto
       aloud in `nl-BE` **on the reveal only**; a paste-in box so she can add her own
       mottos; bake the busts with `toDataURL()` if six characters ever cost more per

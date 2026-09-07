@@ -450,6 +450,31 @@ the 560-wide scene — so it is the first thing she sees on opening the app, wit
 bar beneath it doubling as "progress to the next building". Tapping it opens a
 full-screen view that can be pinch-zoomed and panned across the whole city.
 
+### The full-screen view, and tapping a building
+
+Three constraints, written down before it is built because each one is cheap to
+honour and expensive to discover:
+
+1. **Zoom snaps to whole numbers.** §8 bans fractional scaling because it resamples
+   the art into a smear, and that reads as bad art rather than as a bug — so "pinch to
+   zoom" here means stepped: ×1, ×2, ×3, ×4. Scale the cached bitmap smoothly with a
+   CSS transform during the gesture and snap on release; the scene re-caches once, at
+   the new integer scale, rather than on every frame of the pinch.
+2. **Tapping a building belongs in here, not on the hero.** At the hero's scale every
+   building is a 12–26 pixel target on a phone, well under the ~44 px a finger needs.
+   So a tap on the hero opens this view and nothing else; inspecting a building
+   happens where zoom has made it big enough to hit. Zoom and tap are therefore one
+   feature and not two.
+3. **A tap resolves front-most first.** The depth bands overlap on purpose, so a tap
+   near the river can be over both `Pons Sublicius` in the water band and `Via Appia`
+   in the near one. `inDrawOrder()` already encodes the answer — reverse it and take
+   the first slot that contains the point.
+
+None of this needs anything the city does not already have: the catalogue carries
+`(x, w, band)` per slot, so hit testing is a rectangle test, and it carries `latin`,
+`dutch` and `note`, which is exactly what the unlock card already renders. Nothing a
+sprite knows has to change.
+
 That placement is the point: the reward should be unavoidable, not somewhere she has
 to navigate to.
 
@@ -803,8 +828,9 @@ Stopping after coach step 2 already leaves something better than a silent reveal
 - **Let her choose** between two or three options at some unlock points. Real agency,
   at the cost of composition control — worth it once the fixed order has proven the
   aesthetic works.
-- **Tap a building** to see its Latin name and history again. A voluntary, curiosity
-  driven vocabulary list, which is the best kind.
+- ~~**Tap a building** to see its Latin name and history again.~~ **Promoted** to a
+  real phase — it is wanted, and §7 now carries its three constraints. It stays the
+  best kind of vocabulary list: voluntary and curiosity-driven.
 - **A quiet nameplate mode** where each building is labelled in Latin, turning the
   city into a picture dictionary.
 - **Export the city as a PNG** she can send to a friend. Almost free with a canvas

@@ -1,23 +1,27 @@
-/* buildings.js — the sprites, behind one interface.
+/* buildings.js — all twenty-five sprites, behind one interface.
 
-   Stage 1 only for now. These five are character grids rather than draw
-   functions, and deliberately so: a thatched hut, a sheepfold, a palisade, a
-   fig tree and an altar are organic, irregular and small, with no repeating
-   structure worth parameterising. A function would be sillier than a picture.
-   The later stages invert that — an arcade of seven identical arches wants a
-   loop, not two thousand hand-placed characters — which is why both modes
-   exist and why nothing outside this file can tell which was used.
+   Two authoring modes, and which one a building uses follows from the building
+   rather than from a preference. Stage 1 is character grids: a thatched hut, a
+   sheepfold, a palisade, a fig tree and an altar are organic, irregular and
+   small, with no repeating structure worth parameterising, so a function would
+   be sillier than a picture. Everything from the kings onward is a draw
+   function, because Roman architecture is repetitive and an arcade of six
+   identical arches wants a loop, not two thousand hand-placed characters.
+   Nothing outside this file can tell which was used.
 
-   These are also the honest risk in the whole city (PLAN-ROMA section 3). The
-   drawing spec supplies proven recipes for the temple, the Colosseum, the
-   aqueduct and the arch — all of them stages 4 and 5, months away. It supplies
-   nothing for what she sees in her first ten minutes, which is this file. So
-   the go/no-go on hand-authored art versus a CC0 tileset is judged here, on
-   test/roma-stage1.html, on a phone — not on the temple spike, which only
-   exists to show what the engine can do later.
+   This file was also the honest risk in the whole city (PLAN-ROMA §3): the
+   drawing spec had proven recipes for the temple, the Colosseum, the aqueduct
+   and the arch, all of them months away, and nothing at all for the rustic
+   sprites she meets in her first ten minutes. That go/no-go passed on a phone
+   after 4b.2, so the CC0-tileset fallback is retired — though the seam that
+   made it cheap stays, because it is also what keeps render.js from knowing
+   what a building means.
 
    Grids are authored top row first. Ground level is the last row: the scene
-   draws the earth, so a sprite that painted its own would sit on a seam. */
+   draws the earth, so a sprite that painted its own would sit on a seam.
+
+   Look at any of it with test/roma-city.html, on a phone. Geometry can be
+   tested and proportion cannot. */
 
 import { C, T, course } from './palette.js';
 import { fromDraw, fromGrid } from './engine.js';
@@ -582,6 +586,484 @@ export const viaAppia = fromDraw({
   },
 });
 
+/* ================================= stages 4 and 5: the empire =========== */
+
+/* Where the drawing spec's own recipes finally get cashed in — the aqueduct
+   (its §8.3), the Colosseum (§8.2), the triumphal arch (§8.4) and the temple
+   front (§8.1). Adapted rather than copied: the spec draws one building per
+   64x64 scene and these have to stand in a street with neighbours, at the
+   widths the slot map reserved for them a hundred lessons ago.
+
+   One deliberate departure. The spec draws the Colosseum **ruined**, with a
+   `facadeTop(x)` that removes the upper tiers on the right, and it is right
+   that the broken silhouette is the recognisable one. It is drawn intact here
+   anyway: the stage is called *Roma Aeterna* and the city is being built up, so
+   a half-collapsed monument at the top of the growth curve reads as damage. The
+   ruin machinery was not wasted — generalised into the `progress` parameter, it
+   is what draws every building under construction. */
+
+/** A fluted column, three pixels wide — for the two hero temple fronts. */
+function fatColumn(g, x, top, bottom) {
+  g.P(x - 1, bottom, 5, 1, T.marble.deep);            // base
+  g.P(x - 1, bottom - 1, 5, 1, T.marble.shadow);
+  for (let y = top + 2; y < bottom - 1; y++) {        // fluted shaft
+    g.dot(x, y, T.marble.lit);
+    g.dot(x + 1, y, T.marble.base);
+    g.dot(x + 2, y, T.marble.shadow);
+  }
+  g.P(x - 1, top + 1, 5, 1, T.marble.lit);            // capital
+  g.P(x - 1, top, 5, 1, T.marble.base);
+  g.dot(x, top + 1, T.marble.shadow);                 // a hint of Corinthian
+  g.dot(x + 2, top + 1, T.marble.shadow);
+}
+
+/** A pediment: filled triangle, terracotta along the rakes, gilded rosette. */
+function pediment(g, cx, top, rows, half) {
+  for (let row = 0; row <= rows; row++) {
+    const reach = Math.round((row / rows) * half);
+    const y = top + row;
+    g.P(cx - reach, y, reach * 2 + 1, 1, T.marble.shadow);
+    g.dot(cx - reach, y, C.tile);
+    g.dot(cx + reach, y, C.tileDark);
+  }
+  for (let row = 3; row <= rows - 2; row++) {
+    const reach = Math.round((row / rows) * half) - 2;
+    if (reach > 0) g.P(cx - reach, top + row, reach * 2 + 1, 1, T.marble.base);
+  }
+  g.dot(cx, top + rows - 4, C.gold);
+}
+
+/* -------------------------------------------- 16. Aqua Appia ---------- */
+
+/**
+ * The first aqueduct, two tiers of it, from the spec's Pont du Gard recipe.
+ * Mostly underground in reality — this is the stretch that had to cross a
+ * valley, which is the only part anybody draws.
+ *
+ * Far band, so the haze puts it a long way off, and it deliberately has no
+ * finished end at either side: it reads as a length of aqueduct passing
+ * through rather than as a monument with two ends.
+ */
+export const aquaAppia = fromDraw({
+  id: 'aqua-appia', w: 96, h: 28,
+  paint(g, x, gy) {
+    const { P } = g;
+    const top = gy - 27;
+
+    /* The specus — the channel the water actually runs in, on top. */
+    P(x, top, 96, 1, T.stone.lit);
+    P(x, top + 1, 96, 1, C.mortar);
+    P(x, top + 2, 96, 1, T.stone.shadow);
+
+    /* Upper tier: many small arches. */
+    masonry(g, x, top + 3, 96, 9, T.stone, { mortar: 4 });
+    for (let cx = x + 4; cx < x + 96; cx += 8) g.arch(cx, top + 4, 7, 8, C.arc);
+
+    P(x, top + 12, 96, 1, T.stone.lit);
+
+    /* Lower tier: fewer, much taller, piers aligned under the small ones. */
+    masonry(g, x, top + 13, 96, 15, T.stone, { mortar: 4 });
+    for (let cx = x + 8; cx < x + 96; cx += 16) g.arch(cx, top + 14, 13, 14, C.arc);
+  },
+});
+
+/* ---------------------------------------------- 17. Thermae ----------- */
+
+/**
+ * The baths: a domed hall over a great arched frontage, with lower wings. They
+ * were free and everybody went, most days — which is the line on the card and
+ * the reason the building is this big.
+ */
+export const thermae = fromDraw({
+  id: 'thermae', w: 44, h: 38,
+  paint(g, x, gy) {
+    const { P, dot, blob } = g;
+    const top = gy - 37;
+    const cx = x + 22;
+
+    /* Wings first, so the dome and the frontage sit over them. */
+    masonry(g, x, top + 12, 13, 10, T.travertine, { mortar: 0 });
+    masonry(g, x + 31, top + 12, 13, 10, T.travertine, { mortar: 0 });
+
+    /* The dome, then the drum it stands on — and the drum has to come second.
+       `blob` draws a whole sphere, so without something covering its lower half
+       the dome tapered to a point in mid-air between the wings. Springing the
+       drum at row 11 leaves ten rows of dome over nineteen of width, which is
+       the shallow profile a Roman dome actually has from outside. */
+    dot(cx, top, C.gold);
+    blob(cx, top + 10, 9, T.marble.base, T.marble.lit, T.marble.shadow);
+    masonry(g, x + 13, top + 11, 18, 11, T.travertine, { mortar: 0 });
+
+    P(x, top + 20, 44, 1, T.marble.lit);
+    P(x, top + 21, 44, 1, T.marble.shadow);
+
+    /* The frontage, with the three great thermal windows. */
+    masonry(g, x, top + 22, 44, 14, T.travertine, { mortar: 0 });
+    for (const wx of [x + 8, x + 22, x + 36]) {
+      g.arch(wx, top + 24, 9, 11, C.arc);
+      g.light(wx - 4, top + 24, 9, 11);
+    }
+
+    P(x, top + 36, 44, 1, T.marble.lit);
+    P(x, top + 37, 44, 1, T.marble.deep);
+  },
+});
+
+/* ---------------------------------------- 18. Circus Maximus ---------- */
+
+/**
+ * The racetrack: a long low bank of seating over a ground-level arcade, with
+ * one of the spina obelisks showing above it. Over a hundred thousand people,
+ * which no other building here comes close to.
+ */
+export const circusMaximus = fromDraw({
+  id: 'circus-maximus', w: 50, h: 26,
+  paint(g, x, gy) {
+    const { P, dot } = g;
+    const top = gy - 25;
+    const cx = x + 25;
+
+    /* The obelisk on the spina, seen over the far side of the track. */
+    P(cx, top, 2, 9, T.marble.base);
+    dot(cx, top, C.gold);
+    dot(cx, top + 1, T.marble.lit);
+
+    /* The seating: horizontal courses the whole length, with only the top few
+       drawn in from the ends.
+
+       Insetting every course — which is what this did first — turned a
+       building famous for being long into a stepped pyramid. The Circus is a
+       bank of seating half a kilometre down one side; what reads is the
+       length and the arcade under it, not a silhouette. */
+    for (let row = 0; row < 10; row++) {
+      const inset = Math.max(0, 3 - row);
+      P(x + inset, top + 4 + row, 50 - inset * 2, 1,
+        row % 2 ? T.travertine.base : T.travertine.lit);
+    }
+
+    P(x, top + 14, 50, 1, T.marble.lit);
+    P(x, top + 15, 50, 1, T.marble.shadow);
+
+    /* The arcade underneath, which is how the crowd got in and out. */
+    masonry(g, x, top + 16, 50, 8, T.travertine, { mortar: 0 });
+    for (let ax = x + 5; ax < x + 50; ax += 8) g.arch(ax, top + 16, 7, 8, C.arc);
+
+    P(x, top + 24, 50, 1, T.marble.lit);
+    P(x, top + 25, 50, 1, T.marble.deep);
+  },
+});
+
+/* ---------------------------------------------- 19. Theatrum ---------- */
+
+/**
+ * The theatre of Pompey, the first in Rome built of stone rather than thrown
+ * up in timber for the occasion. Semicircular, so what shows from the street
+ * is the curved outer wall: two storeys of arcade.
+ */
+export const theatrum = fromDraw({
+  id: 'theatrum', w: 26, h: 30,
+  paint(g, x, gy) {
+    const { P } = g;
+    const top = gy - 29;
+
+    P(x + 1, top, 24, 1, T.marble.lit);
+    P(x, top + 1, 26, 1, T.marble.base);
+    P(x, top + 2, 26, 1, T.marble.shadow);
+
+    masonry(g, x + 1, top + 3, 24, 11, T.travertine, { mortar: 0 });
+    for (const cx of [x + 5, x + 13, x + 21]) g.arch(cx, top + 5, 7, 9, C.arc);
+
+    P(x, top + 14, 26, 1, T.marble.lit);
+    P(x, top + 15, 26, 1, T.marble.shadow);
+
+    masonry(g, x + 1, top + 16, 24, 12, T.travertine, { mortar: 0 });
+    for (const cx of [x + 5, x + 13, x + 21]) g.arch(cx, top + 18, 7, 10, C.arc);
+    g.light(x + 10, top + 19, 7, 9);
+
+    P(x, top + 28, 26, 1, T.marble.lit);
+    P(x, top + 29, 26, 1, T.marble.deep);
+  },
+});
+
+/* ------------------------------------------------- 20. Horti ---------- */
+
+/**
+ * The gardens on the hills — a decoration, and the only entry in the catalogue
+ * that is entirely plants. Cypresses, a clipped hedge and a fountain.
+ */
+export const horti = fromDraw({
+  id: 'horti', w: 14, h: 14,
+  paint(g, x, gy) {
+    const { P, dot } = g;
+    const top = gy - 13;
+
+    /* Two cypresses, drawn here rather than with the engine's helper because
+       that one picks its own height and this sprite has a box to stay inside. */
+    for (const [tx, h] of [[x + 2, 14], [x + 11, 11]]) {
+      for (let i = 0; i < h; i++) {
+        const w = Math.max(1, Math.round(3 * (1 - i / h)));
+        for (let d = 0; d < w; d++) {
+          const colour = d === 0 ? C.cypressLite : d === w - 1 ? C.cypressDark : C.cypress;
+          dot(tx - ((w - 1) >> 1) + d, gy - i, colour);
+        }
+      }
+    }
+
+    /* A clipped hedge, and a fountain catching the light. Two rows of hedge,
+       not three — at three the jet came out *inside* the box hedge. */
+    P(x + 4, top + 9, 6, 2, C.weed);
+    P(x + 4, top + 9, 6, 1, C.cypressLite);
+    P(x + 6, top + 12, 3, 1, T.marble.lit);
+    /* The jet, in white rather than in the river's blue. Water at this size is
+       spray, and the Tiber's tones belong to the scene — a sprite that borrowed
+       them could not be moved to another band. */
+    dot(x + 7, top + 11, C.marbleLite);
+    P(x + 5, top + 13, 5, 1, T.marble.shadow);
+  },
+});
+
+/* ---------------------------------------------- 21. Colosseum --------- */
+
+/**
+ * Three tiers of arcade under an attic storey, from the spec's recipe (§8.2)
+ * but intact rather than ruined — see the note at the top of this section.
+ *
+ * Fifty thousand seats. The name is not Roman at all: it comes from the
+ * colossal statue of Nero that stood next door.
+ */
+export const colosseum = fromDraw({
+  id: 'colosseum', w: 52, h: 38,
+  paint(g, x, gy) {
+    const { P } = g;
+    const top = gy - 37;
+    const centres = [x + 4, x + 12, x + 20, x + 28, x + 36, x + 44];
+
+    /* The attic: solid wall, small square windows, pilasters between. */
+    masonry(g, x, top, 52, 6, T.travertine, { mortar: 0 });
+    for (const cx of centres) P(cx - 1, top + 2, 3, 3, C.arc);
+    P(x, top + 6, 52, 1, T.travertine.shadow);
+
+    /* Three tiers of arches, identical pitch on every tier — which is what
+       makes the facade read as one building rather than three stacked ones.
+       Five wide, and this is the one place the seven-pixel rule from 4b.2 is
+       knowingly broken. Six sevens plus their piers need sixty-four pixels and
+       the slot holds fifty-two, so seven-wide arches came out with one-pixel
+       piers between them and the whole facade read as a colander. For *this*
+       building the number of arches is what makes it recognisable and the crown
+       curve is not, so the count wins and the arches step 3-5-5. */
+    const tiers = [[top + 7, 10], [top + 18, 10], [top + 29, 8]];
+    for (const [tierTop, height] of tiers) {
+      masonry(g, x, tierTop, 52, height, T.travertine, { mortar: 0 });
+      for (const cx of centres) g.arch(cx, tierTop, 5, height, C.arc);
+      for (const cx of centres) P(cx + 4, tierTop, 1, height, T.travertine.lit);
+      P(x, tierTop + height, 52, 1, T.travertine.shadow);
+    }
+
+    /* Torches in the ground-tier gateways, which is how it was lit. */
+    for (const cx of [x + 13, x + 37]) g.fire(cx, gy - 1, 1.2, cx);
+    g.light(x + 26, top + 30, 7, 7);
+
+    P(x, top + 37, 52, 1, T.marble.deep);
+  },
+});
+
+/* ----------------------------------------------- 22. Pantheon --------- */
+
+/**
+ * A dome behind a temple front, which is exactly what it is and exactly why it
+ * looks so odd. The concrete dome is still the largest unreinforced one ever
+ * built, nineteen centuries on.
+ */
+export const pantheon = fromDraw({
+  id: 'pantheon', w: 44, h: 34,
+  paint(g, x, gy) {
+    const { P, dot, blob } = g;
+    const top = gy - 33;
+    const cx = x + 22;
+
+    /* The dome, and the drum it sits on. Centred so the crown lands on row 0 —
+       at top + 12 it left the top row of its own box empty, which floats the
+       building and makes the reveal clip start on nothing. */
+    blob(cx, top + 11, 11, T.marble.base, T.marble.lit, T.marble.shadow);
+    dot(cx, top, C.arcLite);                           // the oculus, edge on
+    masonry(g, x + 8, top + 18, 28, 12, T.travertine, { mortar: 0 });
+
+    /* The portico in front of it: pediment, entablature, four columns. */
+    pediment(g, cx, top + 9, 7, 12);
+    P(x + 8, top + 17, 28, 1, T.marble.lit);
+    P(x + 8, top + 18, 28, 1, T.marble.base);
+    P(x + 8, top + 19, 28, 1, T.marble.shadow);
+
+    P(x + 18, top + 22, 8, 8, C.arc);
+    g.light(x + 18, top + 22, 8, 8);
+    for (let i = 0; i < 4; i++) fatColumn(g, x + 11 + i * 7, top + 20, top + 30);
+
+    P(x + 6, top + 31, 32, 1, T.marble.lit);
+    P(x + 4, top + 32, 36, 1, T.marble.base);
+    P(x, top + 33, 44, 1, T.marble.deep);
+  },
+});
+
+/* ----------------------------------------- 23. Columna Traiani ------- */
+
+/**
+ * A comic strip in stone: the Dacian war spiralling twenty-three times around
+ * the shaft, carved so high up that most of it can never have been legible
+ * from the ground.
+ *
+ * Six pixels wide and forty tall, which makes it the one building in the city
+ * whose whole character is its proportion.
+ */
+export const columnaTraiani = fromDraw({
+  id: 'columna-traiani', w: 6, h: 40,
+  paint(g, x, gy) {
+    const { P, dot } = g;
+    const top = gy - 39;
+
+    /* Trajan on top, in bronze. */
+    dot(x + 2, top, C.bronze);
+    P(x + 2, top + 1, 2, 2, C.bronze);
+
+    /* Capital. */
+    P(x, top + 3, 6, 1, T.marble.lit);
+    P(x, top + 4, 6, 1, T.marble.shadow);
+
+    /* The shaft, with the relief running round it — one pixel stepping
+       sideways per row is a helix, and at this width that is all a helix can
+       be. */
+    for (let row = 5; row < 35; row++) {
+      P(x + 1, top + row, 4, 1, T.marble.base);
+      dot(x + 1, top + row, T.marble.lit);
+      dot(x + 1 + (row % 4), top + row, T.marble.shadow);
+    }
+
+    /* Pedestal. */
+    P(x, top + 35, 6, 1, T.marble.lit);
+    P(x, top + 36, 6, 3, T.marble.base);
+    P(x, top + 39, 6, 1, T.marble.deep);
+  },
+});
+
+/* -------------------------------------- 24. Arcus Triumphalis -------- */
+
+/**
+ * The triumphal arch: one great passage, four engaged columns, a gilded
+ * inscription across the attic and a bronze quadriga on top.
+ *
+ * **Single-bay, not the spec's three.** The spec's Arch of Constantine recipe
+ * (§8.4) puts a small opening either side of the main one, and it has
+ * forty-six pixels to do it in; this slot has twenty-four. Three arches at
+ * that width leave one- and two-pixel piers between them, so the thing reads
+ * as a colander rather than as a mass with holes in it. Single-bay is also
+ * perfectly Roman — the Arch of Titus is one of the most famous of them and has
+ * exactly one opening.
+ *
+ * Only a general who had actually won a war was allowed under it, which is the
+ * line on the card and the whole point of the building.
+ */
+export const arcusTriumphalis = fromDraw({
+  id: 'arcus-triumphalis', w: 24, h: 26,
+  paint(g, x, gy) {
+    const { P, dot } = g;
+    const top = gy - 25;
+
+    /* The quadriga, and a statue at each corner. */
+    P(x + 9, top, 6, 3, C.bronze);
+    dot(x + 9, top + 1, C.gold);
+    dot(x + 14, top + 1, C.gold);
+    for (const sx of [x + 1, x + 21]) P(sx, top + 1, 2, 2, T.marble.lit);
+
+    /* The attic, and the inscription nobody could read from down there either. */
+    masonry(g, x, top + 3, 24, 7, T.marble, { mortar: 0 });
+    P(x + 3, top + 5, 18, 3, T.marble.shadow);
+    for (let cx = x + 4; cx < x + 20; cx += 2) dot(cx, top + 6, C.gold);
+
+    /* Entablature. */
+    P(x, top + 10, 24, 1, T.marble.lit);
+    P(x, top + 11, 24, 1, T.marble.base);
+    P(x, top + 12, 24, 1, T.marble.shadow);
+
+    /* The mass, then the one passage cut through it. Eleven wide, which leaves
+       a seven-pixel pier on the left and six on the right — enough to read as
+       stone rather than as a frame. */
+    masonry(g, x, top + 13, 24, 12, T.marble, { mortar: 0 });
+    g.arch(x + 12, top + 14, 11, 11, C.arc);
+    g.light(x + 7, top + 14, 11, 11);
+
+    /* Two engaged columns on each pier, on their pedestals. */
+    for (const cx of [x + 1, x + 4, x + 18, x + 21]) {
+      column(g, cx, top + 14, top + 23);
+      dot(cx, top + 14, C.gold);
+      dot(cx + 1, top + 14, C.gold);
+    }
+
+    P(x, top + 25, 24, 1, T.marble.deep);
+  },
+});
+
+/* ------------------------------------------- 25. Templum Iovis ------- */
+
+/**
+ * The temple of Jupiter Optimus Maximus on the Capitoline — the capstone of
+ * the whole catalogue, and the biggest thing in the city. Every triumph ended
+ * here; it was where the Roman state kept its heart.
+ *
+ * The spec's hexastyle temple front (§8.1) at the width the slot map has been
+ * holding for it since 4b.2, on a high podium with steps up the middle and an
+ * altar burning in front.
+ */
+export const templumIovis = fromDraw({
+  id: 'templum-iovis', w: 48, h: 44,
+  paint(g, x, gy) {
+    const { P, dot } = g;
+    const top = gy - 43;
+    const cx = x + 24;
+
+    dot(cx, top, C.marbleLite);                        // acroterion
+    pediment(g, cx, top + 1, 11, 22);
+
+    /* Entablature: architrave, frieze with triglyphs, cornice. */
+    P(x + 1, top + 12, 46, 1, T.marble.lit);
+    P(x + 1, top + 13, 46, 1, T.marble.base);
+    P(x + 1, top + 14, 46, 1, T.marble.shadow);
+    P(x + 1, top + 15, 46, 1, T.marble.deep);
+    for (let tx = x + 3; tx < x + 46; tx += 4) dot(tx, top + 13, T.marble.shadow);
+
+    /* The cella wall goes down before the columns, so the gaps between them
+       read as depth instead of as sky.
+
+       Six columns at a pitch of eight, starting three in: that spans 2..46 and
+       puts the central intercolumniation exactly on the axis. At a pitch of
+       seven it did not, and the doorway showed through four pixels of gap on
+       one side and one on the other — which on the capstone of the whole
+       catalogue is the last place to have the axis a pixel and a half out. */
+    P(x + 2, top + 16, 44, 22, C.arcLite);
+    P(x + 20, top + 24, 9, 14, C.arc);
+    P(x + 22, top + 28, 4, 10, T.marble.deep);         // the cult statue
+    g.light(x + 20, top + 24, 9, 14);
+
+    for (let i = 0; i < 6; i++) fatColumn(g, x + 3 + i * 8, top + 16, top + 37);
+
+    /* Podium, with the steps up the middle. */
+    for (let row = 0; row < 6; row++) {
+      P(x, top + 38 + row, 48, 1,
+        row === 0 ? T.marble.lit : row === 5 ? T.marble.deep : T.marble.base);
+    }
+    for (let step = 0; step < 4; step++) {
+      P(x + 16 - step, top + 40 + step, 16 + step * 2, 1,
+        step % 2 ? T.marble.shadow : T.marble.lit);
+    }
+
+    /* The altar, and a brazier at each corner of the steps. */
+    P(x + 22, top + 36, 4, 2, T.marble.shadow);
+    g.fire(cx, top + 36, 2.2, 24);
+    for (const bx of [x + 2, x + 44]) {
+      P(bx, top + 39, 2, 4, C.bronze);
+      g.fire(bx + 0.5, top + 38, 1.1, bx);
+    }
+  },
+});
+
 /* ============================================================ index ===== */
 
 /**
@@ -609,4 +1091,16 @@ export const SPRITES = Object.freeze({
   'basilica': basilica,
   'murus-servii': murusServii,
   'via-appia': viaAppia,
+  /* Stage 4 — Imperium */
+  'aqua-appia': aquaAppia,
+  'thermae': thermae,
+  'circus-maximus': circusMaximus,
+  'theatrum': theatrum,
+  'horti': horti,
+  /* Stage 5 — Roma Aeterna */
+  'colosseum': colosseum,
+  'pantheon': pantheon,
+  'columna-traiani': columnaTraiani,
+  'arcus-triumphalis': arcusTriumphalis,
+  'templum-iovis': templumIovis,
 });

@@ -209,24 +209,36 @@ test('draw order is back band first, then left to right', () => {
 
 /* ============================================================= sprites === */
 
-test('every building of every authored stage has a sprite', () => {
-  /* Stages 1 to 3 are drawn; 4 and 5 are not yet, and that is fine — a
-     catalogue entry with no sprite is simply absent from the scene, which is
-     what makes a half-finished catalogue a working feature rather than a
-     broken one. What must not happen is a stage half-drawn, because then one
-     unlock in a run would silently produce nothing. */
-  const AUTHORED = [0, 1, 2];
-  for (const stage of AUTHORED) {
-    for (const e of CATALOGUE.filter(e => e.stage === stage)) {
-      assert.ok(SPRITES[e.id], `${e.id} has no sprite`);
-    }
-  }
-  const drawn = new Set(Object.keys(SPRITES));
+test('every building in the catalogue is drawn', () => {
+  /* All twenty-five, as of 4b.4. Until then this asserted which stages were
+     authored, because an entry with no sprite is simply absent from the scene
+     and a half-finished catalogue was a working feature. Now the check is the
+     stronger one: nothing in the catalogue is missing and nothing is drawn
+     that is not in it. */
+  for (const e of CATALOGUE) assert.ok(SPRITES[e.id], `${e.id} has no sprite`);
+  assert.equal(Object.keys(SPRITES).length, CATALOGUE.length);
+});
+
+test('the whole city fits above its own ground, with sky to spare', () => {
+  /* Every band's tallest building has to clear the top of the scene, and the
+     hero monuments are the ones with any chance of not doing so. */
   for (const e of CATALOGUE) {
-    if (AUTHORED.includes(e.stage)) continue;
-    assert.ok(!drawn.has(e.id), `${e.id} is drawn but its stage is not finished`);
+    const top = BANDS[e.band].groundY - SPRITES[e.id].h + 1;
+    assert.ok(top >= 0, `${e.id} reaches row ${top}, above the scene`);
+    assert.ok(top >= 4, `${e.id} tops out at row ${top} — no sky left above it`);
   }
-  assert.equal(drawn.size, CATALOGUE.filter(e => AUTHORED.includes(e.stage)).length);
+});
+
+test('the five stages have five distinct silhouettes', () => {
+  /* A stage that looks like the one before it is a stage she will not notice
+     crossing. Checked crudely, as the tallest thing each stage adds: the city
+     should visibly get taller era by era. */
+  const tallest = stage => Math.max(
+    ...CATALOGUE.filter(e => e.stage === stage).map(e => SPRITES[e.id].h),
+  );
+  const heights = [0, 1, 2, 3, 4].map(tallest);
+  assert.deepEqual(heights, [...heights].sort((a, b) => a - b),
+    `stages do not grow taller in order: ${heights.join(', ')}`);
 });
 
 test('every band is used and none is empty', () => {
