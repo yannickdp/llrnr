@@ -566,6 +566,59 @@ export function drawWater(g, t) {
   }
 }
 
+/* ======================================================== hit testing ==== */
+
+/**
+ * Which building is at a point in the scene, if any.
+ *
+ * A rectangle test against the slot, resolved **front-most first**: the depth
+ * bands overlap on purpose, so a point near the river can be inside both
+ * `Pons Sublicius` in the water band and `Via Appia` in the near one, and the
+ * one drawn last is the one a finger is pointing at. `inDrawOrder` already
+ * encodes that, so this walks it backwards.
+ *
+ * The box is the slot, not the pixels. A per-pixel test would be more precise
+ * and worse: the fig tree and the column are a few pixels wide, and a tap that
+ * has to land on the trunk is a tap that misses.
+ *
+ * @param {number} x  logical scene column
+ * @param {number} y  logical scene row
+ * @param {string[]} [ids]  restrict to these buildings; default the whole city
+ * @returns {object|null} the catalogue entry, or null for sky and ground
+ */
+export function hitTest(x, y, ids = null) {
+  const wanted = ids ? new Set(ids) : null;
+
+  for (const entry of [...inDrawOrder()].reverse()) {
+    if (wanted && !wanted.has(entry.id)) continue;
+    const sprite = SPRITES[entry.id];
+    if (!sprite) continue;
+
+    const groundY = BANDS[entry.band].groundY;
+    if (x < entry.x || x >= entry.x + entry.w) continue;
+    if (y > groundY || y <= groundY - sprite.h) continue;
+    return entry;
+  }
+  return null;
+}
+
+/**
+ * Turn a tap on the canvas into a point in the scene.
+ *
+ * @param {object} where
+ * @param {number} where.clientX  offset within the canvas, in CSS pixels
+ * @param {number} where.clientY
+ * @param {number} where.scale    the view's integer scale
+ * @param {number} where.pan      the view's pan, in logical pixels
+ * @returns {{x: number, y: number}}
+ */
+export function toScene({ clientX, clientY, scale, pan }) {
+  return {
+    x: Math.floor(clientX / scale) + pan,
+    y: Math.floor(clientY / scale),
+  };
+}
+
 /* ============================================================ scene ====== */
 
 /**
@@ -649,12 +702,23 @@ export function drawScaffold(g, entry, progress) {
  * @returns {object} the view
  */
 export function createScene(canvas, {
-  view = SCENE.w, scale, motion = true, night = isNight(),
+  view, scale, cssWidth, motion = true, night = isNight(), maxScale = 4,
 } = {}) {
-  const viewW = Math.min(view, SCENE.w);
-  const chosen = scale ?? chooseScale(viewW, canvas.clientWidth || viewW);
-  const ctx = fitCanvas(canvas, { w: viewW, h: SCENE.h, scale: chosen });
-  const dpr = canvas.width / (viewW * chosen);
+  const dpr = globalThis.devicePixelRatio || 1;
+  /* How wide the element is allowed to be, for the zoom mode. */
+  const room = cssWidth ?? canvas.clientWidth ?? SCENE.w;
+
+  /* Two ways to size a view, and which one applies is decided here once.
+     `view` given — the Home hero: the window is a fixed number of logical
+     pixels and the scale is whatever makes it fill the element.
+     `view` omitted — the full-screen view: the *element* is fixed and the scale
+     is what zooming changes, so the window narrows as she zooms in. */
+  const fixedView = view !== undefined;
+  let viewW = fixedView ? Math.min(view, SCENE.w) : SCENE.w;
+  let chosen = scale ?? chooseScale(viewW, room);
+  if (!fixedView) viewW = Math.min(SCENE.w, Math.max(1, Math.floor(room / chosen)));
+
+  let ctx = fitCanvas(canvas, { w: viewW, h: SCENE.h, scale: chosen, dpr });
 
   const smoke = smokeField();
   let cache = null;         // the whole scene, as an offscreen canvas
@@ -669,8 +733,7 @@ export function createScene(canvas, {
   let running = false;
   let last = 0;
 
-  const maxPan = Math.max(0, SCENE.w - viewW);
-  const clampPan = x => Math.min(maxPan, Math.max(0, x));
+  const clampPan = x => Math.min(Math.max(0, SCENE.w - viewW), Math.max(0, x));
 
   /** Repaint the static layer. Called on unlock, not per frame. */
   function invalidate() {
@@ -764,6 +827,47 @@ export function createScene(canvas, {
     get lights() { return lights; },
     get pan() { return panX; },
     get viewWidth() { return viewW; },
+
+    get maxScale() { return maxScale; },
+
+    /**
+     * Zoom, in whole steps only.
+     *
+     * PLAN-ROMA §8 bans fractional scaling because it resamples the art into a
+     * smear, and that reads as bad art rather than as a bug — so there is no
+     * such thing as being 1.4× zoomed in here. A pinch scales the *canvas
+     * element* with a CSS transform while the fingers are down, which costs
+     * nothing and stays crisp because it is scaling an already-rendered
+     * bitmap, and then snaps to the nearest whole step on release. This is
+     * that snap: it re-sizes the canvas, re-caches once, and hands back what
+     * it settled on.
+     *
+     * Only meaningful in the zoom mode — a view created with a fixed `view`
+     * width has its scale decided by the element and ignores this.
+     *
+     * @param {number} next  1..maxScale
+     * @returns {number} the scale actually taken
+     */
+    setScale(next) {
+      if (fixedView) return chosen;
+
+      const want = Math.min(maxScale, Math.max(1, Math.round(next)));
+      if (want === chosen) return chosen;
+
+      /* Keep whatever was in the middle of the window in the middle of it,
+         so zooming does not throw her back to the left edge of the city. */
+      const centre = panX + viewW / 2;
+
+      chosen = want;
+      viewW = Math.min(SCENE.w, Math.max(1, Math.floor(room / chosen)));
+      ctx = fitCanvas(canvas, { w: viewW, h: SCENE.h, scale: chosen, dpr });
+
+      panX = clampPan(Math.round(centre - viewW / 2));
+      panTarget = panX;
+      invalidate();
+      paint(0);
+      return chosen;
+    },
 
     /* The app never sets this — it comes from the clock, and a switch on the
        Home hero would undo the point of that. It is settable for the viewer

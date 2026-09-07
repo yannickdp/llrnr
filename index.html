@@ -29,7 +29,9 @@
 
     <!-- The reward is unavoidable, not somewhere she has to navigate to. -->
     <div class="card card-hero">
-      <canvas class="roma-canvas" id="city-home" aria-label="Rome, jouw stad"></canvas>
+      <button class="city-open" id="city-open" aria-label="Rome van dichtbij bekijken">
+        <canvas class="roma-canvas" id="city-home" aria-hidden="true"></canvas>
+      </button>
       <p class="caption city-caption" id="city-caption"></p>
     </div>
 
@@ -262,6 +264,32 @@
       <button class="btn btn-primary btn-lg" data-goto="home">Klaar</button>
     </section>
 
+  </div>
+</div>
+
+<!-- The city, full screen. Tapping the hero opens this; it is the only place a
+     building can be tapped, because at the hero's scale one is a 12-26px target
+     against the ~44 a finger needs (PLAN-ROMA 7). -->
+<div id="city-view" class="city-view" role="dialog" aria-modal="true"
+     aria-label="Rome, van dichtbij" hidden>
+  <div class="city-stage" id="city-stage">
+    <canvas class="roma-canvas" id="city-big"></canvas>
+  </div>
+
+  <p class="caption city-hint" id="city-hint">Tik op een gebouw</p>
+
+  <div class="card card-unlock city-info" id="city-info" hidden>
+    <p class="eyebrow" id="city-info-eyebrow"></p>
+    <p class="unlock-latin" id="city-info-latin"></p>
+    <p class="caption" id="city-info-dutch"></p>
+    <p class="caption unlock-note" id="city-info-note"></p>
+  </div>
+
+  <div class="city-controls">
+    <button class="btn btn-round" id="city-out" aria-label="Uitzoomen">−</button>
+    <span class="caption" id="city-zoom">×1</span>
+    <button class="btn btn-round" id="city-in" aria-label="Inzoomen">+</button>
+    <button class="btn" id="city-close">Sluiten</button>
   </div>
 </div>
 

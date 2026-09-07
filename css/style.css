@@ -743,3 +743,76 @@ textarea { min-block-size: 9rem; font-family: ui-monospace, SFMono-Regular, Menl
   padding-block: 6px 12px;
   color: var(--fg-dim);
 }
+
+/* ==================================================== the city, close up == */
+
+/* The hero is a button, because its whole job is to open the full view — and
+   nothing smaller is tappable on it. At the hero's scale a building is 12 to 26
+   CSS pixels wide, well under the ~44 a finger needs, so aiming at one there
+   would be a game of its own. */
+
+.city-open {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  inline-size: 100%;
+  cursor: pointer;
+}
+
+.city-view {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: calc(12px + env(safe-area-inset-top)) 12px
+           calc(12px + env(safe-area-inset-bottom));
+  background: var(--bg);
+  overflow: hidden;
+}
+
+/* The canvas is scaled live by a CSS transform while a pinch is in progress —
+   cheap, and crisp because it is stretching an already-rendered bitmap — then
+   snapped to a whole scale on release. `will-change` keeps that on the
+   compositor instead of repainting. */
+.city-stage {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  touch-action: none;
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+
+.city-stage .roma-canvas {
+  will-change: transform;
+  transform-origin: center center;
+}
+
+.city-hint {
+  text-align: center;
+  margin: 0;
+}
+
+.city-info {
+  flex: 0 0 auto;
+}
+
+.city-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.btn-round {
+  inline-size: 44px;
+  min-block-size: 44px;
+  padding: 0;
+  border-radius: 999px;
+  font-size: 1.25rem;
+  line-height: 1;
+}

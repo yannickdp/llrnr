@@ -559,20 +559,31 @@ four phases. Zoom and tap are **one** feature: at the hero's scale a building is
 12–26 pixel target, well under the ~44 px a finger needs, so inspecting one only works
 somewhere it has been zoomed.
 
-- [ ] Tapping the Home hero opens a full-screen city view; pan across the whole
-      560-wide scene
-- [ ] **Zoom snaps to whole numbers** — ×1/×2/×3/×4. Scale the cached bitmap with a
-      CSS transform during the pinch and re-cache once on release; fractional scaling
-      resamples the art into a smear and reads as bad art, not as a bug *(§8)*
-- [ ] `createScene` gains `setScale(n)` — re-runs `fitCanvas` and re-caches. About
-      fifteen lines; nothing a sprite knows has to change
-- [ ] Tap a building → its Latin name, Dutch meaning and one line of history. The
-      catalogue already carries all three and the unlock card already renders exactly
-      that trio, styled
-- [ ] Hit testing is a rectangle test against `(x, w, band)` resolved **front-most
-      first** — the bands overlap on purpose, so reverse `inDrawOrder()` and take the
-      first slot containing the point
-- [ ] Nothing tappable on the hero itself beyond "open the full view"
+- [x] The Home hero is a button and opening this is all it does; drag to pan across
+      the whole 560-wide scene
+- [x] **Zoom snaps to whole numbers** — ×1 to ×4. A pinch scales the canvas element
+      with a CSS transform while the fingers are down, which is cheap and stays crisp
+      because it stretches an already-rendered bitmap, then snaps on release and
+      re-caches once *(§8)*
+- [x] `createScene` gains `setScale(n)`, and two sizing modes rather than one:
+      **fixed view** (the hero — the window is a set number of logical pixels and the
+      element picks the scale) and **fixed element** (this view — zooming changes the
+      scale and the window narrows). `setScale` is inert in the first, which is tested
+- [x] Zooming keeps whatever was in the middle of the window in the middle of it,
+      rather than throwing her back to the left edge of the city
+- [x] Tap a building → Latin name, Dutch meaning, one line of history. The catalogue
+      already carried all three and the unlock card already rendered exactly that trio
+- [x] `hitTest(x, y, ids)` — a rectangle test against the slot, resolved **front-most
+      first** by walking `inDrawOrder()` backwards. Limited to what she has unlocked,
+      so a building she has not earned never answers a tap
+- [x] The box is the slot, not the pixels — a per-pixel test would be more precise and
+      worse, since the fig tree and Trajan's column are a few pixels wide and a tap
+      that has to land on the trunk is a tap that misses
+- [x] `toScene()` turns a canvas tap into a scene point through the scale and the pan
+- [x] Wheel and trackpad zoom too, for looking at it on a laptop
+- [x] Escape closes it; the hero's loop stops while it is up, because two canvases
+      animating the same city is twice the battery for one thing to look at
+- [x] Nothing tappable on the hero itself beyond opening this
 
 ### 4b.7 Invariants
 - [ ] Layer cache: sky, hills and finished buildings offscreen, invalidated on unlock;

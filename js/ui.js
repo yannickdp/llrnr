@@ -10,7 +10,7 @@
 
 import { fanfare, forGrade, unlocked as unlockedChime, stageUp } from './sound.js';
 import { studyDay, trackPosition, TRACK_STOPS } from './schedule.js';
-import { createScene } from './roma/render.js';
+import { createScene, hitTest, toScene } from './roma/render.js';
 import { SCENE } from './roma/catalogue.js';
 import { entryFor } from './roma/roma.js';
 
@@ -122,6 +122,10 @@ export function paintCity({ unlocked, next, built, stage = 0, learned = 0 }) {
   /* The count only. The XP bar right underneath already names the next
      building, and saying it twice on one screen makes both lines wallpaper. */
   $('city-caption').textContent = `${built.built} van de ${built.total} gebouwen`;
+
+  /* Kept so a tap on the hero can open the full view without app.js having to
+     hand it the same thing twice. */
+  bigCity = { unlocked, next, stage, learned };
 }
 
 /** Start or stop the hero's flame, as Home comes and goes. */
@@ -129,6 +133,178 @@ export function cityVisible(visible) {
   if (!hero) return;
   if (visible && !document.hidden) hero.start();
   else hero.stop();
+}
+
+/* ------------------------------------------- the city, full screen ----- */
+
+/* Zoom and tap are one feature, not two, and this is why: at the hero's scale
+   a building is a 12-26 pixel target against the ~44 a finger needs, so a
+   building can only be tapped somewhere it has been zoomed. The hero's whole
+   job is therefore to open this, and nothing smaller on it is tappable.
+
+   Zoom snaps to whole numbers. A pinch scales the canvas element with a CSS
+   transform while the fingers are down — cheap, and crisp, because it is
+   stretching a bitmap that has already been rendered — and then snaps to the
+   nearest whole step, which re-renders once. PLAN-ROMA §8 bans fractional
+   scales outright: they resample the art into a smear, and that reads as bad
+   art rather than as a bug. */
+
+let bigView = null;
+let bigCity = { unlocked: [], stage: 0, learned: 0 };
+
+/** Drag to pan, two fingers to zoom, a tap to ask what something is. */
+function wireCityGestures(canvas, view) {
+  const pointers = new Map();
+  let panFrom = 0;
+  let startX = 0;
+  let pinchFrom = 0;
+  let moved = 0;
+  let live = 1;
+
+  const spread = () => {
+    const all = [...pointers.values()];
+    return Math.abs(all[0].x - all[1].x) + Math.abs(all[0].y - all[1].y);
+  };
+
+  canvas.addEventListener('pointerdown', event => {
+    canvas.setPointerCapture(event.pointerId);
+    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    moved = 0;
+    if (pointers.size === 1) {
+      startX = event.clientX;
+      panFrom = view.pan;
+    } else if (pointers.size === 2) {
+      pinchFrom = spread();
+    }
+  });
+
+  canvas.addEventListener('pointermove', event => {
+    if (!pointers.has(event.pointerId)) return;
+    const from = pointers.get(event.pointerId);
+    moved += Math.abs(event.clientX - from.x) + Math.abs(event.clientY - from.y);
+    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (pointers.size === 1) {
+      view.panTo(panFrom - (event.clientX - startX) / view.scale);
+    } else if (pointers.size === 2 && pinchFrom > 8) {
+      /* Live, on the compositor. Clamped to the steps either side of where we
+         are, so the preview never promises a zoom the snap cannot deliver. */
+      const want = spread() / pinchFrom;
+      live = Math.min(view.maxScale / view.scale, Math.max(1 / view.scale, want));
+      canvas.style.transform = `scale(${live})`;
+    }
+  });
+
+  const release = event => {
+    pointers.delete(event.pointerId);
+    if (pointers.size > 0) return;
+
+    if (live !== 1) {
+      canvas.style.transform = '';
+      view.setScale(view.scale * live);
+      live = 1;
+      paintCityControls(view);
+      return;
+    }
+
+    /* A tap, not a drag. 10 CSS pixels of slop, because a finger never holds
+       still and a stiff threshold turns every tap into a pan. */
+    if (moved <= 10) {
+      const box = canvas.getBoundingClientRect();
+      const where = toScene({
+        clientX: event.clientX - box.left,
+        clientY: event.clientY - box.top,
+        scale: view.scale,
+        pan: view.pan,
+      });
+      showBuilding(hitTest(where.x, where.y, bigCity.unlocked));
+    }
+  };
+
+  canvas.addEventListener('pointerup', release);
+  canvas.addEventListener('pointercancel', release);
+
+  /* Wheel and trackpad pinch, for looking at it on a laptop. */
+  canvas.addEventListener('wheel', event => {
+    event.preventDefault();
+    view.setScale(view.scale + (event.deltaY < 0 ? 1 : -1));
+    paintCityControls(view);
+  }, { passive: false });
+}
+
+/** What the tapped building is, or the prompt again if she tapped the sky. */
+function showBuilding(entry) {
+  const card = $('city-info');
+  if (!card) return;
+
+  card.hidden = !entry;
+  $('city-hint').hidden = Boolean(entry);
+  if (!entry) return;
+
+  $('city-info-eyebrow').textContent = entry.decoration ? 'Versiering' : 'Gebouw';
+  $('city-info-latin').textContent = entry.latin;
+  $('city-info-dutch').textContent = entry.dutch;
+  $('city-info-note').textContent = entry.note;
+}
+
+function paintCityControls(view) {
+  $('city-zoom').textContent = `×${view.scale}`;
+  $('city-out').disabled = view.scale <= 1;
+  $('city-in').disabled = view.scale >= view.maxScale;
+}
+
+/**
+ * Open the full-screen city.
+ *
+ * @param {object} city  the same shape `paintCity` takes
+ */
+export function openCityView(city = bigCity) {
+  const panel = $('city-view');
+  if (!panel) return;
+
+  bigCity = city;
+  panel.hidden = false;
+  /* The hero's loop stops while this is up: two canvases both animating the
+     same city is twice the battery for one thing to look at. */
+  hero?.stop();
+
+  const canvas = $('city-big');
+  if (!bigView) {
+    bigView = createScene(canvas, {
+      cssWidth: $('city-stage').clientWidth,
+      scale: 2,
+      motion: !REDUCED(),
+    });
+    wireCityGestures(canvas, bigView);
+    $('city-in').addEventListener('click', () => {
+      bigView.setScale(bigView.scale + 1);
+      paintCityControls(bigView);
+    });
+    $('city-out').addEventListener('click', () => {
+      bigView.setScale(bigView.scale - 1);
+      paintCityControls(bigView);
+    });
+    $('city-close').addEventListener('click', closeCityView);
+  }
+
+  const progress = city.next ? { [city.next.entry.id]: city.next.progress } : {};
+  const ids = city.next ? [...city.unlocked, city.next.entry.id] : city.unlocked;
+  bigView.show(ids, { progress, stage: city.stage, learned: city.learned });
+  if (city.next) bigView.focus(city.next.entry);
+
+  showBuilding(null);
+  paintCityControls(bigView);
+  bigView.start();
+}
+
+export function closeCityView() {
+  const panel = $('city-view');
+  if (!panel || panel.hidden) return false;
+
+  panel.hidden = true;
+  bigView?.stop();
+  if (!$('screen-home').hidden) hero?.start();
+  return true;
 }
 
 /**

@@ -847,3 +847,136 @@ test('no olive stands inside a building', async () => {
   const clashes = [...cells].filter(c => occupied.has(c)).map(c => occupied.get(c));
   assert.deepEqual([...new Set(clashes)], [], 'an olive is growing through a building');
 });
+
+/* ======================================================== hit testing === */
+
+test('a tap on a building finds it', async () => {
+  const { hitTest } = await import('../js/roma/render.js');
+
+  for (const id of ['casa-romuli', 'colosseum', 'templum-iovis', 'pons-sublicius']) {
+    const entry = BY_ID[id];
+    const groundY = BANDS[entry.band].groundY;
+    const middle = {
+      x: entry.x + Math.floor(entry.w / 2),
+      y: groundY - Math.floor(SPRITES[id].h / 2),
+    };
+    assert.equal(hitTest(middle.x, middle.y)?.id, id, `${id} was not found at its own middle`);
+  }
+});
+
+test('a tap on the sky or the empty street finds nothing', async () => {
+  const { hitTest } = await import('../js/roma/render.js');
+  assert.equal(hitTest(200, 20), null, 'open sky');
+  assert.equal(hitTest(300, 60), null, 'above the hills');
+  /* x 94..99 is the gap the slot map leaves between Ara and the Forum. */
+  assert.equal(hitTest(96, 148), null, 'a gap in the street');
+});
+
+test('a tap resolves to the building in front', async () => {
+  const { hitTest } = await import('../js/roma/render.js');
+
+  /* The bands overlap on purpose, so some points are inside two slots. The one
+     drawn last is the one a finger is pointing at. */
+  const overlaps = [];
+  for (const a of CATALOGUE) {
+    for (const b of CATALOGUE) {
+      if (a === b || a.band === b.band) continue;
+      const aTop = BANDS[a.band].groundY - SPRITES[a.id].h + 1;
+      const bTop = BANDS[b.band].groundY - SPRITES[b.id].h + 1;
+      const x = Math.max(a.x, b.x);
+      const y = Math.max(aTop, bTop);
+      if (x < Math.min(a.x + a.w, b.x + b.w)
+        && y <= Math.min(BANDS[a.band].groundY, BANDS[b.band].groundY)) {
+        overlaps.push({ x, y, a, b });
+      }
+    }
+  }
+  assert.ok(overlaps.length > 0, 'no bands overlap — has the composition flattened?');
+
+  for (const { x, y, a, b } of overlaps.slice(0, 20)) {
+    const front = BANDS[a.band].z > BANDS[b.band].z ? a : b;
+    assert.equal(hitTest(x, y)?.id, front.id,
+      `at ${x},${y} the front-most is ${front.id} (${front.band})`);
+  }
+});
+
+test('hit testing can be limited to what she has unlocked', async () => {
+  const { hitTest } = await import('../js/roma/render.js');
+  const entry = BY_ID.colosseum;
+  const point = { x: entry.x + 10, y: BANDS.mid.groundY - 10 };
+
+  assert.equal(hitTest(point.x, point.y)?.id, 'colosseum');
+  assert.equal(hitTest(point.x, point.y, ['casa-romuli']), null,
+    'a building she has not earned must not answer a tap');
+});
+
+test('a canvas tap maps to the scene through scale and pan', async () => {
+  const { toScene } = await import('../js/roma/render.js');
+
+  assert.deepEqual(toScene({ clientX: 0, clientY: 0, scale: 1, pan: 0 }), { x: 0, y: 0 });
+  assert.deepEqual(toScene({ clientX: 60, clientY: 30, scale: 3, pan: 0 }), { x: 20, y: 10 });
+  assert.deepEqual(toScene({ clientX: 60, clientY: 30, scale: 3, pan: 120 }), { x: 140, y: 10 });
+});
+
+/* ============================================================== zoom === */
+
+test('zoom snaps to whole numbers and clamps at both ends', async () => {
+  const { createScene } = await import('../js/roma/render.js');
+  const { SCENE: scene } = await import('../js/roma/catalogue.js');
+
+  const stub = () => ({
+    fillStyle: null, globalAlpha: 1, fillRect() {}, drawImage() {}, clearRect() {},
+    createLinearGradient: () => ({ addColorStop() {} }), setTransform() {},
+    getTransform: () => ({}), save() {}, restore() {}, translate() {},
+    beginPath() {}, rect() {}, clip() {},
+  });
+  const previous = globalThis.document;
+  globalThis.document = { createElement: () => ({ style: {}, getContext: stub, width: 0, height: 0 }) };
+
+  try {
+    const canvas = { style: {}, clientWidth: 390, getContext: stub, width: 390, height: 180 };
+    const view = createScene(canvas, { cssWidth: 390, scale: 1, motion: false, maxScale: 4 });
+    view.show(CATALOGUE.map(e => e.id), { stage: 4 });
+
+    /* Fractional scales are banned outright — they resample the art. */
+    assert.equal(view.setScale(2.4), 2);
+    assert.equal(view.setScale(2.6), 3);
+
+    assert.equal(view.setScale(99), 4, 'clamped to the ceiling');
+    assert.equal(view.setScale(-5), 1, 'clamped to the floor');
+
+    /* Zooming in narrows the window onto the scene. */
+    view.setScale(1);
+    const wide = view.viewWidth;
+    view.setScale(4);
+    assert.ok(view.viewWidth < wide, 'the window should narrow as she zooms in');
+    assert.ok(view.viewWidth >= 1);
+    assert.ok(view.pan + view.viewWidth <= scene.w, 'the pan should stay inside the scene');
+  } finally {
+    globalThis.document = previous;
+  }
+});
+
+test('a fixed-view scene ignores zoom', async () => {
+  /* The Home hero sizes itself from a fixed window width, so its scale belongs
+     to the element and not to a gesture. */
+  const { createScene } = await import('../js/roma/render.js');
+  const stub = () => ({
+    fillStyle: null, globalAlpha: 1, fillRect() {}, drawImage() {}, clearRect() {},
+    createLinearGradient: () => ({ addColorStop() {} }), setTransform() {},
+    getTransform: () => ({}), save() {}, restore() {}, translate() {},
+    beginPath() {}, rect() {}, clip() {},
+  });
+  const previous = globalThis.document;
+  globalThis.document = { createElement: () => ({ style: {}, getContext: stub, width: 0, height: 0 }) };
+
+  try {
+    const canvas = { style: {}, clientWidth: 358, getContext: stub, width: 358, height: 180 };
+    const hero = createScene(canvas, { view: SCENE.window, motion: false });
+    const was = hero.scale;
+    assert.equal(hero.setScale(4), was, 'the hero must not zoom');
+    assert.equal(hero.viewWidth, SCENE.window);
+  } finally {
+    globalThis.document = previous;
+  }
+});

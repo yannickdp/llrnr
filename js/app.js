@@ -17,8 +17,8 @@ import { awardLesson, goalMetToday, newBadges, stageFor, STAGES } from './gamify
 import { cityProgress, markSeen, nextAt, reconcile, unlockedBy } from './roma/roma.js';
 import { setSoundEnabled } from './sound.js';
 import {
-  $, DIRECTION_LABEL, cityUnlockMoment, cityVisible, el, importPreview, paintCity,
-  paintHome, paintResults, plural, progressTrack,
+  $, DIRECTION_LABEL, cityUnlockMoment, cityVisible, closeCityView, el, importPreview,
+  openCityView, paintCity, paintHome, paintResults, plural, progressTrack,
   readinessPanel, runLesson,
 } from './ui.js';
 
@@ -129,6 +129,14 @@ document.addEventListener('click', e => {
     return;
   }
 
+  /* The hero is one big button and this is all it does: open the city close
+     up. Nothing smaller on it is tappable — at that scale a building is a
+     12-26px target (PLAN-ROMA §7). */
+  if (e.target.closest('#city-open')) {
+    openCityView();
+    return;
+  }
+
   const action = e.target.closest('[data-action]');
   if (action?.dataset.action === 'close-modal') {
     if (exitGuard && exitGuard() === false) return;
@@ -149,6 +157,12 @@ document.addEventListener('click', e => {
 
 /* Nothing outside the lesson submits anywhere; stop stray forms reloading. */
 document.addEventListener('submit', e => e.preventDefault());
+
+/* Escape closes the city view. It is the only overlay that is not a lesson, so
+   it is the only one where backing out costs her nothing. */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeCityView();
+});
 
 /* ---------------------------------------------------------- chapters --- */
 
