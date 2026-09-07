@@ -500,6 +500,33 @@ Three faults this phase turned up, all found by looking rather than by the suite
 - [x] Day/night and a crowd slider added to `test/roma-city.html`; the app itself
       still offers no switch, because a toggle on the hero would undo the point
 
+Two faults reported from the phone after 4b.5, both real:
+
+- **"Blue rectangles between the hills."** The sky showing through a hole in the
+  ground: the far range stopped two rows below the far band's ground line, so between
+  the named hills there was bare sky from row 128 down to the plaza at 150. The
+  backdrop is one continuous landmass to the street now, and a test asserts every
+  column below the skyline is solid
+- **"Buildings on the first hill stand a bit odd."** Two causes. The details picked
+  their hill with `era % 3`, which marched the aqueduct across the Palatine directly
+  above Romulus's huts and crowned the Aventine with the temple that belongs to the
+  Capitoline; and two of them *floated* — the arcade by two rows, the temple by one,
+  which at this scale is the difference between a building on a hill and a building
+  above one. Each era names its hill now, and everything sits on the ridge
+
+Re-sited while fixing it: the republic's farmstead moved from the Aventine to the
+Capitoline's slope. The Aventine is the better history — the plebeian hill, half
+countryside — but the real aqueduct lands across that crown in stage 4 and the baths
+across its flank in stage 5, so the farm was buried twice over. The Palatine and the
+Capitoline are the only two crowns that stay clear to the end. There is a test that a
+detail added by an era is still visible when the city is finished, because a permanent
+mark that quietly vanishes is worse than none.
+
+And Roma Aeterna crowns the **Palatine with the imperial palace** rather than putting a
+second temple silhouette above `Templum Iovis`. Which is where the word palace comes
+from, and it is the right note to end on: the emperors built over the hill Romulus's
+hut still stands on, and at that stage both are on screen together.
+
 **Stars do not twinkle, and that is a decision.** Anything behind the buildings has to
 live in the cached static layer, so a twinkle would mean either drawing stars *over*
 the city — the exact night-order bug §6 warns about — or keeping a second cache for a

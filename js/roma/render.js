@@ -187,47 +187,84 @@ function rangeTop(x) {
  * era, so the backdrop marks the passage of time and not only the foreground.
  * Cheap, and it means a stage crossing changes something she will still see on
  * every visit afterwards — the Latin name on the results card is a moment, this
- * is a permanent one. Cumulative: stage 3 keeps what stages 1 and 2 added. */
+ * is a permanent one. Cumulative: stage 3 keeps what stages 1 and 2 added.
+ *
+ * Each era names the hill it belongs on. It used to pick one with `era % 3`,
+ * which is how the aqueduct ended up marching across the Palatine directly
+ * above Romulus's huts and the crowning temple ended up on the Aventine —
+ * reported from the phone, accurately, as buildings standing a bit odd.
+ *
+ * And every one of them now sits *on* the ridge. Two were floating: the
+ * arcade by two rows and the temple by one, which at this scale is the whole
+ * difference between a building on a hill and a building above one. */
 const HILL_DETAIL = [
   /* Roma Quadrata — bare hills, a shepherd's landscape. */
-  () => {},
+  { hill: 0, draw: () => {} },
 
-  /* Regnum — cypresses take the ridges. */
-  (g, hill, farGround) => {
-    for (let i = 0; i < 3; i++) {
-      const x = Math.round(hill.cx + (hash(hill.cx, i) - 0.5) * hill.halfW * 1.4);
-      if (x < 2 || x > SCENE.w - 3) return;
-      drawCypress(g, x, ridgeAt(hill, x, farGround) + 1);
-    }
+  /* Regnum — cypresses take the Palatine, the oldest of the hills. */
+  {
+    hill: 0,
+    draw(g, hill, farGround) {
+      for (let i = 0; i < 3; i++) {
+        const x = Math.round(hill.cx + (hash(hill.cx, i) - 0.5) * hill.halfW * 1.4);
+        if (x < 2 || x > SCENE.w - 3) continue;
+        drawCypress(g, x, ridgeAt(hill, x, farGround));
+      }
+    },
   },
 
-  /* Res Publica — a farmstead out on the slope: the republic's countryside. */
-  (g, hill, farGround) => {
-    const x = Math.round(hill.cx - hill.halfW * 0.55);
-    const gy = ridgeAt(hill, x, farGround) + 1;
-    g.P(x, gy - 3, 6, 3, C.marbleShade);
-    g.P(x - 1, gy - 5, 8, 2, C.tileDark);
+  /* Res Publica — a farmstead on the slope below the Capitoline citadel.
+     It began on the Aventine, which is the better history — that was the
+     plebeian hill and still half countryside — but by stage 4 the real
+     aqueduct stands across the Aventine's crown and by stage 5 the baths
+     stand across its flank, so the farm was buried twice over. The Palatine
+     and the Capitoline are the only two crowns that stay clear of the mid
+     band all the way to the end, and the Palatine is spoken for. */
+  {
+    hill: 2,
+    draw(g, hill, farGround) {
+      const x = Math.round(hill.cx - hill.halfW * 0.55);
+      const gy = ridgeAt(hill, x, farGround);
+      g.P(x, gy - 2, 6, 3, C.marbleShade);
+      g.P(x - 1, gy - 4, 8, 2, C.tileDark);
+    },
   },
 
-  /* Imperium — aqueduct arches on the horizon, before the real one arrives. */
-  (g, hill, farGround) => {
-    const y = ridgeAt(hill, hill.cx, farGround) - 6;
-    for (let i = 0; i < 4; i++) {
-      const cx = hill.cx - 18 + i * 12;
-      g.P(cx - 5, y, 11, 5, C.stoneShade);
-      g.arch(cx, y + 1, 5, 4, C.hill);
-    }
-    g.P(hill.cx - 24, y - 1, 48, 1, C.stone);
+  /* Imperium — arches stepping down the Aventine's flank toward the real
+     aqueduct, which stands in the far band just to their right. An aqueduct
+     crosses valleys and comes down off high ground; one sitting on a hilltop,
+     which is what this drew before, is not a thing that happens. */
+  {
+    hill: 1,
+    draw(g, hill, farGround) {
+      for (let i = 0; i < 4; i++) {
+        const cx = hill.cx - 84 + i * 12;
+        const gy = ridgeAt(hill, cx, farGround);
+        g.P(cx - 5, gy - 5, 11, 6, C.stoneShade);
+        g.arch(cx, gy - 4, 5, 5, C.hillFar);
+        g.P(cx - 6, gy - 6, 13, 1, C.stone);
+      }
+    },
   },
 
-  /* Roma Aeterna — a temple crowns the hill. */
-  (g, hill, farGround) => {
-    const gy = ridgeAt(hill, hill.cx, farGround);
-    g.P(hill.cx - 7, gy - 5, 15, 5, C.marble);
-    for (let i = 0; i < 5; i++) g.dot(hill.cx - 5 + i * 3, gy - 4, C.marbleShade);
-    for (let row = 0; row < 4; row++) {
-      g.P(hill.cx - row - 1, gy - 6 - row, (row + 1) * 2 + 1, 1, C.marbleLite);
-    }
+  /* Roma Aeterna — the imperial palace, back on the Palatine. Which is where
+     the word palace comes from, and it is the right note to end the skyline
+     on: the emperors built over the hill Romulus's hut stands on, and at this
+     stage both are on screen at once.
+     Deliberately not a temple: `Templum Iovis` is a hero building in the mid
+     band directly in front of the Capitoline by now, and a second temple
+     silhouette stacked above it would read as a duplicate. */
+  {
+    hill: 0,
+    draw(g, hill, farGround) {
+      const cx = hill.cx + 26;
+      const gy = ridgeAt(hill, cx, farGround);
+      g.P(cx - 11, gy - 6, 22, 7, C.marbleShade);
+      g.P(cx - 11, gy - 7, 22, 1, C.marble);
+      g.P(cx - 12, gy - 9, 24, 2, C.tileDark);
+      for (let i = 0; i < 6; i++) g.dot(cx - 9 + i * 4, gy - 4, C.arcLite);
+      g.dot(cx, gy - 10, C.gold);
+    },
   },
 ];
 
@@ -246,11 +283,16 @@ export function drawHills(g, { stage = 0 } = {}) {
   const farGround = BANDS.far.groundY;
   const midGround = BANDS.mid.groundY;
 
-  /* The distant range. `hillFar` is the colour every far-band building will be
-     pulled toward, so the back of the city and its backdrop agree. */
+  /* The distant range, and it fills all the way down to the mid street.
+     It used to stop two rows under the far band's own ground line, which left
+     bare sky between the named hills from row 128 to 149 — a hole in the
+     ground with the sky showing through it, reported from the phone as "blue
+     rectangles between the hills". The backdrop is one continuous landmass
+     from the skyline to the street; the named hills draw over it in the nearer
+     tone, and the far band's ground line is only where far buildings stand. */
   for (let x = 0; x < SCENE.w; x++) {
     const top = Math.round(rangeTop(x));
-    g.P(x, top, 1, farGround - top + 2, C.hillFar);
+    g.P(x, top, 1, midGround - top, C.hillFar);
   }
 
   /* The named hills, as parabolas. Anything more elaborate is invisible at
@@ -283,7 +325,8 @@ export function drawHills(g, { stage = 0 } = {}) {
      do not all sprout the same thing. Positions come from `hash`, so the
      skyline is varied and identical every time she opens the app. */
   for (let era = 0; era <= stage; era++) {
-    HILL_DETAIL[era]?.(g.hazed(FAR_HAZE * 0.6), HILLS[era % HILLS.length], farGround);
+    const detail = HILL_DETAIL[era];
+    if (detail) detail.draw(g.hazed(FAR_HAZE * 0.6), HILLS[detail.hill], farGround);
   }
 }
 

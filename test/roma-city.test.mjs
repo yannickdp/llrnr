@@ -625,3 +625,119 @@ test('the boat, the birds and the water all move', async () => {
     assert.equal(frame(fn, 1), frame(fn, 1), `${fn.name} is not deterministic in t`);
   }
 });
+
+/* ====================================================== the backdrop === */
+
+test('the ground has no holes in it', async () => {
+  /* Reported from the phone as "blue rectangles between the hills", and that
+     is exactly what it was: the far range stopped two rows below the far
+     band's ground line, so between the named hills there was bare sky from
+     row 128 down to the plaza at 150 — a hole with the sky showing through.
+
+     The invariant is simple and worth keeping: from the far band's ground line
+     down to the street, every column is solid. */
+  const { drawStatic } = await import('../js/roma/render.js');
+  const { painter } = await import('../js/roma/engine.js');
+
+  const painted = new Set();
+  const ctx = {
+    fillStyle: null, globalAlpha: 1,
+    fillRect(x, y, w, h) {
+      /* The sky is a gradient object, not a colour string — skip it, or it
+         would paint over the whole scene and hide every hole. */
+      if (typeof this.fillStyle !== 'string') return;
+      for (let i = Math.round(x); i < Math.round(x + w); i++) {
+        for (let j = Math.round(y); j < Math.round(y + h); j++) painted.add(`${i},${j}`);
+      }
+    },
+    createLinearGradient: () => ({ addColorStop() {} }),
+    save() {}, restore() {}, beginPath() {}, rect() {}, clip() {},
+  };
+  drawStatic(painter(ctx, 1), CATALOGUE.map(e => e.id), { stage: 4 });
+
+  const holes = [];
+  for (let y = BANDS.far.groundY; y < BANDS.mid.groundY; y++) {
+    for (let x = 0; x < SCENE.w; x++) {
+      if (!painted.has(`${x},${y}`)) holes.push(`${x},${y}`);
+    }
+  }
+  assert.deepEqual(holes.slice(0, 8), [], `${holes.length} bare cells below the skyline`);
+});
+
+test('every era puts its detail on a hill it names', async () => {
+  /* It used to choose with `era % 3`, which marched the aqueduct across the
+     Palatine directly above Romulus's huts and crowned the Aventine with the
+     temple that belongs to the Capitoline. */
+  const { drawHills } = await import('../js/roma/render.js');
+  const { painter } = await import('../js/roma/engine.js');
+
+  const cells = stage => {
+    const seen = new Set();
+    const ctx = {
+      fillStyle: null, globalAlpha: 1,
+      fillRect(x, y, w, h) {
+        for (let i = Math.round(x); i < Math.round(x + w); i++) {
+          for (let j = Math.round(y); j < Math.round(y + h); j++) seen.add(`${i},${j}`);
+        }
+      },
+      save() {}, restore() {},
+    };
+    drawHills(painter(ctx, 1), { stage });
+    return seen;
+  };
+
+  const HILL_XS = [62, 340, 522];
+  for (const era of [1, 2, 3, 4]) {
+    const before = cells(era - 1);
+    const added = [...cells(era)].filter(c => !before.has(c));
+    assert.ok(added.length > 0, `era ${era} adds nothing to the skyline`);
+
+    /* Everything an era adds should sit within one hill's span. */
+    const xs = added.map(c => Number(c.split(',')[0]));
+    const near = HILL_XS.filter(cx => Math.min(...xs) > cx - 100 && Math.max(...xs) < cx + 100);
+    assert.equal(near.length, 1,
+      `era ${era} spans x ${Math.min(...xs)}..${Math.max(...xs)}, not one hill`);
+  }
+});
+
+test('what an era adds to the skyline is still there when the city is finished', async () => {
+  /* The whole point of the hill details is that a stage crossing leaves a
+     permanent mark, so one that later gets built over is worse than none —
+     it would appear at the crossing and quietly vanish a few stages later.
+     This is what moved the republic's farmstead off the Aventine: the real
+     aqueduct lands across that crown in stage 4. */
+  const { drawHills } = await import('../js/roma/render.js');
+  const { painter } = await import('../js/roma/engine.js');
+
+  const covered = new Set();
+  for (const e of CATALOGUE) {
+    const gy = BANDS[e.band].groundY;
+    const h = SPRITES[e.id].h;
+    for (let x = e.x; x < e.x + e.w; x++) {
+      for (let y = gy - h + 1; y <= gy; y++) covered.add(`${x},${y}`);
+    }
+  }
+
+  const cells = stage => {
+    const seen = new Set();
+    const ctx = {
+      fillStyle: null, globalAlpha: 1,
+      fillRect(x, y, w, h) {
+        for (let i = Math.round(x); i < Math.round(x + w); i++) {
+          for (let j = Math.round(y); j < Math.round(y + h); j++) seen.add(`${i},${j}`);
+        }
+      },
+      save() {}, restore() {},
+    };
+    drawHills(painter(ctx, 1), { stage });
+    return seen;
+  };
+
+  for (const era of [1, 2, 3, 4]) {
+    const before = cells(era - 1);
+    const added = [...cells(era)].filter(c => !before.has(c));
+    const hidden = added.filter(c => covered.has(c));
+    assert.ok(hidden.length / added.length < 0.25,
+      `era ${era}: ${hidden.length} of ${added.length} cells end up behind buildings`);
+  }
+});
