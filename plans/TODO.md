@@ -328,9 +328,9 @@ Two findings that came out of building it:
 - **The catalogue was breaking PLAN-ROMA's own eight-lesson rule.** Making the slot
   map data made the gaps checkable, and stage 5's last five steps were 12, 12, 10, 6
   and **16 lessons** apart — the capstone sat a month of work past the one before it,
-  at exactly the point she is most invested. Re-spaced to 50 000 / 54 000 / 57 500 /
-  61 000 / 65 000; every gap in the catalogue is now eight lessons or fewer and the
-  capstone drops from a notional 74 000 to 65 000. PLAN-ROMA §2 updated to match
+  at exactly the point she is most invested. Re-spaced evenly in XP here, and then
+  **properly, against a measurement, in 4b.3b** — spreading them evenly was itself
+  wrong, because XP per lesson is not constant
 - **`course()` is for masonry, not for ground.** The checkerboard that made the
   arcade's wall read as blocks turns a 560-pixel plaza into a woven rug. Ground and
   hillsides use a sparse `hash` scatter instead
@@ -381,6 +381,29 @@ paint in a browser and nowhere else. There are now three tests that exercise
 `drawStatic` / `drawScaffold` / `drawBuildings` against a stub context for exactly
 that reason.
 
+### 4b.3b The XP table, measured *(prompted by "is 0 to 4000 not a big gap?")*
+- [x] Built `test/xp-curve.mjs` — drives the real lesson loop, one 10-minute lesson a
+      day, every answer correct, and reports XP per lesson against the catalogue.
+      A measuring instrument, not a test; PLAN-ROMA §2 now says to retune by re-running
+      it rather than by estimating
+- [x] **`Casa Romuli` moved from 200 XP to 20.** A first lesson can only ever pay the
+      finish bonus: the acquire ladder is 12m35s against a ten-minute box, so no word
+      can graduate inside it. At 200 the first building arrived on day *two* and
+      PLAN-ROMA's rule 1 was broken by design rather than by tuning
+- [x] All 25 thresholds re-derived from the measured curve at each building's intended
+      lesson. Capstone 114 000 on lesson 136 — a school year of steady use
+- [x] `lesson` added to every catalogue entry: the design intent, and the field the
+      eight-lesson rule is now checked against. The old test divided the XP gap by a
+      flat 500 a lesson, which was wrong at both ends — 20 for a first lesson, ~1000
+      for a settled one, near nothing against an exhausted word pool
+- [x] Verified by simulation: first building lesson 1, longest drought 8–9 lessons
+      (was **27**), city complete lesson 110–137 across a 500–700 word pool
+
+Worth knowing: **XP comes from words moving, so the word pool caps the city.** At 40
+words the curve flattens near 11 000 XP and 18 of the 25 buildings are permanently
+unreachable. Tuned for the 500–700 words she is expected to have this year; if that
+turns out much lower, the table needs compressing, not patience.
+
 ### 4b.4 Volume
 - [ ] 5. Stages 2 and 3 (ten buildings) + the stage-crossing moment
 - [ ] 5. Far band with the `mini*` silhouette treatment, colours pulled toward
@@ -398,8 +421,9 @@ that reason.
 - [ ] 7. **Night-order rule**: moon + stars drawn right after `drawSky()`, *before*
       the buildings, so buildings occlude them — never in the night pass; tint
       `rgba(12,16,44,0.45)` *(§6)*
-- [ ] 8. Retune the XP table against a week of real lesson data — the capstone moved to
-      74 000 with `Arcus Triumphalis` and was always an estimate *(§2)*
+- [ ] 8. Re-check the XP table against a few weeks of **her** real lesson data —
+      by re-running `node test/xp-curve.mjs` with numbers matching what her lessons
+      actually produce, not by estimating again *(§2)*
 
 ### 4b.6 Invariants
 - [ ] Layer cache: sky, hills and finished buildings offscreen, invalidated on unlock;

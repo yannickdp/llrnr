@@ -38,7 +38,7 @@ test('the catalogue holds twenty-five buildings', () => {
 
 test('every entry is complete', () => {
   for (const e of CATALOGUE) {
-    for (const field of ['id', 'latin', 'dutch', 'note', 'xp', 'stage', 'band', 'x', 'w']) {
+    for (const field of ['id', 'latin', 'dutch', 'note', 'xp', 'lesson', 'stage', 'band', 'x', 'w']) {
       assert.ok(e[field] !== undefined, `${e.id} is missing ${field}`);
     }
     assert.ok(e.band in BANDS, `${e.id} is in unknown band ${e.band}`);
@@ -71,22 +71,52 @@ test('stages do not interleave', () => {
   assert.deepEqual([...new Set(stages)], [0, 1, 2, 3, 4]);
 });
 
-test('the first building lands inside the first lesson', () => {
-  /* PLAN-ROMA section 2's first tuning rule, and the one that survives any
-     retune: if the city does not react before she finishes her first ten
-     minutes, the hook does not land at all. A lesson is 400-600 XP. */
-  assert.ok(CATALOGUE[0].xp <= 400, `first unlock at ${CATALOGUE[0].xp} XP is too far off`);
+test('the first building is reachable by a first lesson', () => {
+  /* PLAN-ROMA section 2's first tuning rule: if the city does not react on day
+     one, the hook does not land at all.
+
+     And a first lesson pays exactly 20 XP, which is the whole reason this
+     number is 20 and not 200. The acquire ladder is 12m35s long against a
+     ten-minute box, so no word can graduate inside a first lesson and the
+     finish bonus — 10, doubled for being the first of the day — is all there
+     is to earn. The old 200 was unreachable on day one however well she did. */
+  assert.ok(CATALOGUE[0].xp <= 20, `first unlock at ${CATALOGUE[0].xp} XP cannot land on day one`);
 });
 
-test('no gap runs longer than about eight lessons', () => {
-  /* The second tuning rule. At 400-600 XP a lesson, eight lessons is ~4000 XP
-     of headroom; anything wider wants a decoration inserted rather than a
-     longer wait. Checked as a ratio so it survives a rescale of the table. */
-  for (let i = 1; i < CATALOGUE.length; i++) {
-    const gap = CATALOGUE[i].xp - CATALOGUE[i - 1].xp;
-    const lessons = gap / 500;
-    assert.ok(lessons <= 8.5, `${CATALOGUE[i].id} is ${lessons.toFixed(1)} lessons away`);
+test('no gap runs longer than eight lessons', () => {
+  /* The second tuning rule, checked in the unit it is written in.
+
+     It used to divide the XP gap by a flat 500 a lesson, and that assumption
+     was wrong at both ends: a first lesson pays 20, a settled one pays ~1000,
+     and against an exhausted word pool it falls back toward nothing. Under the
+     flat figure a run of 8000-XP steps looked like sixteen lessons in one place
+     and four in another. The intended lesson is data now, so the rule is
+     checked against it directly. */
+  for (let i = 0; i < CATALOGUE.length; i++) {
+    const previous = i === 0 ? 0 : CATALOGUE[i - 1].lesson;
+    const gap = CATALOGUE[i].lesson - previous;
+    assert.ok(gap >= 1, `${CATALOGUE[i].id} lands on or before its predecessor`);
+    assert.ok(gap <= 8, `${CATALOGUE[i].id} is ${gap} lessons after the one before it`);
   }
+});
+
+test('the intended lessons and the XP thresholds agree on the order', () => {
+  /* The XP is read off a measured curve at each intended lesson, so if the two
+     ever disagree about the order, one of them was hand-edited. */
+  for (let i = 1; i < CATALOGUE.length; i++) {
+    assert.ok(
+      CATALOGUE[i].lesson > CATALOGUE[i - 1].lesson,
+      `${CATALOGUE[i].id} is out of order by lesson`,
+    );
+  }
+});
+
+test('the capstone lands within a school year of steady use', () => {
+  /* Four or five lessons a week over a school year is roughly 140-180 of them.
+     Finishing much earlier makes the last temple a formality; much later and it
+     is unreachable, which is worse. */
+  const last = CATALOGUE.at(-1).lesson;
+  assert.ok(last >= 100 && last <= 170, `the city finishes on lesson ${last}`);
 });
 
 test('every stage contains at least one decoration or small building', () => {

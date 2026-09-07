@@ -44,6 +44,19 @@ the canvas, recording every `fillRect` against a stub context — for pixel art 
 exact position and size of a rectangle is the thing worth asserting, and reading
 pixels back off a real canvas would only prove the colour landed somewhere.
 
+### Measuring the XP curve
+
+```sh
+node test/xp-curve.mjs [words] [lessons]
+```
+
+Not a test — the instrument the city's XP thresholds are tuned against. It drives the
+real lesson loop one ten-minute lesson a day with every answer correct, and reports
+what XP that actually produces and where the city has got to. Estimating this went
+wrong twice: XP per lesson is 20 for the first lesson, ~520 by the fifth and near 1000
+once reviews are flowing, so equal XP steps are nowhere near equal waits. Retune by
+re-running it, not by arithmetic.
+
 ### The city, by eye
 
 Two pages rather than tests, for the parts of the pixel-art city that a passing

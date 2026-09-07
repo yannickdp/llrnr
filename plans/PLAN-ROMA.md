@@ -70,75 +70,93 @@ big buildings so there is never a long stretch with nothing to look forward to.
 The **size** column is the building's authored width class in logical pixels, and it
 is not decoration — it is what makes the scene composable. See §5.
 
-| # | Latin | Dutch | Cumulative XP | Size |
-|---|---|---|---|---|
-| **Stage 1 — Roma Quadrata** | | | | |
-| 1 | Casa Romuli | hut van Romulus | 200 | small |
-| 2 | Ovile | schaapskooi | 600 | small |
-| 3 | Murus ligneus | houten palissade | 1 200 | small |
-| 4 | Ficus Ruminalis *(dec.)* | vijgenboom | 1 800 | small |
-| 5 | Ara | altaar | 2 600 | small *(fire)* |
-| **Stage 2 — Regnum** | | | | |
-| 6 | Forum | marktplein | 4 000 | mid |
-| 7 | Cloaca Maxima | hoofdriool | 5 500 | small |
-| 8 | Templum Vestae | tempel van Vesta | 7 500 | mid *(fire)* |
-| 9 | Pons Sublicius | eerste brug | 9 500 | mid |
-| 10 | Carcer | gevangenis | 11 800 | small |
-| **Stage 3 — Res Publica** | | | | |
-| 11 | Curia | senaatsgebouw | 14 000 | mid |
-| 12 | Rostra | spreekgestoelte | 16 500 | small |
-| 13 | Basilica | rechtsgebouw | 19 500 | mid |
-| 14 | Murus Servii | stadsmuur | 23 000 | far band |
-| 15 | Via Appia *(dec.)* | de Via Appia | 26 500 | foreground |
-| **Stage 4 — Imperium** | | | | |
-| 16 | Aqua Appia | aquaduct | 30 000 | repeating |
-| 17 | Thermae | badhuis | 34 000 | hero |
-| 18 | Circus Maximus | wagenrenbaan | 38 000 | hero |
-| 19 | Theatrum | theater | 42 000 | mid |
-| 20 | Horti *(dec.)* | tuinen | 46 000 | small |
-| **Stage 5 — Roma Aeterna** | | | | |
-| 21 | Colosseum | amfitheater | 50 000 | hero |
-| 22 | Pantheon | Pantheon | 54 000 | hero |
-| 23 | Columna Traiani | zuil van Trajanus | 57 500 | small |
-| 24 | Arcus Triumphalis | triomfboog | 61 000 | mid |
-| 25 | Templum Iovis | tempel van Jupiter | 65 000 | hero |
+| # | Latin | Dutch | Lesson | Cumulative XP | Size |
+|---|---|---|---|---|---|
+| **Stage 1 — Roma Quadrata** | | | | | |
+| 1 | Casa Romuli | hut van Romulus | 1 | 20 | small |
+| 2 | Ovile | schaapskooi | 2 | 300 | small |
+| 3 | Murus ligneus | houten palissade | 4 | 1 400 | small |
+| 4 | Ficus Ruminalis *(dec.)* | vijgenboom | 6 | 2 600 | small |
+| 5 | Ara | altaar | 8 | 4 000 | small *(fire)* |
+| **Stage 2 — Regnum** | | | | | |
+| 6 | Forum | marktplein | 12 | 7 000 | mid |
+| 7 | Cloaca Maxima | hoofdriool | 16 | 10 500 | small |
+| 8 | Templum Vestae | tempel van Vesta | 20 | 14 000 | mid *(fire)* |
+| 9 | Pons Sublicius | eerste brug | 24 | 17 500 | mid |
+| 10 | Carcer | gevangenis | 29 | 21 500 | small |
+| **Stage 3 — Res Publica** | | | | | |
+| 11 | Curia | senaatsgebouw | 34 | 26 000 | mid |
+| 12 | Rostra | spreekgestoelte | 40 | 32 500 | small |
+| 13 | Basilica | rechtsgebouw | 46 | 38 500 | mid |
+| 14 | Murus Servii | stadsmuur | 52 | 45 000 | far band |
+| 15 | Via Appia *(dec.)* | de Via Appia | 58 | 51 000 | foreground |
+| **Stage 4 — Imperium** | | | | | |
+| 16 | Aqua Appia | aquaduct | 65 | 58 500 | repeating |
+| 17 | Thermae | badhuis | 72 | 65 500 | hero |
+| 18 | Circus Maximus | wagenrenbaan | 80 | 74 000 | hero |
+| 19 | Theatrum | theater | 88 | 80 500 | mid |
+| 20 | Horti *(dec.)* | tuinen | 96 | 85 000 | small |
+| **Stage 5 — Roma Aeterna** | | | | | |
+| 21 | Colosseum | amfitheater | 104 | 92 000 | hero |
+| 22 | Pantheon | Pantheon | 112 | 98 000 | hero |
+| 23 | Columna Traiani | zuil van Trajanus | 120 | 104 000 | small |
+| 24 | Arcus Triumphalis | triomfboog | 128 | 109 000 | mid |
+| 25 | Templum Iovis | tempel van Jupiter | 136 | 114 000 | hero |
 
 **`Arcus Triumphalis` is new**, added because the drawing spec ships a complete
 triumphal-arch recipe (plan-roma-updates §8.4) and it would be perverse to leave a
 finished, instantly recognisable Roman monument on the floor. That makes the
 catalogue **25 buildings**, not 24.
 
-**Stage 5 was re-spaced in 4b.1's wake**, and this is worth recording because the
-table failed its own rule. Building the catalogue as data made the gaps checkable, and
-the last five steps were 12, 12, 10, 6 and **16 lessons** apart — the capstone sat a
-month of work beyond the one before it, at exactly the point she is most invested.
-Rule 2 below is not a nicety, and the table published underneath it was breaking it.
-Compressing those five to 50 000 / 54 000 / 57 500 / 61 000 / 65 000 brings every gap
-in the catalogue to eight lessons or fewer, and drops the capstone from a notional
-74 000 to **65 000** — about 130 lessons, still a school year of steady use.
+### How those numbers were chosen — measured, not estimated
 
-### How those numbers were chosen — and why they will need retuning
+The **Lesson** column is the design; the XP column is the means. That is the right way
+round, and it took two attempts to get there.
 
-Working from the main plan's XP rates (25 per word graduated out of acquire, 15 per
-box promotion, 50 for `learned`, first lesson of the day doubled), a ten-minute lesson
-that graduates ~8 new words and promotes ~15 lands somewhere around **400–600 XP**.
-At four lessons a week over a school year — roughly 130 to 150 lessons — that is
-somewhere around **65 000 XP**, which is where the capstone sits.
+The XP is read off a **simulation of the real lesson loop** — the real ladder, the real
+boxes, the real award rules — playing one ten-minute lesson a day with every answer
+correct, against a 500-word pool. The thresholds are the XP that curve reaches on the
+lesson each building is meant to arrive on. Two tuning rules drive it, and they are
+what should survive any future renumbering:
 
-So the whole city is achievable in one school year of steady use, and the last temple
-is a genuine achievement rather than a formality.
+1. **The first building lands on the first lesson.** If the city does not react on day
+   one, the hook does not land at all.
+2. **No gap longer than eight lessons.** If real rates stretch a step past that, insert
+   a decoration rather than the wait.
 
-**But that 400–600 figure is an estimate built on an estimate**, and it cannot be
-checked until the XP system in Phase 4 of the main plan actually runs. Two tuning
-rules matter more than the table itself, and should survive any renumbering:
+### Why the first two attempts were wrong
 
-1. **The first building unlocks inside the first lesson.** `Casa Romuli` at 200 XP is
-   set so she sees the city react before she has finished her first ten minutes. If
-   the hook does not land immediately it does not land.
-2. **No gap longer than about eight lessons.** If real XP rates make any step wider
-   than that, insert a decoration rather than stretching the wait.
+Worth keeping, because both errors came from estimating XP per lesson instead of
+measuring it, and that is the trap here.
 
-Recalculate the table from one week of real data before treating it as final.
+**The original table assumed a flat 400–600 XP a lesson.** It is not flat. Measured, it
+runs **20** for the very first lesson, then 520, 730, 860, settling near **1000** once
+reviews are flowing, and falling back toward nothing if the word pool is ever
+exhausted. Equal XP steps are therefore *not* equal waits — under the flat assumption
+one 8 000-XP step looked like sixteen lessons and another like four.
+
+**`Casa Romuli` at 200 XP was unreachable on day one.** The acquire ladder is 12m35s
+long and the lesson box is ten minutes, so **no word can graduate inside a first
+lesson** — `lesson.js` says as much in a comment — and the finish bonus, 10 doubled to
+20, is the whole of what a first lesson can pay. The hut sat at 200 and arrived on day
+*two*, quietly breaking rule 1 by design rather than by tuning. It costs 20 now.
+
+**The second attempt spread stage 5 evenly in XP**, which fixed the arithmetic and not
+the problem: against an exhausted 240-word pool the real waits came out at 20 and 27
+lessons. That is what sent the tuning to a simulation.
+
+### What it depends on
+
+The pool has to be big enough. XP comes from words moving, so a small chapter list
+caps the city no matter how many lessons she does — at 40 words the curve flattens at
+about 11 000 XP and two-thirds of Rome is permanently unreachable. Tuned for the
+**500–700 words** she is expected to have this year; at 500 the city completes on
+lesson 137, at 700 on lesson 110. Real play is slower than the simulation's perfect
+play, and 600 words are faster than 500, so the two errors point in opposite
+directions.
+
+Re-check against a few weeks of her real data before treating any of it as final — but
+re-check by re-running the measurement, not by estimating again.
 
 ---
 
