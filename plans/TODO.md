@@ -479,14 +479,32 @@ Three faults this phase turned up, all found by looking rather than by the suite
   anybody remembers about the building into a humbug stripe
 
 ### 4b.5 Life, light and tuning
-- [ ] 7. Life — citizens, smoke, a boat, birds, water shimmer, in a suspendable loop
-- [ ] 7. Citizen count tracks words `learned` (capped ~12) — a free second progress
-      read *(§4)*
-- [ ] 7. Day/night pass driven by the **real clock**, not an auto-cycling timer
-      *(§6)*
-- [ ] 7. **Night-order rule**: moon + stars drawn right after `drawSky()`, *before*
-      the buildings, so buildings occlude them — never in the night pass; tint
-      `rgba(12,16,44,0.45)` *(§6)*
+- [x] 7. Life — `drawWater` (sliding highlights + swaying reflections), `drawBoat`,
+      `drawCitizens`, `drawBirds`, plus the smoke from 4b.2, all in the suspendable
+      loop
+- [x] 7. Citizen count tracks words `learned`, capped at 12 — a free second reading
+      of progress. Positions from `hash`, so learning a word never shuffles the
+      street *(§4)*
+- [x] 7. Day/night from the **real clock**, and seasonal: `isNight()` approximates
+      Brussels sunrise/sunset, because a fixed 19:00 cutoff would leave the city
+      sunlit on a black December afternoon *(§6)*
+- [x] 7. `drawCelestial` — sun and clouds by day, moon and stars by night,
+      **in the background layer** between the sky and the hills so the buildings
+      occlude them. Tint `rgba(12,16,44,0.45)` and the moon is never drawn in the
+      night pass *(§6)*
+- [x] 7. `nightPass` runs per frame over the blit rather than into the cache, so the
+      blooms pulse; the animated order is scenery → tint → blooms → fire → smoke,
+      so a flame never gets dimmed by the night it is lighting
+- [x] Measured: static layer 17 700 rects (~8 ms, once per unlock), animated frame
+      200 by day and 290 by night. A ratio of about 1:70 — the cache's whole point
+- [x] Day/night and a crowd slider added to `test/roma-city.html`; the app itself
+      still offers no switch, because a toggle on the hero would undo the point
+
+**Stars do not twinkle, and that is a decision.** Anything behind the buildings has to
+live in the cached static layer, so a twinkle would mean either drawing stars *over*
+the city — the exact night-order bug §6 warns about — or keeping a second cache for a
+flicker. The constellations are placed from `hash`, so they are at least the same
+every night.
 - [ ] 8. Re-check the XP table against a few weeks of **her** real lesson data —
       by re-running `node test/xp-curve.mjs` with numbers matching what her lessons
       actually produce, not by estimating again *(§2)*

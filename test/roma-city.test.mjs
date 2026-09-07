@@ -489,3 +489,139 @@ test('every module the viewer pages import exists', async () => {
     }
   }
 });
+
+/* ====================================================== life and light == */
+
+test('night follows the real clock, and the seasons', async () => {
+  const { isNight } = await import('../js/roma/render.js');
+
+  /* Homework happens in the evening, and in Belgium that is dark in December
+     and broad daylight in June. A fixed cutoff would have the city sunlit on a
+     black winter afternoon, which is the opposite of the intended effect. */
+  assert.equal(isNight(new Date(2026, 5, 21, 14, 0)), false, 'midsummer afternoon');
+  assert.equal(isNight(new Date(2026, 5, 21, 22, 30)), true, 'midsummer late evening');
+  assert.equal(isNight(new Date(2026, 5, 21, 20, 0)), false, 'still light in June at 8pm');
+
+  assert.equal(isNight(new Date(2026, 11, 21, 17, 30)), true, 'midwinter, dark by 5.30');
+  assert.equal(isNight(new Date(2026, 11, 21, 9, 0)), false, 'midwinter mid-morning');
+  assert.equal(isNight(new Date(2026, 11, 21, 7, 30)), true, 'not up yet in December');
+});
+
+test('night and day are each other, always', async () => {
+  const { isNight } = await import('../js/roma/render.js');
+  /* Deep night and the middle of the day, every month of the year. */
+  for (let month = 0; month < 12; month++) {
+    assert.equal(isNight(new Date(2026, month, 15, 2, 0)), true, `2am in month ${month}`);
+    assert.equal(isNight(new Date(2026, month, 15, 13, 0)), false, `1pm in month ${month}`);
+  }
+});
+
+test('the moon is drawn behind the buildings, not over them', async () => {
+  /* The one ordering bug PLAN-ROMA §6 names. If the celestials ever move into
+     the night pass, the moon floats in front of the Pantheon. Checked by
+     ordering: everything drawn by drawStatic at night must come before the
+     first rect a building paints. */
+  const { drawStatic } = await import('../js/roma/render.js');
+  const { painter } = await import('../js/roma/engine.js');
+  const { C: palette } = await import('../js/roma/palette.js');
+
+  const ops = [];
+  const ctx = {
+    fillStyle: null, globalAlpha: 1,
+    fillRect() { ops.push(this.fillStyle); },
+    createLinearGradient: () => ({ addColorStop() {} }),
+    save() {}, restore() {}, beginPath() {}, rect() {}, clip() {},
+  };
+  drawStatic(painter(ctx, 1), CATALOGUE.map(e => e.id), { stage: 4, night: true });
+
+  const lastMoon = ops.lastIndexOf(palette.moon);
+  const firstMarble = ops.indexOf(palette.marbleLite);
+  assert.ok(lastMoon >= 0, 'the moon was not drawn at all');
+  assert.ok(firstMarble >= 0, 'no marble was drawn — did the city paint?');
+  assert.ok(lastMoon < firstMarble, 'the moon is painted after the buildings');
+});
+
+test('the night pass dims once and blooms every light', async () => {
+  const { nightPass } = await import('../js/roma/render.js');
+  const { painter } = await import('../js/roma/engine.js');
+
+  const ops = [];
+  const ctx = {
+    fillStyle: null, globalAlpha: 1,
+    fillRect(x, y, w, h) { ops.push({ fill: this.fillStyle, alpha: this.globalAlpha, w, h }); },
+    save() {}, restore() {},
+  };
+  const g = painter(ctx, 1);
+  const lights = {
+    glowTargets: [{ x: 10, y: 10, w: 4, h: 5 }, { x: 40, y: 12, w: 4, h: 5 }],
+    emitters: [{ x: 20, by: 30, size: 2, seed: 0 }],
+  };
+  nightPass(g, lights, 1.5);
+
+  const tint = ops.filter(o => typeof o.fill === 'string' && o.fill.startsWith('rgba'));
+  assert.equal(tint.length, 1, 'the scene should be dimmed exactly once');
+  assert.ok(ops.some(o => o.alpha < 1), 'the blooms should be translucent');
+});
+
+test('the crowd grows with the words she knows, and is capped', async () => {
+  const { drawCitizens } = await import('../js/roma/render.js');
+  const { painter } = await import('../js/roma/engine.js');
+
+  const count = learned => {
+    const seen = new Set();
+    const ctx = {
+      fillStyle: null, globalAlpha: 1,
+      fillRect(x) { seen.add(x); },
+      save() {}, restore() {},
+    };
+    drawCitizens(painter(ctx, 1), learned, 0);
+    return seen.size;
+  };
+
+  assert.ok(count(0) > 0, 'an empty vocabulary still has a couple of people about');
+  assert.ok(count(40) > count(0), 'the crowd should grow');
+  assert.equal(count(400), count(4000), 'and stop growing — past a dozen it is a queue');
+});
+
+test('the same citizen stands in the same place as the crowd grows', async () => {
+  /* Learning a word must not shuffle the street. Positions come from `hash`,
+     so the first N are stable however many there are. */
+  const { drawCitizens } = await import('../js/roma/render.js');
+  const { painter } = await import('../js/roma/engine.js');
+
+  const xs = learned => {
+    const seen = [];
+    const ctx = {
+      fillStyle: null, globalAlpha: 1,
+      fillRect(x, y, w, h) { if (h === 3) seen.push(x); },
+      save() {}, restore() {},
+    };
+    drawCitizens(painter(ctx, 1), learned, 0);
+    return seen;
+  };
+
+  const few = xs(8);
+  const many = xs(80);
+  assert.deepEqual(many.slice(0, few.length), few);
+});
+
+test('the boat, the birds and the water all move', async () => {
+  const render = await import('../js/roma/render.js');
+  const { painter } = await import('../js/roma/engine.js');
+
+  const frame = (fn, t) => {
+    const ops = [];
+    const ctx = {
+      fillStyle: null, globalAlpha: 1,
+      fillRect(...a) { ops.push(a.join()); },
+      save() {}, restore() {},
+    };
+    fn(painter(ctx, 1), t);
+    return ops.join('|');
+  };
+
+  for (const fn of [render.drawBoat, render.drawBirds, render.drawWater]) {
+    assert.notEqual(frame(fn, 0), frame(fn, 2.5), `${fn.name} is static`);
+    assert.equal(frame(fn, 1), frame(fn, 1), `${fn.name} is not deterministic in t`);
+  }
+});

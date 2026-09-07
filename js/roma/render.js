@@ -8,12 +8,20 @@
 
    The one structural idea worth stating up front: the scene splits into a
    layer that changes only when a building unlocks, and a layer that changes
-   every frame. The static half is the sky, the hills, the ground and every
-   finished building — a few thousand rectangles, and there is no reason to
-   repaint them sixty times a second for the sake of one flame. So it is cached
-   to an offscreen canvas and blitted, and the per-frame work is fire, smoke and
-   citizens only. At 560x180 with twenty-five buildings that is not an
-   optimisation, it is the difference between a still picture and a warm phone.
+   every frame.
+
+   The static half is the sky, the celestials, the hills, the ground and every
+   finished building — around 17 700 rectangles for the completed city, and no
+   reason at all to repaint them sixty times a second for the sake of one flame.
+   It is cached to an offscreen canvas and blitted. The animated half is the
+   water, a boat, the citizens, birds, the night tint with its blooms and the
+   seven fires: 200 rectangles by day, 290 by night. Measured, that is a ratio
+   of about 1:70, and it is the whole argument for the cache.
+
+   Order in the animated pass is the spec's pipeline and each step earns its
+   place: scenery first so the night tint dims it, then the tint, then the
+   blooms, then fire and smoke on top so they stay vivid — a flame that dims at
+   night looks painted on, when the entire point of it is that it is the light.
 
    Reduced motion is honoured by simply never running the animated pass: the
    city is a static picture, which is what it mostly is anyway. */
@@ -38,6 +46,117 @@ export function drawSky(g, { night = false } = {}) {
   grad.addColorStop(1, night ? C.skyNightBot : C.skyDayBot);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, SCENE.w * scale, SCENE.h * scale);
+}
+
+/* ======================================================== day / night ==== */
+
+/**
+ * Is it dark out?
+ *
+ * Driven by the real clock rather than by a timer, which is the whole point:
+ * homework happens in the evening, so if the city is lit up with the Vesta
+ * flame and torchlit arcades when she opens it after dinner, and sunlit on a
+ * Sunday afternoon, the city feels like a place that carries on existing while
+ * she is not looking. An auto-cycling toggle would undo exactly that.
+ *
+ * Seasonal, because it is four lines and because in Belgium it is dark at five
+ * in December and light at ten in June — a fixed 19:00 cutoff would have the
+ * city sunlit on a black December afternoon, which is the opposite of the
+ * effect. The constants approximate Brussels; there is one user and she lives
+ * there.
+ *
+ * @param {Date|number} [when]
+ * @returns {boolean}
+ */
+export function isNight(when = Date.now()) {
+  const date = when instanceof Date ? when : new Date(when);
+  const dayOfYear = Math.floor((date - new Date(date.getFullYear(), 0, 0)) / 86_400_000);
+  const season = Math.cos((2 * Math.PI * (dayOfYear - 172)) / 365);
+
+  const sunrise = 7.1 - 1.6 * season;
+  const sunset = 19.3 + 2.6 * season;
+  const hour = date.getHours() + date.getMinutes() / 60;
+
+  return hour < sunrise || hour >= sunset;
+}
+
+/* Stars, placed once from `hash` so the constellations are the same every
+   night. They do not twinkle, and that is a decision rather than an omission:
+   anything behind the buildings has to live in the cached static layer, and a
+   twinkle would mean either drawing stars *over* the city — the night-order bug
+   §6 warns about — or keeping a second cache just for a flicker. */
+const STARS = Array.from({ length: 70 }, (_, i) => ({
+  x: Math.round(hash(i, 11) * SCENE.w),
+  y: Math.round(hash(i, 23) * 44),
+  bright: hash(i, 37) > 0.6,
+}));
+
+const CLOUDS = [
+  { x: 74, y: 20, w: 26 }, { x: 208, y: 32, w: 34 },
+  { x: 330, y: 16, w: 22 }, { x: 452, y: 28, w: 30 },
+];
+
+const SUN = { x: 96, y: 30 };
+const MOON = { x: 468, y: 28 };
+
+/**
+ * Sun and clouds by day, moon and stars by night.
+ *
+ * **This is a background layer.** PLAN-ROMA §6 is emphatic and it is the one
+ * ordering mistake in the whole renderer worth naming: the moon belongs behind
+ * the city, drawn between the sky and the hills, so the buildings occlude it.
+ * Painted in the night pass instead it floats in front of the Pantheon, which
+ * looks like a bug because it is one.
+ */
+export function drawCelestial(g, { night = false } = {}) {
+  if (night) {
+    for (const star of STARS) {
+      g.dot(star.x, star.y, star.bright ? C.star : C.moonShad);
+    }
+    g.bloom(MOON.x - 5, MOON.y - 5, 11, 11, C.glow, C.glowCore, 0.35);
+    g.blob(MOON.x, MOON.y, 5, C.moon, C.star, C.moonShad);
+    g.dot(MOON.x - 2, MOON.y + 1, C.moonShad);
+    g.dot(MOON.x + 2, MOON.y - 2, C.moonShad);
+    return;
+  }
+
+  g.bloom(SUN.x - 4, SUN.y - 4, 9, 9, C.sunGlow, C.sun, 0.5);
+  g.blob(SUN.x, SUN.y, 4, C.sun, C.sunGlow, C.sun);
+
+  for (const cloud of CLOUDS) {
+    const half = Math.round(cloud.w / 2);
+    g.P(cloud.x - half, cloud.y, cloud.w, 2, C.cloud);
+    g.P(cloud.x - half + 3, cloud.y - 2, cloud.w - 6, 2, C.cloud);
+    g.P(cloud.x - half + 1, cloud.y + 2, cloud.w - 2, 1, C.cloudShad);
+    g.dot(cloud.x - half + 5, cloud.y - 3, C.cloud);
+  }
+}
+
+/**
+ * The night pass: dim everything, then bloom every light the buildings
+ * registered.
+ *
+ * Runs per frame over the blitted city rather than into the cache, so the
+ * blooms can pulse — and it deliberately does **not** draw the moon or the
+ * stars. Those are `drawCelestial`'s, in the background, where the tint dims
+ * them along with the rest of the scene. That is correct; the alpha is 0.45
+ * rather than the spec's first-draft 0.55 so the moon does not go muddy.
+ */
+export function nightPass(g, lights, t) {
+  const { ctx, scale } = g;
+  ctx.save();
+  ctx.fillStyle = 'rgba(12, 16, 44, 0.45)';
+  ctx.fillRect(0, 0, SCENE.w * scale, SCENE.h * scale);
+  ctx.restore();
+
+  lights.glowTargets.forEach((light, i) => {
+    g.bloom(light.x, light.y, light.w, light.h, C.glow, C.glowCore,
+      0.8 + 0.15 * Math.sin(t * 2 + i));
+  });
+  lights.emitters.forEach((fire, i) => {
+    g.bloom(fire.x - 1.5, fire.by - fire.size * 2, 3, fire.size * 2, C.glow, C.glowCore,
+      0.85 + 0.15 * Math.sin(t * 5 + i));
+  });
 }
 
 /* ============================================================ hills ====== */
@@ -256,6 +375,101 @@ export function drawBuildings(g, ids, { progress = {} } = {}) {
   return drawn;
 }
 
+/* ============================================================= life ====== */
+
+/* Everything in this section moves, so none of it can live in the cached
+   static layer. It is also the cheapest part of the whole renderer: a dozen
+   figures, four birds and a boat come to maybe eighty rectangles a frame
+   against the seventeen thousand the city itself costs. That ratio is the
+   entire argument for the cache. */
+
+const ROBES = [C.toga, C.tunicR, C.tunicB, C.toga];
+
+/**
+ * The citizens, and the second reading of progress the plan asks for: the
+ * crowd grows as she learns words, so a busy street means a full vocabulary.
+ * Capped, because past a dozen it stops registering as growth and starts
+ * being a queue.
+ *
+ * Positions come from `hash`, so the same citizen is always in the same place
+ * and only the walk bob moves. Adding the thirteenth word does not shuffle the
+ * other twelve people.
+ */
+export function drawCitizens(g, learned, t) {
+  const count = Math.min(12, Math.max(2, Math.round(learned / 8) + 2));
+  const groundY = BANDS.near.groundY;
+
+  for (let i = 0; i < count; i++) {
+    const x = 24 + Math.round(hash(i, 71) * (SCENE.w - 60));
+    const drift = Math.round(Math.sin(t * 0.35 + i * 1.7) * 6);
+    drawFigure(g, x + drift, groundY, ROBES[i % ROBES.length], t, i * 1.3);
+  }
+}
+
+/**
+ * A boat on the Tiber, working its way upstream and round again.
+ *
+ * Rome was a river port before it was anything else — the whole reason the
+ * city is where it is, at the first crossing point upstream of the sea.
+ */
+export function drawBoat(g, t) {
+  const { P, dot } = g;
+  const waterline = BANDS.near.groundY + 8;
+  const x = Math.round(((t * 5) % (SCENE.w + 60)) - 30);
+  const bob = Math.round(Math.sin(t * 1.6)) - 1;
+  const y = waterline + bob;
+
+  P(x, y, 14, 2, C.scaffold);                    // hull
+  P(x + 1, y - 1, 12, 1, C.scaffoldLite);        // gunwale
+  P(x + 6, y - 8, 1, 8, C.scaffoldLite);         // mast
+  P(x + 7, y - 7, 5, 5, C.toga);                 // sail
+  dot(x + 3, y - 2, C.tunicR);                   // and someone sailing it
+}
+
+/**
+ * Birds. Four of them, in a loose skein, each a two-pixel chevron that flaps.
+ * Three pixels of bird is enough for the eye to finish the job.
+ */
+export function drawBirds(g, t) {
+  for (let i = 0; i < 4; i++) {
+    const x = Math.round(((t * 7 + i * 37) % (SCENE.w + 40)) - 20);
+    const y = 18 + i * 5 + Math.round(Math.sin(t * 0.9 + i) * 3);
+    const up = Math.sin(t * 6 + i * 2) > 0;
+    g.dot(x, y, C.bird);
+    g.dot(x - 1, y + (up ? -1 : 1), C.bird);
+    g.dot(x + 1, y + (up ? -1 : 1), C.bird);
+  }
+}
+
+/**
+ * The Tiber's surface: highlight dashes sliding along, and the reflections of
+ * whatever stands in the water wobbling underneath them.
+ */
+export function drawWater(g, t) {
+  const { P, dot } = g;
+  const top = BANDS.near.groundY + 4;
+
+  for (let y = top; y < SCENE.h; y += 3) {
+    const phase = Math.sin(t * 0.8 + y * 0.7);
+    for (let i = 0; i < 9; i++) {
+      const x = Math.round((i * 63 + phase * 14 + y * 5) % SCENE.w);
+      P(x, y, 5, 1, T.water.lit);
+    }
+  }
+
+  /* Reflected piers, swaying. Only the bridge and the drain stand in the
+     water, so this is a short list by construction. */
+  for (const id of ['pons-sublicius', 'cloaca-maxima']) {
+    const entry = BY_ID[id];
+    for (let cx = entry.x + 2; cx < entry.x + entry.w; cx += 6) {
+      const sway = Math.round(Math.sin(t * 2 + cx * 0.6));
+      for (let y = top + 1; y < SCENE.h; y += 2) {
+        dot(cx + sway, y, T.water.shadow);
+      }
+    }
+  }
+}
+
 /* ============================================================ scene ====== */
 
 /**
@@ -268,6 +482,9 @@ export function drawBuildings(g, ids, { progress = {} } = {}) {
  */
 export function drawStatic(g, ids, options = {}) {
   drawSky(g, options);
+  /* Celestials here, between the sky and the hills — never in the night pass.
+     See drawCelestial and PLAN-ROMA §6. */
+  drawCelestial(g, options);
   drawHills(g, options);
   drawGround(g);
   drawBuildings(g, ids, options);
@@ -335,7 +552,7 @@ export function drawScaffold(g, entry, progress) {
  * @returns {object} the view
  */
 export function createScene(canvas, {
-  view = SCENE.w, scale, motion = true, night = false,
+  view = SCENE.w, scale, motion = true, night = isNight(),
 } = {}) {
   const viewW = Math.min(view, SCENE.w);
   const chosen = scale ?? chooseScale(viewW, canvas.clientWidth || viewW);
@@ -348,6 +565,7 @@ export function createScene(canvas, {
   let ids = [];
   let progress = {};
   let stage = 0;
+  let learned = 0;
   let live = null;          // {id, progress} drawn per frame, not cached
   let panX = 0;
   let panTarget = 0;
@@ -420,7 +638,26 @@ export function createScene(canvas, {
       }
     }
 
-    for (const emitter of [...lights.emitters, ...g.emitters]) drawFlame(g, emitter, t);
+    /* The spec's pipeline, with everything that does not move already baked
+       into the blit above. Order matters and each step earns its place:
+       the scenery goes down first so the night tint dims it, then the tint,
+       then the lights, and fire and smoke last so they stay vivid against it —
+       a flame that dims at night looks painted on, when the whole point of it
+       is that it is the light source. */
+    if (motion) {
+      drawWater(g, t);
+      drawBoat(g, t);
+      drawCitizens(g, learned, t);
+      drawBirds(g, t);
+    }
+
+    const allLights = {
+      glowTargets: [...lights.glowTargets, ...g.glowTargets],
+      emitters: [...lights.emitters, ...g.emitters],
+    };
+    if (night) nightPass(g, allLights, t);
+
+    for (const emitter of allLights.emitters) drawFlame(g, emitter, t);
     smoke.draw(g);
     ctx.restore();
   }
@@ -431,6 +668,16 @@ export function createScene(canvas, {
     get pan() { return panX; },
     get viewWidth() { return viewW; },
 
+    /* The app never sets this — it comes from the clock, and a switch on the
+       Home hero would undo the point of that. It is settable for the viewer
+       page, which has to be able to show both halves on demand. */
+    get night() { return night; },
+    set night(value) {
+      night = Boolean(value);
+      invalidate();
+      paint(0);
+    },
+
     /**
      * Which buildings exist, how far along any unfinished one is, and which era
      * the skyline should show.
@@ -440,10 +687,13 @@ export function createScene(canvas, {
      * @param {Object<string, number>} [options.progress]
      * @param {number} [options.stage]  0..4; the hills gain a detail per era
      */
-    show(nextIds, { progress: nextProgress = {}, stage: nextStage = stage } = {}) {
+    show(nextIds, {
+      progress: nextProgress = {}, stage: nextStage = stage, learned: nextLearned = learned,
+    } = {}) {
       ids = [...nextIds];
       progress = nextProgress;
       stage = nextStage;
+      learned = nextLearned;
       invalidate();
       paint(0);
     },

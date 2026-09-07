@@ -48,7 +48,14 @@
   <div class="controls" id="eras"></div>
   <div class="scene-wrap"><canvas id="scene"></canvas></div>
   <p style="margin-block-start:8px" id="scene-note"></p>
-  <button id="toggle">Pauzeer beweging</button>
+  <div class="controls">
+    <button id="toggle">Pauzeer beweging</button>
+    <button id="night"></button>
+    <label class="cap" style="display:flex;align-items:center;gap:6px">
+      inwoners <input type="range" id="learned" min="0" max="120" value="40" style="width:120px">
+      <span id="learned-n">40</span>
+    </label>
+  </div>
 </section>
 
 <section>
@@ -69,7 +76,7 @@
 import { painter, fitCanvas, drawFlame } from '../js/roma/engine.js';
 import { SCENE, CATALOGUE, BANDS } from '../js/roma/catalogue.js';
 import { SPRITES } from '../js/roma/buildings.js';
-import { createScene, drawScaffold } from '../js/roma/render.js';
+import { createScene, drawScaffold, isNight } from '../js/roma/render.js';
 import { STAGES } from '../js/gamify.js';
 
 const dpr = window.devicePixelRatio || 1;
@@ -89,14 +96,16 @@ const scene = createScene(sceneCanvas, {
 });
 
 let era = lastStage;
+let learned = 40;
 
-function showEra(stage) {
+function showEra(stage = era) {
   era = stage;
   const ids = authored.filter(e => e.stage <= stage).map(e => e.id);
-  scene.show(ids, { stage });
+  scene.show(ids, { stage, learned });
 
   document.getElementById('scene-note').textContent =
-    `${STAGES[stage].name} — ${ids.length} of ${CATALOGUE.length} buildings. `
+    `${STAGES[stage].name} — ${ids.length} of ${CATALOGUE.length} buildings, `
+    + `${scene.night ? 'night' : 'day'}. `
     + `${SCENE.w}x${SCENE.h} logical at x${sceneScale}, dpr ${dpr}. `
     + `${scene.lights.emitters.length} fire(s), ${scene.lights.glowTargets.length} lit opening(s). `
     + `Home shows a ${SCENE.window}px window of this.`;
@@ -114,15 +123,39 @@ for (let stage = 0; stage <= lastStage; stage++) {
   document.getElementById('eras').append(button);
 }
 
-showEra(lastStage);
-scene.start();
-
 let running = true;
 document.getElementById('toggle').onclick = event => {
   running = !running;
   if (running) scene.start(); else scene.stop();
   event.target.textContent = running ? 'Pauzeer beweging' : 'Start beweging';
 };
+
+/* The app itself takes this from the clock and offers no switch — a toggle on
+   the Home hero would be a fidget toy and would undo the whole point, which is
+   that the city looks like a place that carries on while she is not there.
+   Here it is a dev control, so both halves can be looked at on demand. */
+const nightButton = document.getElementById('night');
+function paintNightButton() {
+  nightButton.textContent = scene.night ? 'Nacht (klok: ' + (isNight() ? 'nacht' : 'dag') + ')'
+    : 'Dag (klok: ' + (isNight() ? 'nacht' : 'dag') + ')';
+  nightButton.setAttribute('aria-pressed', String(scene.night));
+}
+nightButton.onclick = () => {
+  scene.night = !scene.night;
+  showEra();
+  paintNightButton();
+};
+
+const learnedRange = document.getElementById('learned');
+learnedRange.oninput = () => {
+  learned = Number(learnedRange.value);
+  document.getElementById('learned-n').textContent = String(learned);
+  showEra();
+};
+
+showEra(lastStage);
+paintNightButton();
+scene.start();
 
 /* ---- one sprite, one canvas -------------------------------------------- */
 

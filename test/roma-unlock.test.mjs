@@ -15,8 +15,8 @@ import {
 import { CATALOGUE, STAGE_XP } from '../js/roma/catalogue.js';
 import { STAGES, stageFor } from '../js/gamify.js';
 
-const FIRST = CATALOGUE[0];      // casa-romuli, 200
-const SECOND = CATALOGUE[1];     // ovile, 600
+const FIRST = CATALOGUE[0];      // casa-romuli
+const SECOND = CATALOGUE[1];     // ovile
 
 /* ============================================================ unlocked === */
 

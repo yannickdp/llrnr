@@ -433,6 +433,9 @@ function refreshHome() {
     next,
     built: cityProgress(store.progress.xp),
     stage: store.progress.roma.stage,
+    /* The crowd on the street grows with the words she knows — a second,
+       free reading of progress that costs one number (PLAN-ROMA §4). */
+    learned: [...store.cards.values()].filter(card => card.phase === 'learned').length,
   });
 
   /* Switching every chapter off leaves nothing to teach, so Start goes dead

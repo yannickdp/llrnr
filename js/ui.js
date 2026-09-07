@@ -95,7 +95,7 @@ const REDUCED = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
  * @param {object|null} city.next   `nextAt(xp)` — the building under construction
  * @param {object} city.built       `cityProgress(xp)`
  */
-export function paintCity({ unlocked, next, built, stage = 0 }) {
+export function paintCity({ unlocked, next, built, stage = 0, learned = 0 }) {
   const canvas = $('city-home');
   if (!canvas) return;
 
@@ -112,7 +112,7 @@ export function paintCity({ unlocked, next, built, stage = 0 }) {
      a little after every lesson rather than only at the threshold. */
   const progress = next ? { [next.entry.id]: next.progress } : {};
   const ids = next ? [...unlocked, next.entry.id] : unlocked;
-  hero.show(ids, { progress, stage });
+  hero.show(ids, { progress, stage, learned });
 
   /* Follow the work: the window sits on whatever is being built, or on the
      newest thing standing once the city is finished. */
