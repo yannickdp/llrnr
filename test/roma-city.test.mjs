@@ -1021,3 +1021,75 @@ test('the module seam holds', async () => {
     }
   }
 });
+
+/* ============================================== filling the hero frame = */
+
+const canvasStub = () => ({
+  fillStyle: null, globalAlpha: 1, fillRect() {}, drawImage() {}, clearRect() {},
+  createLinearGradient: () => ({ addColorStop() {} }), setTransform() {},
+  getTransform: () => ({}), save() {}, restore() {}, translate() {},
+  beginPath() {}, rect() {}, clip() {},
+});
+
+async function withDocument(run) {
+  const previous = globalThis.document;
+  globalThis.document = {
+    createElement: () => ({ style: {}, getContext: canvasStub, width: 0, height: 0 }),
+  };
+  try {
+    return await run();
+  } finally {
+    globalThis.document = previous;
+  }
+}
+
+test('the hero fills its frame exactly, at any card width', async () => {
+  /* Reported from the phone: the city sat inset with the card showing either
+     side of it. A fixed 320-wide window cannot land on a 358-wide card at a
+     whole scale, and stretching the canvas with CSS would resample the art,
+     which §8 bans — so the window widens to whatever the scale fills instead. */
+  const { createScene } = await import('../js/roma/render.js');
+
+  await withDocument(() => {
+    for (const card of [320, 358, 375, 390, 412, 430, 744]) {
+      const canvas = { style: {}, clientWidth: card, getContext: canvasStub, width: 0, height: 0 };
+      const view = createScene(canvas, { fill: SCENE.window, cssWidth: card, motion: false });
+
+      assert.equal(parseInt(canvas.style.width, 10), card,
+        `a ${card}px card left the canvas at ${canvas.style.width}`);
+      assert.equal(view.scale, Math.trunc(view.scale), 'the scale must stay whole');
+      assert.ok(view.viewWidth <= SCENE.w);
+    }
+  });
+});
+
+test('a wider frame shows more city, not a stretched one', async () => {
+  const { createScene } = await import('../js/roma/render.js');
+
+  await withDocument(() => {
+    const at = card => {
+      const canvas = { style: {}, clientWidth: card, getContext: canvasStub, width: 0, height: 0 };
+      return createScene(canvas, { fill: SCENE.window, cssWidth: card, motion: false });
+    };
+    assert.ok(at(430).viewWidth > at(320).viewWidth,
+      'at the same scale a wider card should reveal more of the scene');
+  });
+});
+
+test('refit follows the frame and reports whether anything moved', async () => {
+  /* paintCity runs while the page is still settling, so the width measured at
+     construction is not always the final one. */
+  const { createScene } = await import('../js/roma/render.js');
+
+  await withDocument(() => {
+    const canvas = { style: {}, clientWidth: 320, getContext: canvasStub, width: 0, height: 0 };
+    const view = createScene(canvas, { fill: SCENE.window, cssWidth: 320, motion: false });
+    view.show(['casa-romuli'], { stage: 0 });
+
+    assert.equal(view.refit(320), false, 'the same width should change nothing');
+    assert.equal(view.refit(0), false, 'an unlaid-out element should be ignored');
+
+    assert.equal(view.refit(430), true);
+    assert.equal(parseInt(canvas.style.width, 10), 430, 'refit should re-fill the frame');
+  });
+});

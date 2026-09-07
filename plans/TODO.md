@@ -585,6 +585,22 @@ somewhere it has been zoomed.
       animating the same city is twice the battery for one thing to look at
 - [x] Nothing tappable on the hero itself beyond opening this
 
+Two layout faults reported from the phone:
+
+- **The city did not fill its frame.** A fixed 320-wide window cannot land on a
+  358-wide card at a whole scale, so the canvas sat inset with the card showing either
+  side of it. Stretching it with CSS would resample the art, which §8 bans — so the
+  hero has a third sizing mode, `fill`: the scale is picked to show *about*
+  `SCENE.window` logical pixels and then the window **widens** to whatever that scale
+  fills exactly. Tested at seven card widths, exact at every one; a wider frame shows
+  more city rather than a stretched one
+- **The building count sat inside the city frame** and read as part of the picture
+  rather than as a label on it. Moved out, below the card
+- [x] `refit(cssWidth)` — the hero re-measures on rotation, on a font landing, and on
+      the first real layout after boot, since `paintCity` runs while the page is still
+      settling and a card measured too early is a canvas that never reaches the edges.
+      `ResizeObserver` where there is one, a `resize` listener where there is not
+
 ### 4b.7 Invariants
 - [x] Layer cache: sky, celestials, hills, ground and finished buildings offscreen,
       invalidated on unlock; per-frame redraw is water, boat, citizens, birds, the

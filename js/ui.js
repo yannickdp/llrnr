@@ -102,7 +102,24 @@ export function paintCity({ unlocked, next, built, stage = 0, learned = 0 }) {
   if (!canvas) return;
 
   if (!hero) {
-    hero = createScene(canvas, { view: SCENE.window, motion: !REDUCED() });
+    /* Measured off the card rather than off the canvas: the canvas has no
+       width of its own until `fitCanvas` gives it one, so asking it first
+       would be asking the wrong element. */
+    const frame = canvas.parentElement ?? canvas;
+    hero = createScene(canvas, {
+      fill: SCENE.window,
+      cssWidth: frame.clientWidth,
+      motion: !REDUCED(),
+    });
+
+    /* And re-fit whenever the card changes width — a rotation, a font landing,
+       or simply the first real layout after boot, since `paintCity` runs while
+       the page is still settling. */
+    if (typeof ResizeObserver === 'function') {
+      new ResizeObserver(() => hero.refit(frame.clientWidth)).observe(frame);
+    } else {
+      window.addEventListener('resize', () => hero.refit(frame.clientWidth));
+    }
 
     /* Three ways to stop looking at it, and all three stop the loop. On a
        phone an animation nobody can see is just battery.
@@ -293,6 +310,11 @@ export function openCityView(city = bigCity) {
       motion: !REDUCED(),
     });
     wireCityGestures(canvas, bigView);
+    if (typeof ResizeObserver === 'function') {
+      new ResizeObserver(() => {
+        if (bigView.refit($('city-stage').clientWidth)) paintCityControls(bigView);
+      }).observe($('city-stage'));
+    }
     $('city-in').addEventListener('click', () => {
       bigView.setScale(bigView.scale + 1);
       paintCityControls(bigView);

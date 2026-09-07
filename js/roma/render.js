@@ -702,22 +702,40 @@ export function drawScaffold(g, entry, progress) {
  * @returns {object} the view
  */
 export function createScene(canvas, {
-  view, scale, cssWidth, motion = true, night = isNight(), maxScale = 4,
+  view, fill, scale, cssWidth, motion = true, night = isNight(), maxScale = 4,
 } = {}) {
   const dpr = globalThis.devicePixelRatio || 1;
-  /* How wide the element is allowed to be, for the zoom mode. */
-  const room = cssWidth ?? canvas.clientWidth ?? SCENE.w;
 
-  /* Two ways to size a view, and which one applies is decided here once.
-     `view` given — the Home hero: the window is a fixed number of logical
-     pixels and the scale is whatever makes it fill the element.
-     `view` omitted — the full-screen view: the *element* is fixed and the scale
-     is what zooming changes, so the window narrows as she zooms in. */
+  /* Three ways to size a view, and which one applies is settled here once.
+   *
+   * `view`  — a fixed window, in logical pixels, and the scale is whatever
+   *           makes it fit. Simple, but it leaves a gap: at a whole scale a
+   *           320-wide window will not land exactly on a 358-wide card, so the
+   *           canvas sat inset with the card showing either side of it.
+   * `fill`  — the Home hero. The scale is chosen to show *about* `fill` logical
+   *           pixels, and then the window is widened to whatever that scale
+   *           fills exactly, so the city reaches both edges of its frame.
+   *           Widening the window is the only way to do that without
+   *           fractional scaling, which §8 bans.
+   * neither — the full-screen view: the element is fixed and the scale is what
+   *           zooming changes, so the window narrows as she zooms in.
+   */
   const fixedView = view !== undefined;
-  let viewW = fixedView ? Math.min(view, SCENE.w) : SCENE.w;
-  let chosen = scale ?? chooseScale(viewW, room);
-  if (!fixedView) viewW = Math.min(SCENE.w, Math.max(1, Math.floor(room / chosen)));
+  let room = cssWidth ?? canvas.clientWidth ?? SCENE.w;
+  let viewW = SCENE.w;
+  let chosen = 1;
 
+  const measure = () => {
+    if (fixedView) {
+      viewW = Math.min(view, SCENE.w);
+      chosen = scale ?? chooseScale(viewW, room);
+      return;
+    }
+    chosen = scale ?? chooseScale(fill ?? SCENE.w, room);
+    viewW = Math.min(SCENE.w, Math.max(1, Math.floor(room / chosen)));
+  };
+
+  measure();
   let ctx = fitCanvas(canvas, { w: viewW, h: SCENE.h, scale: chosen, dpr });
 
   const smoke = smokeField();
@@ -831,6 +849,34 @@ export function createScene(canvas, {
     get maxScale() { return maxScale; },
 
     /**
+     * The element changed width — a rotation, a font landing, or simply the
+     * first layout after boot. Re-measures, re-fits and re-caches.
+     *
+     * Worth having rather than assuming the width at construction: `paintCity`
+     * runs during boot, and a card measured before the layout settles is a
+     * canvas that never quite reaches the edges afterwards.
+     *
+     * @param {number} nextCssWidth
+     * @returns {boolean} whether anything actually changed
+     */
+    refit(nextCssWidth) {
+      if (!(nextCssWidth > 0) || nextCssWidth === room) return false;
+      room = nextCssWidth;
+
+      const wasScale = chosen;
+      const wasView = viewW;
+      measure();
+      if (chosen === wasScale && viewW === wasView) return false;
+
+      ctx = fitCanvas(canvas, { w: viewW, h: SCENE.h, scale: chosen, dpr });
+      panX = clampPan(panX);
+      panTarget = panX;
+      invalidate();
+      paint(0);
+      return true;
+    },
+
+    /**
      * Zoom, in whole steps only.
      *
      * PLAN-ROMA §8 bans fractional scaling because it resamples the art into a
@@ -859,7 +905,8 @@ export function createScene(canvas, {
       const centre = panX + viewW / 2;
 
       chosen = want;
-      viewW = Math.min(SCENE.w, Math.max(1, Math.floor(room / chosen)));
+      scale = want;
+      measure();
       ctx = fitCanvas(canvas, { w: viewW, h: SCENE.h, scale: chosen, dpr });
 
       panX = clampPan(Math.round(centre - viewW / 2));

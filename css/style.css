@@ -289,14 +289,15 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   border-radius: var(--radius);
 }
 
-/* The city fills this now, so the canvas sets the height. The aspect-ratio
-   that used to hold the empty box open would fight it. */
+/* The city fills this edge to edge, so the canvas sets the height and there is
+   nothing else inside the frame — the building count used to sit in here and
+   read as part of the picture rather than as a label on it. The aspect-ratio
+   that once held the empty box open would fight the canvas. */
 .card-hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  display: block;
   padding: 0;
   overflow: hidden;
+  line-height: 0;
   background: var(--bg-sunken);
 }
 
@@ -703,12 +704,17 @@ textarea { min-block-size: 9rem; font-family: ui-monospace, SFMono-Regular, Menl
    renderer's job, so the canvas is never scrollable here — a horizontally
    scrollable hero would fight the tab swipe. */
 
+/* The canvas is sized in whole logical pixels by fitCanvas, and the hero picks
+   its scale and window so the result lands on the card's width — so this is a
+   guard against a rounding pixel, not the thing doing the fitting. Stretching
+   it with CSS would resample the art, which §8 bans. */
 .card-hero .roma-canvas {
   max-inline-size: 100%;
+  margin-inline: auto;
 }
 
 .city-caption {
-  padding: 6px 10px 8px;
+  margin-block: 6px 0;
   text-align: center;
 }
 
