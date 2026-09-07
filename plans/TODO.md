@@ -527,6 +527,22 @@ second temple silhouette above `Templum Iovis`. Which is where the word palace c
 from, and it is the right note to end on: the emperors built over the hill Romulus's
 hut still stands on, and at that stage both are on screen together.
 
+### 4b.5b Olive groves *(asked for after looking at the city)*
+- [x] `drawOlive` in engine.js — low, broad, silvery, on a squat kinked trunk. **Ten
+      wide by eight tall** against a cypress's three by nine-to-twelve; the first draft
+      was as tall as a cypress, which lost the whole contrast the second tree is for
+- [x] `olive` added to the palette as a three-tone material plus a trunk colour — the
+      second documented addition to the spec's list, after the scaffolding
+- [x] `OLIVES` — fourteen fixed slots, **two more per era**, so the city greens up as
+      it grows. Ten along the near street, four as groves on the hill slopes (hazed
+      with the backdrop). Fixed rather than scattered at runtime, for the reason §5
+      gives for the buildings
+- [x] A tree once planted is never moved or felled — tested
+- [x] No olive stands inside a building, **checked against every band**. The first
+      pass used the near band's free gaps alone and put a tree's roots through the
+      deck of `Pons Sublicius`, which stands in the water band but rises two rows
+      above the near street
+
 **Stars do not twinkle, and that is a decision.** Anything behind the buildings has to
 live in the cached static layer, so a twinkle would mean either drawing stars *over*
 the city — the exact night-order bug §6 warns about — or keeping a second cache for a

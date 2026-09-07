@@ -664,14 +664,19 @@ test('the ground has no holes in it', async () => {
   assert.deepEqual(holes.slice(0, 8), [], `${holes.length} bare cells below the skyline`);
 });
 
-test('every era puts its detail on a hill it names', async () => {
+test('each era puts its landmark on a single named hill', async () => {
   /* It used to choose with `era % 3`, which marched the aqueduct across the
      Palatine directly above Romulus's huts and crowned the Aventine with the
-     temple that belongs to the Capitoline. */
-  const { drawHills } = await import('../js/roma/render.js');
+     temple that belongs to the Capitoline.
+
+     The groves are a separate mechanism and are planted on more than one hill
+     per era, so they are subtracted before the span is measured — the first
+     version of this test failed the moment the olives arrived, for no fault of
+     the thing it was checking. */
+  const { drawHills, olivesAt } = await import('../js/roma/render.js');
   const { painter } = await import('../js/roma/engine.js');
 
-  const cells = stage => {
+  const collect = fn => {
     const seen = new Set();
     const ctx = {
       fillStyle: null, globalAlpha: 1,
@@ -682,17 +687,28 @@ test('every era puts its detail on a hill it names', async () => {
       },
       save() {}, restore() {},
     };
-    drawHills(painter(ctx, 1), { stage });
+    fn(painter(ctx, 1));
     return seen;
   };
 
   const HILL_XS = [62, 340, 522];
   for (const era of [1, 2, 3, 4]) {
-    const before = cells(era - 1);
-    const added = [...cells(era)].filter(c => !before.has(c));
-    assert.ok(added.length > 0, `era ${era} adds nothing to the skyline`);
+    const before = collect(g => drawHills(g, { stage: era - 1 }));
+    const after = collect(g => drawHills(g, { stage: era }));
 
-    /* Everything an era adds should sit within one hill's span. */
+    /* The trees this era planted, wherever they are, drawn wide so their whole
+       footprint is excluded. */
+    const grove = new Set();
+    for (const tree of olivesAt(era, { onHill: true })) {
+      if (tree.stage !== era) continue;
+      for (let x = tree.x - 8; x <= tree.x + 8; x++) {
+        for (let y = 60; y < 150; y++) grove.add(`${x},${y}`);
+      }
+    }
+
+    const added = [...after].filter(c => !before.has(c) && !grove.has(c));
+    assert.ok(added.length > 0, `era ${era} adds no landmark`);
+
     const xs = added.map(c => Number(c.split(',')[0]));
     const near = HILL_XS.filter(cx => Math.min(...xs) > cx - 100 && Math.max(...xs) < cx + 100);
     assert.equal(near.length, 1,
@@ -740,4 +756,94 @@ test('what an era adds to the skyline is still there when the city is finished',
     assert.ok(hidden.length / added.length < 0.25,
       `era ${era}: ${hidden.length} of ${added.length} cells end up behind buildings`);
   }
+});
+
+/* ========================================================== the olives == */
+
+test('an olive and a cypress are opposite shapes', async () => {
+  /* The whole reason for a second tree: a low silvery dome against a tall dark
+     spike reads as two kinds of tree, where two spikes read as a fence. */
+  const { drawOlive, drawCypress } = await import('../js/roma/engine.js');
+  const { painter } = await import('../js/roma/engine.js');
+
+  const box = fn => {
+    const cells = [];
+    const ctx = {
+      fillStyle: null, globalAlpha: 1,
+      fillRect(x, y, w, h) {
+        for (let i = x; i < x + w; i++) for (let j = y; j < y + h; j++) cells.push([i, j]);
+      },
+      save() {}, restore() {},
+    };
+    fn(painter(ctx, 1), 40, 60);
+    const xs = cells.map(c => c[0]);
+    const ys = cells.map(c => c[1]);
+    return { w: Math.max(...xs) - Math.min(...xs) + 1, h: 60 - Math.min(...ys) + 1 };
+  };
+
+  const olive = box(drawOlive);
+  const cypress = box(drawCypress);
+  assert.ok(olive.w > cypress.w * 2, `olive ${olive.w} wide vs cypress ${cypress.w}`);
+  assert.ok(olive.h < cypress.h, `olive ${olive.h} tall vs cypress ${cypress.h}`);
+});
+
+test('an olive stands on the ground it is given', async () => {
+  const { drawOlive, painter } = await import('../js/roma/engine.js');
+  const rows = [];
+  const ctx = {
+    fillStyle: null, globalAlpha: 1,
+    fillRect(x, y, w, h) { rows.push(y + h - 1); },
+    save() {}, restore() {},
+  };
+  drawOlive(painter(ctx, 1), 20, 90);
+  assert.equal(Math.max(...rows), 90, 'the trunk should reach the ground line');
+});
+
+test('the groves grow with the city', async () => {
+  const { olivesAt } = await import('../js/roma/render.js');
+  let previous = -1;
+  for (let stage = 0; stage <= 4; stage++) {
+    const total = olivesAt(stage).length + olivesAt(stage, { onHill: true }).length;
+    assert.ok(total > previous, `stage ${stage} adds no trees`);
+    previous = total;
+  }
+  /* And a tree, once planted, is never felled. */
+  for (let stage = 1; stage <= 4; stage++) {
+    const before = olivesAt(stage - 1).map(t => t.x);
+    const after = olivesAt(stage).map(t => t.x);
+    assert.deepEqual(after.slice(0, before.length), before, `stage ${stage} moved a tree`);
+  }
+});
+
+test('no olive stands inside a building', async () => {
+  /* Checked against **every** band, not just the near one. The first pass
+     placed a tree at x 150 from the near band's free gaps alone and put its
+     roots through the deck of Pons Sublicius — which stands in the water band
+     but rises two rows above the near street. */
+  const { drawOlives } = await import('../js/roma/render.js');
+  const { painter } = await import('../js/roma/engine.js');
+
+  const occupied = new Map();
+  for (const e of CATALOGUE) {
+    const gy = BANDS[e.band].groundY;
+    const h = SPRITES[e.id].h;
+    for (let x = e.x; x < e.x + e.w; x++) {
+      for (let y = gy - h + 1; y <= gy; y++) occupied.set(`${x},${y}`, e.id);
+    }
+  }
+
+  const cells = new Set();
+  const ctx = {
+    fillStyle: null, globalAlpha: 1,
+    fillRect(x, y, w, h) {
+      for (let i = Math.round(x); i < Math.round(x + w); i++) {
+        for (let j = Math.round(y); j < Math.round(y + h); j++) cells.add(`${i},${j}`);
+      }
+    },
+    save() {}, restore() {},
+  };
+  drawOlives(painter(ctx, 1), 4);
+
+  const clashes = [...cells].filter(c => occupied.has(c)).map(c => occupied.get(c));
+  assert.deepEqual([...new Set(clashes)], [], 'an olive is growing through a building');
 });

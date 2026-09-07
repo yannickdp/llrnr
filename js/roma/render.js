@@ -28,7 +28,8 @@
 
 import { C, T } from './palette.js';
 import {
-  painter, fitCanvas, chooseScale, drawFlame, drawCypress, drawFigure, smokeField, hash,
+  painter, fitCanvas, chooseScale, drawFlame, drawCypress, drawFigure, drawOlive,
+  smokeField, hash,
 } from './engine.js';
 import { SCENE, BANDS, BY_ID, inDrawOrder } from './catalogue.js';
 import { SPRITES } from './buildings.js';
@@ -268,6 +269,52 @@ const HILL_DETAIL = [
   },
 ];
 
+/**
+ * The olive groves, and the quietest reading of progress in the city.
+ *
+ * Two more trees per era, so the place greens up as it grows: a village on a
+ * bare hill at the start, a city among groves by the end. Olives rather than
+ * more cypresses because the shapes are opposites — a low silvery dome against
+ * a tall dark spike — so the two read as two kinds of tree instead of as a row
+ * of the same one.
+ *
+ * Fixed slots, hand-placed in the gaps the slot map leaves free, for exactly
+ * the reason §5 gives for the buildings: a composition designed once always
+ * looks like somewhere, where one scattered at runtime looks like a scrapyard.
+ * `hill` puts a tree on that hill's ridge instead of on the near street, where
+ * it is drawn with the backdrop and takes the same haze.
+ *
+ * The test asserts none of them stands inside a building's slot, and it checks
+ * every band rather than only the near one — the first pass placed a tree at
+ * x 150 using the near band's free gaps alone, and put its roots through the
+ * deck of `Pons Sublicius`, which stands in the water band but rises two rows
+ * above the near street.
+ */
+const OLIVES = [
+  /* Along the road, in the near band. */
+  { x: 8, stage: 0 }, { x: 118, stage: 0 },
+  { x: 40, stage: 1 }, { x: 160, stage: 1 },
+  { x: 272, stage: 2 }, { x: 340, stage: 2 },
+  { x: 400, stage: 3 }, { x: 462, stage: 3 },
+  { x: 492, stage: 4 }, { x: 540, stage: 4 },
+
+  /* Groves out on the slopes, hazed into the distance with the hills. */
+  { x: 20, hill: 0, stage: 1 },
+  { x: 115, hill: 0, stage: 2 },
+  { x: 460, hill: 2, stage: 3 },
+  { x: 132, hill: 0, stage: 4 },
+];
+
+/** Every olive standing by a given era, street ones or hillside ones. */
+export function olivesAt(stage, { onHill = false } = {}) {
+  return OLIVES.filter(tree => tree.stage <= stage && (tree.hill !== undefined) === onHill);
+}
+
+/** The street olives. Drawn after the buildings, so they stand in front. */
+export function drawOlives(g, stage) {
+  for (const tree of olivesAt(stage)) drawOlive(g, tree.x, BANDS.near.groundY);
+}
+
 /** The ridge row of a hill at a given column. */
 function ridgeAt(hill, x, farGround) {
   const u = (x - hill.cx) / hill.halfW;
@@ -327,6 +374,12 @@ export function drawHills(g, { stage = 0 } = {}) {
   for (let era = 0; era <= stage; era++) {
     const detail = HILL_DETAIL[era];
     if (detail) detail.draw(g.hazed(FAR_HAZE * 0.6), HILLS[detail.hill], farGround);
+  }
+
+  /* And the groves out on the slopes, at the same remove as the hills. */
+  const distant = g.hazed(FAR_HAZE * 0.6);
+  for (const tree of olivesAt(stage, { onHill: true })) {
+    drawOlive(distant, tree.x, ridgeAt(HILLS[tree.hill], tree.x, farGround));
   }
 }
 
@@ -531,6 +584,7 @@ export function drawStatic(g, ids, options = {}) {
   drawHills(g, options);
   drawGround(g);
   drawBuildings(g, ids, options);
+  drawOlives(g, options.stage ?? 0);
   return g;
 }
 

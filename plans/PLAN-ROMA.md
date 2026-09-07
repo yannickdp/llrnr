@@ -323,11 +323,19 @@ that. Build the fire system with stage 1, not with "life" at step 7.
 
 ### Scale props
 
-`drawCypress()` and `drawFigure()` — a ~10px dark teardrop tree and a 2×5 toga figure
-with a walk bob. These are the "citizens" of the foreground layer in §5, at about ten
-lines each. The figure count is a free second progress read: **let the number of
-citizens on the plaza track words `learned`**, capped at a dozen or so. Population
-growth, at no cost.
+`drawCypress()`, `drawOlive()` and `drawFigure()` — a ~10px dark teardrop tree, a low
+silvery dome on a squat trunk, and a 2×5 toga figure with a walk bob. These are the
+"citizens" of the foreground layer in §5, at about ten lines each. The figure count is
+a free second progress read: **let the number of citizens on the plaza track words
+`learned`**, capped at a dozen or so. Population growth, at no cost.
+
+**Two kinds of tree, and the contrast is the point.** A cypress is tall, narrow and
+dark; an olive is short, broad and silvery. Ten wide by eight tall against three by
+nine to twelve — get either half of that wrong and the second tree stops reading as a
+different plant and starts reading as a row of the same one. The groves are a third,
+quietest progress read: **two more olives per era**, so the place greens up as it
+grows, from a village on bare hills to a city among groves. Fixed slots in the gaps
+the slot map leaves free, for the same reason the buildings have them.
 
 ---
 

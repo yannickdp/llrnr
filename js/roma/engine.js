@@ -540,6 +540,41 @@ export function drawCypress(g, x, groundY) {
 }
 
 /**
+ * An olive: low, broad and silvery, on a short gnarled trunk — the opposite
+ * shape to a cypress in every way, which is the point of having both. A row of
+ * dark spikes and a row of pale domes read as two kinds of tree; two rows of
+ * spikes read as a fence.
+ *
+ * About nine wide and nine tall. Its exact size and the kink in its trunk come
+ * from its own x, so a grove is varied and never rearranges itself.
+ */
+export function drawOlive(g, x, groundY) {
+  const spread = 3 + Math.round(hash(x, 53) * 1.4);      // 3 or 4 either side
+  const lean = hash(x, 59) > 0.5 ? 1 : -1;
+
+  /* Eight rows against a cypress's nine to twelve, and ten or eleven wide
+     against its three. Both halves of that matter: the first draft was ten
+     tall and no shorter than a cypress, which lost the contrast the second
+     tree exists for. */
+
+  /* Trunk: short, thick and low, the way an olive's is. */
+  g.P(x, groundY - 2, 2, 3, C.oliveTrunk);
+  g.P(x, groundY, 2, 1, C.oliveDark);
+
+  /* Canopy: four rows, widest in the middle, lit from the upper left. */
+  const rows = [spread - 1, spread, spread, spread - 2];
+  rows.forEach((reach, i) => {
+    const y = groundY - 6 + i;
+    const cx = x + (i < 2 ? lean : 0);
+    g.P(cx - reach, y, reach * 2 + 2, 1, C.olive);
+    g.dot(cx - reach, y, C.oliveLite);
+    g.dot(cx - reach + 1, y, C.oliveLite);
+    g.dot(cx + reach + 1, y, C.oliveDark);
+  });
+  g.dot(x + lean, groundY - 7, C.oliveLite);
+}
+
+/**
  * A citizen: two pixels wide, five tall, with a walking bob. Nothing sells the
  * scale of a monument like a person who is five pixels tall standing next to
  * it — and the population is a second, free reading of progress once the count

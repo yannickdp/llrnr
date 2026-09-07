@@ -76,6 +76,16 @@ export const C = Object.freeze({
   cypressLite: '#3f7a49',
   cypressDark: '#214a2c',
 
+  /* Olive, the second addition to the spec's list and the counterpart to the
+     cypress: where a cypress is a tall dark spike, an olive is low, broad and
+     grey-green, so the two read as different plants rather than as more of the
+     same. Silvery on purpose — it is what an olive looks like from a distance,
+     and it separates the groves from the dark hills behind them. */
+  olive: '#7e8f64',
+  oliveLite: '#9fae86',
+  oliveDark: '#5d6b46',
+  oliveTrunk: '#6f6350',
+
   /* ---- figures, for scale --------------------------------------------- */
   skin: '#e0ac7e',
   toga: '#efe7d6',
@@ -140,6 +150,9 @@ export const T = Object.freeze({
   }),
   cypress: Object.freeze({
     lit: C.cypressLite, base: C.cypress, shadow: C.cypressDark,
+  }),
+  olive: Object.freeze({
+    lit: C.oliveLite, base: C.olive, shadow: C.oliveDark,
   }),
 
   /* Two-tone: ground planes seen edge-on. */
