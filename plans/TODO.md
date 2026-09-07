@@ -47,8 +47,19 @@ screen inherits this without saying so again.
 - [x] Tests assert on `code`, not on the Dutch wording
 - [x] `<html lang="nl">`
 - [x] Manifest `name` / `short_name` in Dutch
-- [ ] Dates and numbers formatted `nl-BE` *(nothing renders one yet — due with the
-      streak, the heatmap and the test dates)*
+- [x] Dates formatted `nl-BE` — `formatDay()` in ui.js, two styles: a test date with
+      its weekday and no year (*vrijdag 11 september*), a backup's date with its year
+      and no weekday (*7 september 2026*). Numbers need nothing: every one the app
+      shows is a whole one
+- [x] **The test date is now on screen at all.** "Toets over 3 dagen" is the number
+      she paces herself by; the weekday is the one she finds on the calendar, and only
+      the first of the two was ever rendered
+- [x] The backup's saved-on date was a raw ISO slice (`2026-09-07`) — the one place in
+      the app that showed a machine date to a twelve-year-old
+- [x] Dates are parsed by splitting the parts, never through `new Date(iso)`, which
+      reads a bare date as UTC midnight — the right day in Brussels and **the day
+      before** anywhere west of Greenwich. `cram.js` already did this; there is a test
+      that runs the formatter under a western timezone, and the naive version fails it
 - [x] Check the Dutch copy still fits a 390px screen — it runs longer than the English
 
 ### 1.2 `parse.js` + a real chapter

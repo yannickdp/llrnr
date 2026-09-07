@@ -17,9 +17,9 @@ import { awardLesson, goalMetToday, newBadges, stageFor, STAGES } from './gamify
 import { cityProgress, markSeen, nextAt, reconcile, unlockedBy } from './roma/roma.js';
 import { setSoundEnabled } from './sound.js';
 import {
-  $, DIRECTION_LABEL, cityUnlockMoment, cityVisible, closeCityView, el, importPreview,
-  openCityView, paintCity, paintHome, paintResults, plural, progressTrack,
-  readinessPanel, runLesson,
+  $, DIRECTION_LABEL, cityUnlockMoment, cityVisible, closeCityView, el, formatDay,
+  importPreview, openCityView, paintCity, paintHome, paintResults, plural,
+  progressTrack, readinessPanel, runLesson,
 } from './ui.js';
 
 const TABS = ['home', 'words', 'tests', 'settings'];
@@ -719,7 +719,7 @@ function refreshRestorePreview() {
     plural(summary.badges, 'badge', 'badges'),
     plural(summary.tests, 'toets', 'toetsen'),
     plural(summary.lists, 'geplakte lijst', 'geplakte lijsten'),
-    ...(summary.exportedAt ? [`bewaard op ${summary.exportedAt.slice(0, 10)}`] : []),
+    ...(summary.exportedAt ? [`bewaard op ${formatDay(summary.exportedAt, 'date')}`] : []),
   ].join(' · ')));
   card.append(el('p', 'tag tag-bad',
     `Dit vervangt je huidige voortgang (${plural(store.cards.size, 'woord', 'woorden')}, `

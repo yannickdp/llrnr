@@ -29,6 +29,48 @@ export function formatClock(ms) {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }
 
+/* ============================================================== dates === */
+
+/* PLAN §1: dates and numbers are `nl-BE`, which settles the small things —
+   11/09/2026 rather than 9/11/2026, and "september" rather than "September".
+   Every number the app shows is a whole one, so only dates need this.
+   Built once: constructing an Intl formatter is not free and these are used
+   per test, per render. */
+const FORMATS = (() => {
+  try {
+    return {
+      /* A test date: the weekday is the useful half, because "vrijdag" is how
+         she actually thinks about when the test is. The year would be noise —
+         it is always this school year. */
+      day: new Intl.DateTimeFormat('nl-BE', { weekday: 'long', day: 'numeric', month: 'long' }),
+      /* A backup's date, where the year does matter: restoring last term's
+         file by accident is exactly the mistake worth making visible. */
+      date: new Intl.DateTimeFormat('nl-BE', { day: 'numeric', month: 'long', year: 'numeric' }),
+    };
+  } catch {
+    return null;
+  }
+})();
+
+/**
+ * A `YYYY-MM-DD` day, in Dutch.
+ *
+ * Split into parts rather than handed to `new Date(iso)`, which reads a bare
+ * date as UTC midnight — harmless in Brussels, and a day out for anyone west
+ * of Greenwich. cram.js parses the same way for the same reason.
+ *
+ * @param {string} iso     `2026-09-11`, or a longer ISO timestamp
+ * @param {'day'|'date'} [style]  with the weekday, or with the year
+ * @returns {string} the ISO string unchanged if there is no Intl to ask
+ */
+export function formatDay(iso, style = 'day') {
+  if (!iso) return '';
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  if (!y || !m || !d) return iso;
+  if (!FORMATS) return iso.slice(0, 10);
+  return FORMATS[style].format(new Date(y, m - 1, d));
+}
+
 /* ======================================================== the home ======= */
 
 /**
@@ -427,6 +469,11 @@ export function readinessPanel(summary, { compact = false } = {}) {
   head.append(el('span', 'chapter-title', test.title || 'Toets'));
   head.append(el('span', 'caption', DAYS_LEFT_LABEL(summary.daysLeft)));
   panel.append(head);
+
+  /* And which day that actually is. "Toets over 3 dagen" is the number she
+     needs to pace herself; "vrijdag 11 september" is the one she needs to
+     recognise it on the calendar, and only the first of the two was here. */
+  if (test.date) panel.append(el('p', 'caption readiness-when', formatDay(test.date)));
 
   panel.append(el('p', 'readiness-headline',
     `${ready} van de ${total} woorden klaar in beide richtingen`));
