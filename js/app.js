@@ -14,6 +14,7 @@ import { exportBackup, inspectBackup, openStore } from './store.js';
 import { isDue, isOneWay, missingDirection } from './schedule.js';
 import { activeTest, makeTest, readiness } from './cram.js';
 import { awardLesson, goalMetToday, newBadges, stageFor, STAGES } from './gamify.js';
+import { createCoach } from './coach/coach.js';
 import { cityProgress, markSeen, nextAt, reconcile, unlockedBy } from './roma/roma.js';
 import { setSoundEnabled } from './sound.js';
 import {
@@ -289,9 +290,13 @@ function renderReadiness() {
   const now = Date.now();
   const active = activeTest(store.progress.tests, now);
 
+  /* Hidden rather than merely empty: an empty div is still a flex item, so it
+     was costing a gap between the header and the city on every screen with no
+     test running — which is most of them, most of the time. */
   home.replaceChildren(
     ...(active ? [readinessPanel(readiness(store.cards, activeWords(), active, now), { compact: true })] : []),
   );
+  home.hidden = !active;
 
   const upcoming = [...store.progress.tests]
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -383,6 +388,9 @@ const store = openStore();
 
 let corpus = null;
 let running = null;
+/* The lesson's coach, kept past `running` because the Results screen still
+   needs it for the rank-up. Rolled fresh by every startLesson(). */
+let coach = null;
 
 function chosenDirection() {
   return $('direction-picker')
@@ -502,8 +510,19 @@ function startLesson(only, focusIds = null) {
 
   show('lesson');
 
+  /* One coach for the whole lesson, and its rank set here, silently.
+     `createCoach` rolls the character once — a mascot that shape-shifts between
+     two consecutive questions reads as a bug rather than as variety — and the
+     rank is never touched again until the results are in, so no threshold can
+     fire mid-lesson. PLAN-ROMA section 9. */
+  coach = createCoach({
+    xp: store.progress.xp,
+    motion: !matchMedia('(prefers-reduced-motion: reduce)').matches,
+  });
+
   running = runLesson(lesson, {
     anticipationSeconds: store.settings.anticipationSeconds,
+    coach,
     onFinish: () => {
       running = null;
       setExitGuard(null);
@@ -583,6 +602,11 @@ function finishLesson(lesson, test, readyBefore) {
     stageCrossed: rose.stageCrossed,
     stage: rose.stageCrossed ? STAGES[rose.stageCrossed.to] : null,
     stageIndex: store.progress.roma.stage,
+    /* Derived from the XP either side, exactly like the buildings above: a
+       threshold cannot be crossed twice and nothing has to be stored to make
+       that true. */
+    rankUp: coach?.rankUp(xpBefore, award.xp) ?? null,
+    coach,
   }).then(() => {
     store.progress.roma = markSeen(store.progress.roma, store.progress.xp);
     store.save();

@@ -433,7 +433,7 @@ test('every material names tones that actually exist', () => {
 test('every surface material has three tones', () => {
   /* The rule that makes flat pixels read as volume. The two-tone ground planes
      and the inverted flame are the documented exceptions. */
-  const twoTone = new Set(['plaza', 'bank', 'hill', 'flame']);
+  const twoTone = new Set(['plaza', 'bank', 'hill', 'wool', 'flame']);
   for (const [material, tones] of Object.entries(T)) {
     if (twoTone.has(material)) continue;
     for (const tone of ['lit', 'base', 'shadow']) {

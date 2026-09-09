@@ -275,7 +275,7 @@ every time she opens the app, which is the difference between a place and a
 screensaver.
 
 **Scope that rule to the art.** It is a property the *rendered scene* needs, not a
-project-wide ban — the parked coach in §9 deliberately uses `Math.random()` to vary
+project-wide ban — the coach in §9 deliberately uses `Math.random()` to vary
 its messages, since one that says the same thing every time is worthless. Do not
 "fix" either to match the other.
 
@@ -570,7 +570,7 @@ js/roma/
   buildings.js   # the draw functions and character grids, behind one interface
   render.js      # scene layers, integer scaling, layer cache, night pass, animation
   roma.js        # unlock logic against total XP, new-since-last-seen
-js/coach/         # PARKED, unbuilt — see §9
+js/coach/         # built — see §9
   coach.js       # present() / setXp() / setWait(), mood + rank state
   characters.js  # drawCharacter: torso, arms, head, headgear, gestures, flourish
   messages.js    # MSG.good / .improve / .perfect and UNLOCK — Dutch + Latin, data only
@@ -586,27 +586,28 @@ function. That is what makes the coach's content extensible by anyone, including
 
 ---
 
-## 9. The coach — parked
+## 9. The coach — built
 
-> **Status: designed, kept, not being built.** Everything below stands as a finished
-> design; none of it is withdrawn. It is parked because the app is complete except for
-> getting it onto her phone, and both remaining reward features are guesses about what
-> motivates *her* until she has used it for real.
+> **Status: built, out of order, and still owed its test.** This section was written
+> as a parked design and is kept as one, because the findings below are what the
+> implementation was built from and every one of them still holds. What changed is
+> only the schedule: it was built before the observation that was supposed to gate it.
 >
-> **The test that decides it:** does she read the reveal, or tap straight through it?
-> Reading it → the coach costs nothing and should be built. Tapping through → it is
-> friction next to the part that actually teaches, and the city carries the reward
-> instead.
+> **The test still to run:** does she read the reveal, or tap straight through it?
+> Reading it → the coach is landing in a beat she was already dwelling in and cost her
+> nothing. Tapping through → it is friction next to the part that actually teaches,
+> and the honest response is to **take it back out** and let the city carry the reward
+> alone. That is a small commit on purpose: `runLesson` takes the coach as an option
+> and behaves exactly as it did before when there is not one.
 >
-> Two things that make it cheap to revive: the art risk is already retired by a
-> working demo, and building it forces `engine.js` and `palette.js` into existence —
-> which is §10 step 1 regardless. Its one real weakness (novelty decay, below) is
-> fixable in `messages.js`, which is data, so writing more mottos is worth doing any
-> time and needs no code.
+> Novelty decay (below) is mitigated rather than solved: 62 messages instead of the
+> spec's 21, which is about a month instead of about a week. `messages.js` is data, so
+> more is always the cheapest fix and needs no code.
 >
-> The parts of this section that outlived the decision are the standing rules, and
-> they hold whether or not the coach is ever built: **nothing is added to the
-> anticipation gap**, and **the Results screen owns every celebration**.
+> The two standing rules in this section are the ones that outlive any decision about
+> the coach itself: **nothing is added to the anticipation gap**, and **the Results
+> screen owns every celebration**. Both are now guarded by tests rather than by
+> intention — see `test/coach.test.mjs`.
 
 A pixel Roman bust who appears **after an answer**, says one encouraging line in
 Flemish Dutch, and pairs it with a real Latin motto and its translation. Spec:
@@ -724,17 +725,28 @@ So **the coach's rank is the city's stage.** Six ranks fit six states exactly:
 | Rank | City state | From XP |
 |---|---|---|
 | **Servus** | before the first building | 0 |
-| **Gladiator** | Roma Quadrata | 200 |
-| **Centurio** | Regnum | 4 000 |
-| **Magister** | Res Publica | 14 000 |
-| **Senator** | Imperium | 30 000 |
-| **Imperator** | Roma Aeterna | 52 000 |
+| **Gladiator** | the first building stands | `CATALOGUE[0].xp` |
+| **Centurio** | Regnum | `STAGE_XP[1]` |
+| **Magister** | Res Publica | `STAGE_XP[2]` |
+| **Senator** | Imperium | `STAGE_XP[3]` |
+| **Imperator** | Roma Aeterna | `STAGE_XP[4]` |
 
 `Servus` occupies the first lesson only, which is the right feel: she starts as
 nobody. `Imperator` arrives with the Colosseum, at the point the city becomes
 imperial — the rank and the skyline say the same thing, which is the entire reason to
 collapse the two ladders. And retuning the XP table (§2) automatically retunes the
 coach, for free, because there is only one set of numbers.
+
+> **This table used to carry literal numbers — 200 / 4 000 / 14 000 / 30 000 / 52 000
+> — and every one of them was wrong by the time the coach was built.** 4b.3b retuned
+> the XP curve against a measurement instead of an estimate, and the stage thresholds
+> moved to 0 / 7 000 / 26 000 / 58 500 / 92 000. Nobody noticed, because nothing read
+> these numbers yet.
+>
+> That is the argument for the rule stated as code rather than as a table, and
+> `coach.js` builds `RANK_XP` from `CATALOGUE` and `STAGE_XP` at import time. A test
+> asserts that every rank threshold is some building's XP, which is also what lets the
+> rank-up ride on the unlock card instead of needing one of its own.
 
 ### Rank-up belongs on the Results screen
 
@@ -777,8 +789,8 @@ nobody is looking at is just battery.
 ## 10. Build order
 
 This is all downstream of the main plan's Phase 4 XP system — neither the city nor the
-coach can react before XP exists. Slot the city in as **Phase 4b**; the coach is
-**Phase 4c and is parked** (§9).
+coach can react before XP exists. The city is **Phase 4b**; the coach is **Phase 4c**.
+Both are built.
 
 **Before either: ship what exists.** The app is complete through the main plan's Phase
 4.5 — XP, stages, streak, badges, sounds, the word track, offline, export/import,
@@ -815,10 +827,10 @@ Stopping after step 4 still leaves something worth having: a small city that gro
 the first few weeks. Everything after that is extending a working thing, so a
 half-finished catalogue is never a broken feature.
 
-### The coach *(parked — kept for revival, see §9)*
+### The coach *(built — see §9 for the test it still owes)*
 
-Not scheduled. Recorded in build order so that picking it up is a matter of starting at
-step 1 rather than re-deriving the plan. It needs city step 1 and nothing else.
+Recorded in the order it was built, which is the order below. It needed city step 1 and
+nothing else.
 
 1. **One character, one mood** — `servus`, drawn from the shared engine and palette,
    in the Results/reveal beat. Prove the bust reads at phone size before drawing six
@@ -833,7 +845,10 @@ step 1 rather than re-deriving the plan. It needs city step 1 and nothing else.
 5. **The flourish** on `perfect`, and the rank-up celebration on the Results screen
    alongside the stage crossing.
 
-Stopping after coach step 2 already leaves something better than a silent reveal.
+Stopping after coach step 2 would already have left something better than a silent
+reveal. All five steps landed together, so that stopping point was never used — but it
+is still the right place to cut back to if the test in §9 goes against the feature and
+something less than removal is wanted.
 
 ---
 

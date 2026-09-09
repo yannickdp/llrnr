@@ -11,6 +11,7 @@
 import { fanfare, forGrade, unlocked as unlockedChime, stageUp } from './sound.js';
 import { studyDay, trackPosition, TRACK_STOPS } from './schedule.js';
 import { createScene, hitTest, toScene } from './roma/render.js';
+import { mayShow, moodFor } from './coach/coach.js';
 import { SCENE } from './roma/catalogue.js';
 import { entryFor } from './roma/roma.js';
 
@@ -86,6 +87,14 @@ export function paintHome({ due, fresh, streak, warning, stage, ring, next }) {
   $('home-new').textContent = String(fresh);
   $('home-streak').textContent = String(streak);
 
+  /* Home's title is the era, glossed — `Roma Quadrata` over `de eerste muren`.
+     The Dutch half sat in `STAGES` unread since Phase 4.1, with a comment
+     saying the stage names are themselves vocabulary, which they only are if
+     she can find out what they mean. Every building and every coach rank is
+     glossed; the stage was the one Latin word in the app shown bare. */
+  $('home-stage').textContent = stage.stage.name;
+  $('home-stage-dutch').textContent = stage.stage.dutch;
+
   /* The bar sits under the city and measures the thing the city is about: the
      next building, not the next stage. PLAN section 5 asks for exactly that,
      and it was measuring stage progress only because there were no buildings
@@ -93,7 +102,6 @@ export function paintHome({ due, fresh, streak, warning, stage, ring, next }) {
      A stage is five or six buildings wide, so a bar against the stage moves
      imperceptibly per lesson; against the next building it moves visibly every
      time, which is the whole argument for the construction-site teaser too. */
-  $('home-stage').textContent = stage.stage.name;
   $('home-xp').style.inlineSize = `${Math.round((next?.progress ?? 1) * 100)}%`;
   $('home-xp-caption').textContent = next
     ? `nog ${next.remaining} XP tot ${next.entry.latin}`
@@ -401,13 +409,22 @@ export function closeCityView() {
  * overlapping, because two buildings appearing at once is a mess and neither
  * gets its moment.
  *
+ * The coach's rank-up rides along on this card when there is one. That is not
+ * a convenience: every rank threshold *is* a building's XP by construction, so
+ * a rank-up and an unlock are one event, and giving them two cards would show
+ * the same moment twice. PLAN-ROMA section 9.
+ *
  * @param {object[]} buildings   catalogue entries, in unlock order
  * @param {object} options
  * @param {string[]} options.unlocked  everything that exists after the lesson
  * @param {object|null} options.stageCrossed
  * @param {object|null} options.stage  the stage entered, for its Latin name
+ * @param {object|null} [options.rankUp]  from coach.rankUp(), or null
+ * @param {object|null} [options.coach]   the lesson's coach, to paint the bust
  */
-export async function cityUnlockMoment(buildings, { unlocked, stageCrossed, stage, stageIndex = 0 }) {
+export async function cityUnlockMoment(buildings, {
+  unlocked, stageCrossed, stage, stageIndex = 0, rankUp = null, coach = null,
+}) {
   const card = $('unlock-card');
   if (!card || buildings.length === 0) {
     if (card) card.hidden = true;
@@ -415,9 +432,37 @@ export async function cityUnlockMoment(buildings, { unlocked, stageCrossed, stag
   }
 
   card.hidden = false;
+  paintRankUp(rankUp, coach);
+
+  /* Fill the card, the same way the Home hero does, and for the same reason: a
+     fixed 320-wide window does not land on a 358-wide card at any whole scale,
+     so the city sat inset with the card showing either side of it. `fill` picks
+     the scale first and then widens the window to whatever that scale covers
+     exactly — the only way to reach both edges without fractional scaling,
+     which §8 bans.
+
+     Measured off the card rather than off the canvas, because the canvas has no
+     width of its own until `fitCanvas` gives it one. The card is already
+     visible by this line, so there is a real width to read. */
   const canvas = $('city-unlock');
+  const frame = canvas.parentElement ?? canvas;
+  /* `|| SCENE.window` is not belt and braces. In fill mode a room of zero picks
+     a one-pixel window, and this scene is built once and kept — so an unlaid-out
+     card would leave a 1px city behind forever, which is a far worse failure
+     than the inset this fixes. Falling back to the old fixed width means the
+     worst case is the old behaviour, and the next unlock refits it properly. */
+  const room = frame.clientWidth || SCENE.window;
+
   if (!unlockView) {
-    unlockView = createScene(canvas, { view: SCENE.window, motion: !REDUCED() });
+    unlockView = createScene(canvas, {
+      fill: SCENE.window,
+      cssWidth: room,
+      motion: !REDUCED(),
+    });
+  } else {
+    /* Lessons are minutes apart and the phone can be turned between them, so
+       the width is re-read every time rather than only at construction. */
+    unlockView.refit(room);
   }
 
   /* Start from the city as it was *before* these landed, so there is something
@@ -444,6 +489,32 @@ export async function cityUnlockMoment(buildings, { unlocked, stageCrossed, stag
   }
 
   unlockView.stop();
+}
+
+/**
+ * The rank-up, on the unlock card. Hidden — and it usually is — when the
+ * lesson crossed no threshold.
+ */
+function paintRankUp(rankUp, coach) {
+  const box = $('rank-up');
+  if (!box) return;
+
+  box.hidden = !rankUp;
+  if (!rankUp) return;
+
+  $('rank-latin').textContent = rankUp.rank.latin;
+  $('rank-dutch').textContent = rankUp.rank.dutch;
+  $('rank-line').textContent = rankUp.message.nl;
+
+  const motto = $('rank-motto');
+  motto.hidden = !rankUp.message.la;
+  if (rankUp.message.la) {
+    $('rank-la').textContent = `« ${rankUp.message.la} »`;
+    $('rank-tr').textContent = rankUp.message.tr ?? '';
+  }
+
+  /* The rank she has just reached announces it herself, arms up. */
+  coach?.show($('rank-bust'), rankUp.character);
 }
 
 /* ==================================================== the readiness ====== */
@@ -537,9 +608,11 @@ export const DIRECTION_LABEL = {
  * @param {object} lesson    from createLesson()
  * @param {object} opts
  * @param {number} [opts.anticipationSeconds]  the silence before she may type
+ * @param {object} [opts.coach]  from createCoach(); omitted, the lesson runs
+ *   exactly as it did before the coach existed
  * @param {() => void} opts.onFinish
  */
-export function runLesson(lesson, { anticipationSeconds = 4, onFinish } = {}) {
+export function runLesson(lesson, { anticipationSeconds = 4, coach = null, onFinish } = {}) {
   const body = $('lesson-body');
   const progress = $('lesson-progress');
   const clock = $('lesson-clock');
@@ -547,10 +620,18 @@ export function runLesson(lesson, { anticipationSeconds = 4, onFinish } = {}) {
   let frame = null;
   /* When the current question's anticipation gap ends. Absolute, not a count. */
   let revealInputAt = 0;
+  /* The question on screen, kept because `lesson.answer()` clears it and the
+     coach needs to know how it was asked. */
+  let asked = null;
+  /* Which words have already been asked this lesson. The micro-ladder brings a
+     new word back within minutes, and the fourth sighting is not a clean
+     recall — see moodFor(). */
+  const seen = new Set();
 
   function stop() {
     if (frame) cancelAnimationFrame(frame);
     frame = null;
+    coach?.stop();
   }
 
   /* ---------------------------------------------------------- painting --- */
@@ -574,6 +655,12 @@ export function runLesson(lesson, { anticipationSeconds = 4, onFinish } = {}) {
 
   function paintQuestion(step) {
     revealInputAt = Date.now() + anticipationSeconds * 1000;
+    asked = step;
+
+    /* Nothing of the coach happens here, and that is the single most important
+       line in this file about it. The gap below is silence on purpose (PLAN
+       §2.3), and a Latin motto on screen during a Latin retrieval task would be
+       both a distraction and, eventually, the answer. */
 
     const area = el('div', 'prompt-area');
     area.append(el('p', 'direction-marker', DIRECTION_LABEL[step.direction]));
@@ -633,11 +720,14 @@ export function runLesson(lesson, { anticipationSeconds = 4, onFinish } = {}) {
   }
 
   function grade(typed) {
+    const step = asked;
     const reveal = lesson.answer(typed, Date.now());
-    paintReveal(reveal);
+    paintReveal(reveal, step);
+    if (step) seen.add(step.id);
   }
 
-  function paintReveal(reveal) {
+  function paintReveal(reveal, step = null) {
+    asked = null;
     forGrade(reveal.grade);
     const verdict = { correct: 'Juist', wrong: 'Fout', almost: 'Bijna!' }[reveal.grade];
     const card = el('div', `card reveal reveal-${reveal.grade}`);
@@ -666,8 +756,35 @@ export function runLesson(lesson, { anticipationSeconds = 4, onFinish } = {}) {
     const go = el('button', 'btn btn-primary btn-lg', 'Verder');
     go.addEventListener('click', tick, { once: true });
 
+    /* The card and the way forward go up first, and the coach is slotted in
+       between them afterwards. That ordering is the guarantee, not a detail:
+       `go` exists, is on screen and has focus before the coach is so much as
+       asked for, so Enter advances the lesson whether or not a pixel Roman is
+       still talking. The coach is concurrent with the reveal — she is already
+       dwelling here to read the answer, the alternatives and the grammar form
+       — and it adds no time of its own. PLAN-ROMA §9. */
     body.replaceChildren(card, go);
     go.focus();
+
+    if (!coach || !step) return;
+
+    const mood = moodFor({
+      grade: reveal.grade,
+      mode: step.mode,
+      repeat: seen.has(step.id),
+    });
+    if (!mayShow({ mood, outcome: reveal.outcome })) return;
+
+    const node = coach.present({
+      mood,
+      card: {
+        term: reveal.term,
+        form: reveal.form,
+        answer: reveal.answer,
+        alternatives: reveal.alternatives,
+      },
+    });
+    if (node) card.after(node);
   }
 
   function paintWait(step) {

@@ -1076,6 +1076,42 @@ test('a wider frame shows more city, not a stretched one', async () => {
   });
 });
 
+test('every city on screen fills its frame, not just the hero', async () => {
+  /* The hero was fixed for this in c1ed5d2 and the unlock card was missed, so
+     the same inset came back on the Results screen a few commits later. The
+     engine guarantee above is not the thing that regressed — the *call* was. So
+     this reads ui.js and checks that no scene meant to fill a card is still
+     asking for a fixed window.
+
+     `openCityView` is deliberately exempt: the full-screen view is the third
+     sizing mode, where the element is fixed and zooming is what changes the
+     scale. */
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('../js/ui.js', import.meta.url), 'utf8');
+
+  for (const fn of ['paintCity', 'cityUnlockMoment']) {
+    const start = source.indexOf(`function ${fn}(`);
+    assert.notEqual(start, -1, `${fn} is gone from ui.js`);
+
+    /* To the next top-level declaration. Not to the next `\n}`: these functions
+       destructure their options across lines, so the parameter list's own
+       closing brace sits at column zero and would cut the body off at line 2. */
+    const after = source.slice(start + 1);
+    const ends = [...after.matchAll(/\n(?:export |function |\/\* =)/g)]
+      .map(m => m.index);
+    const body = after.slice(0, ends.length ? ends[0] : undefined);
+
+    const opened = body.indexOf('createScene(');
+    assert.notEqual(opened, -1, `${fn} no longer builds a scene`);
+    const call = body.slice(opened, body.indexOf('});', opened));
+
+    assert.match(call, /fill:/, `${fn} does not ask its scene to fill the card`);
+    assert.match(call, /cssWidth:/, `${fn} never measures the card it has to fill`);
+    assert.doesNotMatch(call, /\bview:/,
+      `${fn} still asks for a fixed window — that is the inset bug`);
+  }
+});
+
 test('refit follows the frame and reports whether anything moved', async () => {
   /* paintCity runs while the page is still settling, so the width measured at
      construction is not always the final one. */

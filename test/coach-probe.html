@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="nl-BE">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>De coach — probe</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0;
+    padding: 16px calc(16px + env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom))
+             calc(16px + env(safe-area-inset-left));
+    background: #1b1a17;
+    color: #f2ece1;
+    font: 15px/1.45 system-ui, sans-serif;
+  }
+  h1 { font-size: 1.05rem; margin: 0 0 4px; }
+  p  { margin: 0 0 16px; color: #a89f8d; font-size: 0.8125rem; }
+  section { margin-block-end: 22px; }
+  h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: .1em; color: #a89f8d;
+       margin: 0 0 8px; font-weight: 700; }
+  canvas { image-rendering: pixelated; display: block; }
+  .row  { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+  .cell { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+  .cap  { font-size: 0.6875rem; color: #6f685c; }
+
+  /* The reveal, reproduced closely enough to judge the one thing that matters:
+     whether the coach fits next to a real answer card on a real phone. */
+  .phone { max-inline-size: 358px; display: flex; flex-direction: column; gap: 12px; }
+  .card {
+    padding: 16px; background: #262420; border: 1px solid #3a352e; border-radius: 14px;
+    display: flex; flex-direction: column; gap: 6px; text-align: center;
+  }
+  .card.ok { border-color: #6f9e5a; }
+  .eyebrow { font-size: 0.75rem; text-transform: uppercase; letter-spacing: .1em;
+             color: #6f9e5a; margin: 0; }
+  .prompt  { font-size: 2.5rem; margin: 0; color: #c8873a; }
+  .caption { font-size: 0.8125rem; color: #a89f8d; margin: 0; }
+
+  .coach { display: flex; align-items: flex-start; gap: 10px; }
+  .coach-bust { flex: none; align-self: flex-end; }
+  .coach-bubble {
+    position: relative; flex: 1; min-inline-size: 0; padding: 10px 12px;
+    background: #141310; border: 1px solid #3a352e; border-radius: 10px;
+  }
+  .coach-bubble::before {
+    content: ""; position: absolute; inset-block-end: 14px; inset-inline-start: -5px;
+    inline-size: 8px; block-size: 8px; background: #141310;
+    border-inline-start: 1px solid #3a352e; border-block-end: 1px solid #3a352e;
+    transform: rotate(45deg);
+  }
+  .coach-who { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; margin: 0;
+               font-size: 0.75rem; text-transform: uppercase; letter-spacing: .1em; }
+  .coach-rank  { color: #c8873a; font-weight: 700; }
+  .coach-gloss { color: #6f685c; text-transform: none; letter-spacing: 0; }
+  .coach-line  { margin: 4px 0 0; font-weight: 600; }
+  .coach-motto { display: block; margin: 8px 0 0; padding-block-start: 7px;
+                 border-block-start: 1px dashed #3a352e; }
+  .coach-la { display: block; color: #c8873a; font-style: italic; }
+  .coach-tr { display: block; color: #a89f8d; font-size: 0.8125rem; }
+  .btn { padding: 14px; border: 0; border-radius: 10px; background: #c8873a; color: #1b1a17;
+         font: inherit; font-weight: 700; }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-block-end: 12px; }
+  button.ctl { font: inherit; font-size: 0.8125rem; padding: 8px 12px; border-radius: 8px;
+               background: #262420; color: #f2ece1; border: 1px solid #3a352e; }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 0;
+       font-size: 0.8125rem; }
+  dt { color: #a89f8d; }
+  dd { margin: 0; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+
+<h1>De coach — probe</h1>
+<p>
+  PLAN-ROMA §9 / TODO 4c.1. Two questions a passing test cannot answer, and both of
+  them need a real phone: <strong>does a bust read at this size</strong>, and
+  <strong>does one fit beside a reveal card without crowding it</strong>. If the
+  answer to either is no, that is a finding, not a bug — the whole feature is
+  parked-and-revived on exactly this kind of judgement.
+</p>
+
+<section>
+  <h2>This device</h2>
+  <dl id="env"></dl>
+</section>
+
+<section>
+  <h2>The cast, at the size the app uses</h2>
+  <div class="row" id="cast"></div>
+</section>
+
+<section>
+  <h2>Scales — which one is right on this screen?</h2>
+  <div class="row" id="scales"></div>
+</section>
+
+<section>
+  <h2>The three moods, and the flourish</h2>
+  <div class="row" id="moods"></div>
+</section>
+
+<section>
+  <h2>Beside a reveal, at 358px — the only test that decides it</h2>
+  <div class="controls">
+    <button class="ctl" data-mood="perfect">Perfect</button>
+    <button class="ctl" data-mood="good">Goed</button>
+    <button class="ctl" data-mood="improve">Kom op</button>
+    <button class="ctl" data-roll="1">Andere Romein</button>
+  </div>
+  <div class="phone">
+    <div class="card ok">
+      <p class="eyebrow" id="verdict">Juist</p>
+      <p class="prompt">moeder / mama</p>
+      <p class="caption">matris, f.</p>
+      <p class="caption">ook goed: moeder, mama</p>
+    </div>
+    <div id="live"></div>
+    <button class="btn">Verder</button>
+  </div>
+</section>
+
+<script type="module">
+import { painter } from '../js/roma/engine.js';
+import { BUST, TYPES, drawBust, fitBust } from '../js/coach/characters.js';
+import { RANKS } from '../js/coach/messages.js';
+import { createCoach, RANK_XP } from '../js/coach/coach.js';
+
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const env = document.getElementById('env');
+for (const [label, value] of [
+  ['devicePixelRatio', String(devicePixelRatio)],
+  ['screen', `${innerWidth} x ${innerHeight} css px`],
+  ['bust', `${BUST.w} x ${BUST.h} logical px`],
+  ['at scale 2', `${BUST.w * 2} x ${BUST.h * 2} css px`],
+  ['reduced motion', reduced ? 'yes — nothing here animates' : 'no'],
+]) {
+  const dt = document.createElement('dt'); dt.textContent = label;
+  const dd = document.createElement('dd'); dd.textContent = value;
+  env.append(dt, dd);
+}
+
+/** A still bust in a labelled cell. */
+function still(host, type, { scale = 2, mood = 'good', flourish = false, label }) {
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  const canvas = document.createElement('canvas');
+  const cap = document.createElement('span');
+  cap.className = 'cap';
+  cap.textContent = label;
+  cell.append(canvas, cap);
+  host.append(cell);
+
+  const g = painter(fitBust(canvas, { scale }), scale);
+  drawBust(g, type, { mood, flourish, motion: false });
+}
+
+/* Every rank she can ever meet, at the size the reveal uses. */
+const cast = document.getElementById('cast');
+for (let i = 0; i < TYPES.length; i++) {
+  still(cast, TYPES[i], { label: `${RANKS[i].latin} · ${RANK_XP[i]} XP` });
+}
+
+/* The scale question. 1 is 30px wide and almost certainly too small; 3 is 90px
+   and probably crowds the bubble on a 390px phone. The app ships 2. */
+const scales = document.getElementById('scales');
+for (const scale of [1, 2, 3, 4]) {
+  still(scales, 'centurio', { scale, label: `scale ${scale} — ${BUST.w * scale}px` });
+}
+
+const moods = document.getElementById('moods');
+still(moods, 'magister', { mood: 'good', label: 'good' });
+still(moods, 'magister', { mood: 'improve', label: 'improve' });
+still(moods, 'magister', { mood: 'perfect', label: 'perfect' });
+still(moods, 'magister', { mood: 'perfect', flourish: true, label: 'flourish' });
+
+/* ---- the live one, in a reveal ------------------------------------------ */
+
+const live = document.getElementById('live');
+const verdict = document.getElementById('verdict');
+const card = {
+  term: 'mater', form: 'matris, f.', answer: 'moeder / mama',
+  alternatives: ['moeder', 'mama'],
+};
+
+let coach = createCoach({ xp: RANK_XP.at(-1), motion: !reduced });
+
+function say(mood) {
+  verdict.textContent = mood === 'improve' ? 'Bijna!' : 'Juist';
+  live.replaceChildren(coach.present({ mood, card }));
+}
+
+for (const button of document.querySelectorAll('.ctl')) {
+  button.addEventListener('click', () => {
+    if (button.dataset.roll) {
+      coach = createCoach({ xp: RANK_XP.at(-1), motion: !reduced });
+      say('good');
+      return;
+    }
+    say(button.dataset.mood);
+  });
+}
+
+say('perfect');
+</script>
+
+</body>
+</html>

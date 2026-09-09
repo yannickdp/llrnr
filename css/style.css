@@ -80,8 +80,16 @@ h1, h2, h3, p { margin: 0; }
 
 /* ========================================================== layout ======= */
 
-/* Nothing sits behind the notch, the home bar, or the tab bar. */
+/* Nothing sits behind the notch, the home bar, or the tab bar.
+
+   A flex column at least a viewport tall, so a screen that does not fill the
+   phone can push its primary action to the bottom with an auto margin. The
+   padding is inside the `100dvh` because everything here is border-box, so this
+   is exactly the room between the notch and the tab bar. */
 #screens {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 100dvh;
   padding:
     calc(var(--safe-top) + var(--pad))
     calc(var(--safe-right) + var(--pad))
@@ -91,7 +99,18 @@ h1, h2, h3, p { margin: 0; }
 
 .screen { display: flex; flex-direction: column; gap: var(--gap); }
 
+/* `1 0 auto`, not `1`: a basis of zero would let a screen taller than the phone
+   overflow its own item instead of growing, and the Words screen is routinely
+   taller than the phone. Grow into spare room, never shrink below the content. */
+#screens > .screen { flex: 1 0 auto; }
+
 .screen-head { margin-block-end: 4px; }
+
+/* Home's title is the era, and the gloss under it is not decoration: the whole
+   argument for naming the stages in Latin is that the names teach the subject
+   they are rewarding, which needs her to be able to read them. Tucked right
+   under the Latin so the two read as one label rather than as two lines. */
+#home-stage-dutch { margin-block-start: 1px; }
 
 .eyebrow {
   font-size: var(--t-eyebrow);
@@ -465,6 +484,112 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 .reveal-almost .eyebrow { color: var(--almost); }
 .typed-back { color: var(--fg-faint); }
 
+/* ---------------------------------------------------------- the coach ---- */
+
+/* Beside the reveal, not under it and not instead of it. The bust is a fixed
+   60x116 CSS pixels — `fitBust` sizes the canvas in whole logical pixels, so
+   nothing here may stretch it — and the bubble takes whatever is left, which on
+   the narrowest phone this app targets is still about 260px of text.
+
+   No card border and no background of its own on the bust: the coach is a
+   remark alongside the answer, and boxing it would make it a second verdict. */
+
+.coach {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.coach-bust {
+  flex: none;
+  align-self: flex-end;
+}
+
+.coach-bubble {
+  position: relative;
+  flex: 1;
+  min-inline-size: 0;
+  padding: 10px 12px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+/* The tail, pointing back at whoever is talking. */
+.coach-bubble::before {
+  content: "";
+  position: absolute;
+  inset-block-end: 14px;
+  inset-inline-start: -5px;
+  inline-size: 8px;
+  block-size: 8px;
+  background: var(--bg-sunken);
+  border-inline-start: 1px solid var(--line);
+  border-block-end: 1px solid var(--line);
+  transform: rotate(45deg);
+}
+
+.coach-who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--t-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+
+.coach-rank { color: var(--accent); font-weight: 700; }
+.coach-gloss { color: var(--fg-faint); text-transform: none; letter-spacing: 0; }
+
+.coach-line {
+  margin: 4px 0 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* The motto. Set apart by a rule rather than by a colour, so it reads as a
+   quotation and not as another thing the app is telling her to do. */
+.coach-motto {
+  margin: 8px 0 0;
+  padding-block-start: 7px;
+  border-block-start: 1px dashed var(--line);
+}
+
+.coach-la {
+  display: block;
+  color: var(--accent);
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+.coach-tr {
+  display: block;
+  color: var(--fg-dim);
+  font-size: var(--t-caption);
+}
+
+/* Colour agrees with the reveal it sits under: the two are one verdict. */
+.coach-perfect .coach-bubble { border-color: var(--accent); }
+.coach-good .coach-bubble { border-color: var(--ok); }
+.coach-improve .coach-bubble { border-color: var(--almost); }
+
+/* The rank-up, inside the unlock card. `card-unlock` centres its text; the
+   coach's does not, so this undoes it for the block and nothing else. */
+.rank-up {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 4px 12px 12px;
+  padding-block-start: 12px;
+  border-block-start: 1px solid var(--line);
+  text-align: start;
+}
+
+.rank-up .coach-bubble { background: var(--bg-raised); }
+.rank-up .coach-bubble::before { background: var(--bg-raised); }
+
 /* the anticipation gap — tappable, because sometimes she already knows */
 .ring {
   display: grid;
@@ -567,6 +692,16 @@ textarea { min-block-size: 9rem; font-family: ui-monospace, SFMono-Regular, Menl
 /* ===================================================== the daily ring ==== */
 
 .row-goal { align-items: center; gap: var(--gap); }
+
+/* Start sits on the floor of the screen rather than wherever the content above
+   happens to end. Two reasons, and the second is the better one: a column that
+   stops two thirds of the way down reads as unfinished, and the one button she
+   presses every day belongs in the thumb's reach on a tall phone.
+
+   `auto` is what makes this safe. On a small phone, or during a test run-up
+   when the readiness panel takes the space above the city, there is nothing
+   spare to absorb and the margin collapses to nothing. */
+.home-start { margin-block-start: auto; }
 
 .goal-ring {
   flex: none;
@@ -723,9 +858,14 @@ textarea { min-block-size: 9rem; font-family: ui-monospace, SFMono-Regular, Menl
   text-align: center;
 }
 
+/* `block`, not the default inline: an inline canvas sits on a text baseline and
+   leaves a strip of card under it. The hero gets away with `line-height: 0` on
+   its frame because it has no text in it; this card does. */
 .card-unlock .roma-canvas {
+  display: block;
   max-inline-size: 100%;
   margin-block-end: 8px;
+  margin-inline: auto;
 }
 
 .card-unlock .eyebrow,

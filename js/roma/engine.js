@@ -154,9 +154,17 @@ export function painter(ctx, scale = 1, {
   };
 
   /**
-   * A soft halo behind something lit: two translucent passes and a solid core.
-   * Only ever used by the night pass, but it belongs with the primitives
-   * because it is the one that needs the raw context.
+   * A soft halo behind something lit: two translucent passes, and — when there
+   * is something *to* light — a solid core inside them.
+   *
+   * `core: null` is the halo on its own, and it is why this function has one
+   * signature instead of two. The coach's demo shipped its own `bloom` that
+   * differed in exactly this: it glows *behind* a face, so filling the middle
+   * with an opaque rectangle would paint over the eyes. A window at night is
+   * the other case, where the lit pane is the point. One primitive, one
+   * argument telling it which.
+   *
+   * @param {string|null} [core]  the opaque middle, or null for a halo alone
    */
   const bloom = (lx, ly, lw, lh, col = C.glow, core = C.glowCore, k = 1) => {
     const x = lx * s;
@@ -169,10 +177,12 @@ export function painter(ctx, scale = 1, {
     ctx.fillRect(x - 3 * s, y - 3 * s, w + 6 * s, h + 6 * s);
     ctx.globalAlpha = 0.28 * k;
     ctx.fillRect(x - 1.5 * s, y - 1.5 * s, w + 3 * s, h + 3 * s);
-    ctx.globalAlpha = 1;
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = core;
-    ctx.fillRect(x + 0.6 * s, y + 0.6 * s, w - 1.2 * s, h - 1.2 * s);
+    if (core) {
+      ctx.globalAlpha = 1;
+      ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = core;
+      ctx.fillRect(x + 0.6 * s, y + 0.6 * s, w - 1.2 * s, h - 1.2 * s);
+    }
     ctx.restore();
   };
 

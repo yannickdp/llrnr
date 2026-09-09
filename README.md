@@ -57,14 +57,15 @@ wrong twice: XP per lesson is 20 for the first lesson, ~520 by the fifth and nea
 once reviews are flowing, so equal XP steps are nowhere near equal waits. Retune by
 re-running it, not by arithmetic.
 
-### The city, by eye
+### The pixel art, by eye
 
-Two pages rather than tests, for the parts of the pixel-art city that a passing
-assertion cannot vouch for. Open both **on the phone**.
+Three pages rather than tests, for the parts of the pixel art that a passing assertion
+cannot vouch for. Open them **on the phone**.
 
 ```
-test/roma-probe.html    is it crisp?
-test/roma-city.html     is it any good?
+test/roma-probe.html     is it crisp?
+test/roma-city.html      is the city any good?
+test/coach-probe.html    does the coach read, and does it fit?
 ```
 
 The first reports the device pixel ratio and the scale that follows from it, draws a
@@ -72,10 +73,18 @@ calibration sprite at each integer scale, and puts a deliberately fractional ×2
 beside a crisp ×3 so there is something to compare against. Look for soft edges.
 
 The second is the city: pick an era and see it as it stood then, hill details and all,
-plus every building on its own and the construction-site teaser. Nothing else loads
-either page, so `test/roma-city.test.mjs` at least checks that the modules they import
-still exist — the first version of that page went two commits importing a file that had
-been deleted, and a broken page shows up as a blank screen and nothing else.
+plus every building on its own and the construction-site teaser.
+
+The third is the coach: all six busts at the size the app draws them, the same bust at
+four scales, the three moods and the victory flourish — and, at the bottom, a real
+reveal card at 358px with a live coach beside it. That last section is the one that
+matters, because a 60×116 pixel Roman either reads at arm's length or it does not, and
+no test can say which.
+
+Nothing else loads any of these pages, so a test checks that the modules each one
+imports still exist — the first version of the city page went two commits importing a
+file that had been deleted, and a broken page shows up as a blank screen and nothing
+else.
 
 ## Deploy (GitHub Pages)
 

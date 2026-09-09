@@ -42,6 +42,11 @@ const SHELL = [
   'js/roma/buildings.js',
   'js/roma/render.js',
   'js/roma/roma.js',
+  /* The coach. Same rule as the city above: listed because app.js really does
+     import it now, and addAll is atomic. */
+  'js/coach/coach.js',
+  'js/coach/characters.js',
+  'js/coach/messages.js',
   'icons/icon-180.png',
   'icons/icon-192.png',
   'icons/icon-512.png',

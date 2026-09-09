@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="nl-BE">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -20,8 +20,13 @@
 <main id="screens">
 
   <section class="screen" id="screen-home" data-screen="home" hidden>
+    <!-- The era is Home's title. Not the app's name: she is the only person who
+         will ever install this and the tab bar already says what she opened —
+         but the era changes as she works, and it is glossed here because every
+         other Latin word in the app is glossed. PLAN 5.1. -->
     <header class="screen-head">
-      <p class="eyebrow" id="home-stage">Roma Quadrata</p>
+      <h1 id="home-stage">Roma Quadrata</h1>
+      <p class="caption" id="home-stage-dutch">de eerste muren</p>
     </header>
 
     <!-- Friday outranks the reward: this pushes above the city (PLAN 5.1). -->
@@ -52,12 +57,7 @@
       <p class="caption" id="daily-goal-label"></p>
     </div>
 
-    <button class="btn btn-primary btn-lg" data-goto="start">Les starten</button>
-
-    <h2 class="section-head">Vooruitgang</h2>
-    <div class="card">
-      <p class="placeholder">Gekende woorden, juistheid, oefenkalender.</p>
-    </div>
+    <button class="btn btn-primary btn-lg home-start" data-goto="start">Les starten</button>
   </section>
 
   <section class="screen" id="screen-words" data-screen="words" hidden>
@@ -258,6 +258,24 @@
         <p class="unlock-latin" id="unlock-latin"></p>
         <p class="caption" id="unlock-dutch"></p>
         <p class="caption unlock-note" id="unlock-note"></p>
+
+        <!-- The rank-up rides on the unlock card rather than getting one of
+             its own, because by construction it is the same event: every coach
+             rank threshold is a building's XP. PLAN-ROMA 9. -->
+        <div class="rank-up" id="rank-up" hidden>
+          <canvas class="coach-bust" id="rank-bust" aria-hidden="true"></canvas>
+          <div class="coach-bubble">
+            <p class="coach-who">
+              <span class="coach-rank" id="rank-latin"></span>
+              <span class="coach-gloss" id="rank-dutch"></span>
+            </p>
+            <p class="coach-line" id="rank-line"></p>
+            <p class="coach-motto" id="rank-motto">
+              <span class="coach-la" id="rank-la"></span>
+              <span class="coach-tr" id="rank-tr"></span>
+            </p>
+          </div>
+        </div>
       </div>
       <div class="stack" id="results-body"></div>
       <button class="btn btn-primary btn-lg" data-goto="home">Klaar</button>

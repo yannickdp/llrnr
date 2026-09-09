@@ -69,9 +69,15 @@ report something to her — the parser's rejects and warnings — it carries a s
 English `code` alongside the Dutch message, so the wording can change without breaking
 the tests that assert on it.
 
-Dates and numbers use `nl-BE`, which also settles the small things: `05/09/2026`
-rather than `9/5/2026`, a comma as the decimal separator, and Monday as the first day
-of the practice heatmap.
+Dates and numbers use `nl-BE`, which also settles the small things: 11 September is
+`11/09/2026` and never `9/11/2026`, and the weekday she actually plans around is
+*vrijdag* rather than *Friday*.
+
+> This once cited two other examples, and neither survived contact: a comma as the
+> decimal separator, when every number the app shows is a whole one, and Monday as the
+> first day of the practice heatmap, which was struck with the *Vooruitgang* card
+> (§5.1). What the locale really buys is `formatDay()` in `ui.js`, and that is enough
+> to be worth having.
 
 ### Hosting
 
@@ -167,11 +173,12 @@ recall. So every question is:
 
 **Nothing is ever added to step 2.** The gap is silent by design: all feedback,
 encouragement and celebration belongs to step 4 or to the Results screen, never to the
-gap. The clearest illustration is the coach that was designed for step 4 and then
-parked ([PLAN-ROMA.md](PLAN-ROMA.md) §9) — it was barred from step 2 outright, because
-a mascot is exactly the distraction the gap exists to remove, and a Latin motto on
-screen during a Latin retrieval task can leak the answer. That rule stands whether or
-not anything is ever added to step 4.
+gap. The clearest illustration is the coach ([PLAN-ROMA.md](PLAN-ROMA.md) §9), which
+lives in step 4 and was barred from step 2 outright: a mascot is exactly the
+distraction the gap exists to remove, and a Latin motto on screen during a Latin
+retrieval task can leak the answer. Now that something *has* been added to step 4, the
+rule is guarded rather than merely stated — `test/coach.test.mjs` reads `ui.js` and
+fails if `paintQuestion` so much as mentions the coach.
 
 Consequences:
 
@@ -326,13 +333,15 @@ Dutch meaning, so the reward screen teaches the subject it is rewarding. The cit
 lives at the top of the Home screen and is the app's single canonical picture of
 progress.
 
-**A short-arc counterpart was designed and parked** (PLAN-ROMA §9): a coach — a pixel
-Roman appearing on the reveal with one line of Flemish Dutch encouragement and a real
-Latin motto, *Errare humanum est* on a slip, *Summa cum laude* on a flawless one. It is
-kept, not discarded, and §9 holds the test that would revive it. The reason for parking
-it is worth remembering: the city already exists as the reward, XP and badges and
-stages already ship, and a second reward layer is a guess about what motivates her
-until she has actually used the app. Nothing below depends on the coach.
+**A short-arc counterpart was designed, parked, and then built anyway** (PLAN-ROMA
+§9): a coach — a pixel Roman appearing on the reveal with one line of Flemish Dutch
+encouragement and a real Latin motto, *Errare humanum est* on a slip, *Summa cum laude*
+on a flawless one. The reason it was parked is still worth remembering, because it has
+not been refuted: the city already exists as the reward, XP and badges and stages
+already ship, and a second reward layer is a guess about what motivates her until she
+has actually used the app. §9 holds the observation that decides whether it stays.
+Nothing below depends on the coach, and `runLesson` still runs without one — which is
+what makes removing it a small commit rather than an argument.
 
 - **XP is awarded for lasting progress, never per answer.** With micro-ladder
   repeats a word can be answered correctly four times in ten minutes, so paying per
@@ -346,10 +355,12 @@ until she has actually used the app. Nothing below depends on the coach.
   are themselves vocabulary. Stages: *Roma Quadrata → Regnum → Res Publica →
   Imperium → Roma Aeterna*.
 - **One ladder, and only one.** Any future reward layer reads the stage rather than
-  inventing a scale of its own. The parked coach is the worked example: its own spec
-  proposes XP thresholds of 120/350/750/1600/3200, which at these rates would *all* be
-  passed inside two weeks, so its ranks were re-bound to the five stages instead
-  (PLAN-ROMA §9). A third progress scale is exactly what this bullet exists to prevent.
+  inventing a scale of its own. The coach is the worked example: its own spec proposes
+  XP thresholds of 120/350/750/1600/3200, which at these rates would *all* be passed
+  inside two weeks, so its ranks were re-bound to the five stages instead (PLAN-ROMA
+  §9). It reads them as `STAGE_XP` at import time rather than copying them down — the
+  numbers in §9's own table were already stale by the time anything read them, which
+  is the lesson. A third progress scale is exactly what this bullet exists to prevent.
 - **Streak**: consecutive days with at least one finished lesson. One "freeze" per
   week so a single busy day does not wipe a 30-day streak — this matters a lot for
   morale.
@@ -578,13 +589,52 @@ malformed list is the single most maddening bug this app could have.
 
 ## 5. Screens
 
-1. **Home** — the **pixel-art Rome** as the hero at the top
-   ([PLAN-ROMA.md](PLAN-ROMA.md)), with the XP bar under it doubling as progress
-   toward the next building; then the stage name, streak flame, daily-goal ring, a big
-   **Start lesson** button, and the honest numbers: "12 words due, 8 new available".
-   If a test is active, its readiness panel pushes above the city and takes over as
-   the headline — Friday outranks the reward. Stats live below the fold: words
-   learned, accuracy, and a calendar heatmap of practice days.
+1. **Home** — the **era as the screen's title**, in Latin with its Dutch gloss
+   under it; then the **pixel-art Rome** as the hero ([PLAN-ROMA.md](PLAN-ROMA.md)),
+   with the XP bar under it doubling as progress toward the next building; the streak
+   flame, daily-goal ring, the honest numbers — "12 words due, 8 new available" — and
+   a big **Start lesson** button anchored to the bottom of the screen. If a test is
+   active, its readiness panel pushes above the city and takes over as the headline —
+   Friday outranks the reward.
+
+   > **The title is the era, not the app's name.** A heading reading "llrnr" spends a
+   > line on telling the only person who will ever install it what she just opened;
+   > the tab bar and the home-screen icon already do that. The era changes as she
+   > works, which is what a title on this screen is for.
+   >
+   > It is **glossed** because §4 keeps the stage names in Latin on the argument that
+   > they teach the subject they are rewarding — and that is only true if she can read
+   > them. The glosses were written in `STAGES` in Phase 4.1 and then never rendered
+   > anywhere, so the stage was the one Latin word in the app shown bare while every
+   > building and every coach rank was glossed. A test now fails if a stage loses its
+   > gloss.
+   >
+   > **Start is anchored to the bottom** with an auto margin rather than sitting
+   > wherever the content above happens to stop: the button she presses every day
+   > belongs in the thumb's reach. `auto` is what makes that safe — on a small phone,
+   > or during a test run-up when the readiness panel takes the room above the city,
+   > there is nothing spare to absorb and it collapses to nothing.
+
+   > This used to end "Stats live below the fold: words learned, accuracy, and a
+   > calendar heatmap of practice days", and Home carried an empty *Vooruitgang* card
+   > promising exactly those three from Phase 1.4 until they were struck. None of them
+   > belongs here.
+   >
+   > **Words learned** was built, on the Words screen, where a per-chapter breakdown
+   > across new → learned is worth something a single Home number is not.
+   > **Accuracy** is superseded on purpose: §2.6 makes clean recalls on separate days
+   > the number that means anything, and a lifetime accuracy percentage would be a
+   > second, worse score standing next to it — one that only falls as she meets harder
+   > words. **The calendar heatmap** is the only one with any pull, and `dagen op rij`
+   > already answers what it would ask.
+   >
+   > The real argument is none of those three, though: §1 trimmed this app to one
+   > progress ladder and PLAN-ROMA makes the city its one canonical picture. Home
+   > already shows the city, the bar toward the next building, the streak and the
+   > ring. A heatmap would be a fifth picture of the same thing on the most crowded
+   > screen in the app — the same reasoning that replaced the XP level with stages,
+   > that bound the coach's ranks to those stages, and that moved the building count
+   > off Home in the first place.
 2. **Start lesson** — a three-way direction picker (Latin→Dutch / Dutch→Latin /
    Both), pre-selected with last time's choice, and Go. One tap for the usual case,
    two if she wants to drill a side. If a test is active and words are solid only one
@@ -655,7 +705,7 @@ llrnr/
       buildings.js           #   draw functions + character grids, one interface
       render.js              #   scene layers, integer scaling, layer cache, night
       roma.js                #   unlock logic against total XP
-    coach/                   # PARKED, unbuilt — the reveal-beat coach, PLAN-ROMA §9
+    coach/                   # the reveal-beat coach, PLAN-ROMA §9
       coach.js               #   present() / setXp() / setWait(), mood + rank
       characters.js          #   the six parametric Roman busts
       messages.js            #   Dutch + Latin message data, no logic
@@ -727,13 +777,15 @@ Strictly downstream of item 14 — the city cannot unlock anything before XP exi
 Its own build order stops at a useful point after four steps, so a half-finished
 catalogue is never a broken feature.
 
-**Phase 4c — the coach — parked** *(PLAN-ROMA §9)*
+**Phase 4c — the coach — built** *(PLAN-ROMA §9)*
 
-The pixel Roman on the reveal beat: designed in full, demo working, deliberately not
-scheduled. Kept because it is cheap to revive — it needs item 14 and the 4b engine and
-nothing else — and because its design settled two rules the app keeps regardless (see
-§2.3 and the Results screen in §5). §9 carries the test that decides whether it is ever
-built: does she read the reveal, or tap straight through it?
+The pixel Roman on the reveal beat, with one line of Flemish Dutch and a real Latin
+motto. Downstream of item 14 and the 4b engine, and of nothing else. It was parked
+pending one observation of her using the app and then built ahead of it, so the
+observation is still owed: §9 carries it, and the answer it gives now decides whether
+the coach stays rather than whether it gets built. Two rules it settled hold either
+way, and are now guarded by tests rather than by intention — nothing is added to the
+anticipation gap (§2.3), and the Results screen owns every celebration (§5).
 
 **Later, if wanted**
 

@@ -86,6 +86,18 @@ test('the stages are the Latin ones PLAN names', () => {
     ['Roma Quadrata', 'Regnum', 'Res Publica', 'Imperium', 'Roma Aeterna']);
 });
 
+test('every stage is glossed, because the names are meant to be vocabulary', () => {
+  /* PLAN section 4 keeps the stage names in Latin on the argument that they
+     teach the subject they are rewarding. That is only true if she can find out
+     what they mean — and these glosses sat here unrendered from Phase 4.1 until
+     the era became Home's title, while every building and every coach rank was
+     glossed all along. A name with no gloss is decoration. */
+  for (const stage of STAGES) {
+    assert.ok(stage.dutch, `${stage.name} has no Dutch gloss`);
+    assert.notEqual(stage.dutch, stage.name, `${stage.name} is glossed with itself`);
+  }
+});
+
 /* ============================================================ streak ===== */
 
 const fresh = () => emptyProgress().streak;

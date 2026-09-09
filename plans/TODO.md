@@ -7,8 +7,9 @@ Mark `[x]` as things land. Section references point at the plan text that define
 Phases are ordered but not strictly gated: Phase 3 is the differentiator and must not
 slip behind Phase 4.
 
-**Phase 4c (the coach) is parked** — designed, kept, deliberately not scheduled. See
-its own note for the test that decides whether it ever gets built.
+**Phase 4c (the coach) is built** — unparked and shipped, ahead of the test that was
+supposed to decide it. See its own note: the test still has to be run, and the answer
+it gives is now "keep it or take it out" rather than "build it or don't".
 
 **Standing rule — the app speaks Dutch.** Every user-visible string is Dutch: screens,
 buttons, badge names, the readiness panel, error messages and the parser's
@@ -37,6 +38,30 @@ screen inherits this without saying so again.
 ### 1.1 CSS shell
 - [x] `css/style.css`: mobile-first, CSS variables for theming
 - [x] Bottom tab bar — Home / Words / Tests / Settings (PLAN §5)
+- [x] **Home's title is the era, glossed** — `Roma Quadrata` over *de eerste muren*,
+      as this screen's `h1`. Not the app name, which `8b0fd68` struck for good reasons
+      that still hold. The Dutch half had been sitting in `STAGES` unrendered since
+      Phase 4.1: PLAN §4 argues the Latin stage names are themselves vocabulary, and
+      they only are if she can read them. Every building and every coach rank was
+      glossed; the stage was the one Latin word in the app shown bare. Tested
+- [x] **Start is anchored to the bottom of the screen.** `#screens` is a flex column at
+      least `100dvh` tall and the button takes `margin-block-start: auto`, so the daily
+      action lands in the thumb's reach instead of stopping two thirds down. It
+      collapses to nothing on a small phone and during a test run-up, which is the
+      whole reason for an auto margin rather than a fixed position.
+      `flex: 1 0 auto` on the screens, not `flex: 1` — a zero basis would let the
+      Words screen overflow its own item instead of growing
+- [x] `#readiness-home` is **hidden** rather than merely emptied. An empty div is still
+      a flex item, so with no test running — most of the time — it was costing a gap
+      between the header and the city for nothing
+- [x] **The *Vooruitgang* card is gone, not deferred.** Home carried an empty card
+      from Phase 1.4 promising "gekende woorden, juistheid, oefenkalender" — the only
+      thing in the app that advertised a feature and never delivered one. Words
+      learned shipped on the Words screen; accuracy is superseded by clean recalls on
+      separate days *(PLAN §2.6)*; the practice calendar is a fifth picture of
+      progress on the most crowded screen, next to a streak that already says it.
+      Struck rather than built — see the note in PLAN §5.1. If a heatmap is ever
+      wanted it belongs beside the track on **Words**, not on Home
 - [x] Lesson flow styled as a modal over the tabs, not a tab
 
 ### 1.1b Dutch throughout *(added after the shell was built in English)*
@@ -617,6 +642,25 @@ Two layout faults reported from the phone:
       settling and a card measured too early is a canvas that never reaches the edges.
       `ResizeObserver` where there is one, a `resize` listener where there is not
 
+A third, reported later — the same fault in the other place:
+
+- **The unlock card's city did not fill its frame either.** The fix above changed the
+  hero and missed `cityUnlockMoment`, which was still asking for the fixed 320-wide
+  window, so the inset came straight back on the Results screen. `fill` there too,
+  measured off the card, with a `refit` on each showing rather than a `ResizeObserver`
+  — the card is transient and re-measured every time it appears anyway.
+- [x] The engine guarantee was never what regressed; the **call** was. So there is now
+      a test that reads `ui.js` and fails if any scene meant to fill a card still asks
+      for a fixed `view` — the full-screen viewer exempted, since zoom is what sets its
+      scale. Verified by putting the bug back: the test catches it
+- [x] `frame.clientWidth || SCENE.window`, because in `fill` mode a room of zero picks
+      a **one-pixel** window, and this scene is built once and kept — an unlaid-out
+      card would leave a 1px city behind for good. The fallback makes the worst case
+      the old inset instead, and the next unlock refits it
+- [x] The unlock canvas is `display: block`. Inline, it sat on a text baseline and left
+      a strip of card under it; the hero avoids that with `line-height: 0` on its
+      frame, which this card cannot use because it has text in it
+
 ### 4b.7 Invariants
 - [x] Layer cache: sky, celestials, hills, ground and finished buildings offscreen,
       invalidated on unlock; per-frame redraw is water, boat, citizens, birds, the
@@ -641,82 +685,121 @@ Two layout faults reported from the phone:
 
 ---
 
-## Phase 4c — the coach — **PARKED, not scheduled**
+## Phase 4c — the coach — **built**
 
-> **Decided: not being built for now.** Nothing here is abandoned or wrong — the
-> design is finished, the art risk is already retired by a working demo, and the whole
-> section is kept ready to pick up. It is parked because the app is finished except
-> for shipping it, and both remaining reward features are guesses about what motivates
-> *her* until she has actually used it.
+> **Unparked and built, out of order.** It was parked pending one observation, and it
+> was built before that observation was made. That is worth writing down rather than
+> tidying away, because the reasoning that parked it has not been refuted — it has
+> been overtaken.
 >
-> **The test that decides it**, from her first real lessons: **does she read the
-> reveal, or tap straight through it?** Reading it → the coach lands in a beat she is
-> already dwelling in and costs nothing; build it. Tapping through → it is pure
-> friction; leave it parked for good and let the city carry the reward.
+> **The test still has to be run**, and it is the same one: from her first real
+> lessons, **does she read the reveal, or tap straight through it?** What changes is
+> the consequence. Reading it → the coach is landing in a beat she was already
+> dwelling in, and it cost her nothing. Tapping through → it is friction next to the
+> part that teaches, and the honest response is to **take it back out** and let the
+> city carry the reward alone. Deleting `js/coach/` and the four call sites in
+> `ui.js`, `app.js`, `index.html` and `style.css` is a small commit, and the whole
+> feature was built so that it is: `runLesson` takes the coach as an option and runs
+> exactly as it did before when there isn't one.
 >
-> If it is picked up: it needs 4.1 + 4b.1 only — no catalogue, no composition — so it
-> slots in before 4b.4–4b.6. Building it also forces `engine.js` and `palette.js` into
-> existence, which is 4b.1 anyway, so it is not a detour from the city.
+> **Novelty decay is the known weakness, and it is mitigated, not solved.** The spec's
+> 21 messages would have been the whole repertoire inside two lessons. This ships 62,
+> which is roughly a month. `messages.js` is data and nothing else, so more is always
+> the cheapest possible fix and needs no engine and no decision. It never becomes a
+> year-long arc; the city is what carries the school year.
 >
-> Known weakness to fix *if* it is built: 21 messages at ~15 appearances a lesson is
-> the whole repertoire seen inside two lessons. `messages.js` is data, so more mottos
-> is the cheap mitigation — and the one task here that can be done any time, with no
-> engine and no decision. See [PLAN-ROMA.md](PLAN-ROMA.md) §9.
+> **Two things a passing test cannot tell you**, both needing a real phone:
+> [coach-probe.html](../test/coach-probe.html) — does a 60x116 px bust read, and does
+> one fit beside a real reveal card without crowding it?
 
 Spec: [plan-roma-updates.md](plan-roma-updates.md) §14 · demo:
-[roman-coach.html](roman-coach.html).
+[roman-coach.html](roman-coach.html) · findings: [PLAN-ROMA.md](PLAN-ROMA.md) §9.
 
 ### 4c.1 The bust
-- [ ] 1. `js/coach/characters.js` — `servus` only, from the shared `engine.js` `P`
-      and `bloom`, on a 64-grid canvas. Prove it reads at phone size first
-- [ ] Coach imports `palette.js` — **merge the demo's `K` palette into it**, don't
-      ship two near-identical palettes *(§4)*
-- [ ] `bloom()` reconciled to one signature in `engine.js` (demo's differs)
-- [ ] `lang="nl-BE"` on the document (hyphenation now, voice selection later)
+- [x] 1. `js/coach/characters.js` — all six busts, from the shared `engine.js` `P`
+      and `bloom`. Ported coordinate for coordinate from the demo rather than
+      redrawn: the demo is what retires the art risk, and redeciding a pixel would
+      un-retire it
+- [x] Coach imports `palette.js` — **the demo's `K` palette is merged into it**, not
+      shipped beside it *(§4)*. Four of its colours were duplicates and are gone: its
+      skin and gold were the city's exactly, its red is `tunicR`, and its `tunic` and
+      `toga` were two undyed wools a shade apart, now one
+- [x] `bloom()` reconciled to one signature in `engine.js` — `core: null` is the halo
+      alone, which is exactly what the demo's version did differently. A window at
+      night wants the solid middle; a face does not
+- [x] `lang="nl-BE"` on the document (hyphenation now, voice selection later)
+- [x] The canvas is cropped to `BUST` (30×58 logical) rather than the demo's mostly
+      empty 64×64, with the crop applied by the transform so the art keeps the
+      familiar grid numbers. A test walks every rank × mood × flourish across seven
+      values of `t` and fails if anything reaches outside it
+- [ ] **Look at it on the phone** — [coach-probe.html](../test/coach-probe.html): does
+      it read at 60×116, and is scale 2 the right choice?
 
 ### 4c.2 Messages — the point at which it earns its keep
-- [ ] 2. `js/coach/messages.js` as **data, not code**: `MSG.good` / `.improve` /
-      `.perfect` + `UNLOCK`, Dutch line + optional Latin motto + Dutch translation
-- [ ] Mood mapping: clean recall → `perfect`; correct with hint/retry → `good`;
-      **almost or wrong → `improve`** (the reveal carries the correction, the coach
-      carries the encouragement) *(§9)*
-- [ ] **Skip any motto sharing a word with the current card** — answer-leak guard
+- [x] 2. `js/coach/messages.js` as **data, not code**: `MSG.good` / `.improve` /
+      `.perfect` + `UNLOCK` + `RANKS`, Dutch line + optional Latin motto + Dutch
+      translation. **62 messages, not the spec's 21** — see the decay note above
+- [x] Mood mapping: clean recall → `perfect`; correct on a multiple choice or on a
+      repeat → `good`; **almost or wrong → `improve`** (the reveal carries the
+      correction, the coach carries the encouragement) *(§9)*. "With a hint" has no
+      counterpart in this app; the four options on screen are the nearest thing, and
+      so is a word the micro-ladder has already asked this lesson
+- [x] **Skip any motto sharing a word with the current card** — answer-leak guard,
+      over the Dutch as well as the Latin, because in the reverse direction the Dutch
+      is the prompt. If every candidate collides the *motto* is dropped, not the coach
 
 ### 4c.3 Placement and timing — where this feature fails
-- [ ] 3. Renders **beside the reveal**, concurrent with it, adding no time of its own
-- [ ] 3. **Never in the anticipation gap** — that stays silent and empty *(PLAN §2.3)*
-- [ ] 3. `waitMs` is a **cap of ~1200 ms, not a wait**; any tap advances immediately;
-      `onComplete` callable early and never the only way forward
-- [ ] 3. **Not on every answer** — always on `perfect`, drop-back and rank-up,
-      otherwise ~1 in 4. Sixty appearances a lesson is wallpaper
-- [ ] 3. **Run a real lesson and time it** before adding characters: 60 answers × 5 s
-      of the demo's default would be five minutes of a ten-minute lesson
+- [x] 3. Renders **beside the reveal**, concurrent with it, adding no time of its own
+- [x] 3. **Never in the anticipation gap** — that stays silent and empty *(PLAN §2.3)*.
+      Guarded by a test that reads `ui.js` and fails if `paintQuestion`,
+      `paintPresentation` or `paintWait` so much as mentions the coach
+- [x] 3. `waitMs` is a **cap of 1200 ms, not a wait**; any tap settles it immediately;
+      `onComplete` callable early and **never the only way forward** — Verder is
+      created, appended and focused before the coach is even asked for, and a test
+      asserts that ordering
+- [x] 3. **Not on every answer** — always on `perfect`, always on a drop-back,
+      otherwise 1 in 4. Sixty appearances a lesson is wallpaper
+- [x] 3. **No wait bar.** The demo's countdown was the Pimsleur wait; here there is no
+      wait, and a bar beside an already-live Verder button would say "you must wait"
+      when she must not. The API keeps `waitMs` — it now caps the animation, not her
+- [ ] 3. **Run a real lesson and time it.** The arithmetic says ~15 appearances at
+      zero added seconds each, but 60 × 5 s was invisible in the demo too *(§9)*
 
 ### 4c.4 The cast
-- [ ] 4. The remaining five busts: gladiator, centurion, magister, senator, emperor
-- [ ] 4. Rank = **the city's stage**, not the spec's own XP ladder: Servus (0) →
-      Gladiator (200) → Centurio (4 000) → Magister (14 000) → Senator (30 000) →
-      Imperator (52 000). The spec's 120/350/750/1600/3200 would all be passed in
-      two weeks *(§9)*
-- [ ] 4. **One coach per lesson, not per answer** — roll `charForXp()` once at lesson
-      start; growing pool (earned ranks stay eligible, higher favoured) applies to
-      that draw
-- [ ] 5. Victory flourish on `perfect` — both arms up, gold confetti
+- [x] 4. All six busts: servus, gladiator, centurio, magister, senator, imperator
+- [x] 4. Rank = **the city's stage**, derived from `CATALOGUE` and `STAGE_XP` rather
+      than written down: Servus (0) → Gladiator (the first building) → Centurio,
+      Magister, Senator, Imperator (the four stage crossings). The spec's
+      120/350/750/1600/3200 would all be passed in two weeks *(§9)*. The plan's own
+      200/4 000/14 000/30 000/52 000 are stale too — 4b.3b retuned the table — which
+      is the argument for deriving rather than transcribing
+- [x] 4. **One coach per lesson, not per answer** — `castFor()` rolls once, in
+      `createCoach`; the growing pool (earned ranks stay eligible, higher favoured,
+      and the servus never disappears) applies to that draw
+- [x] 5. Victory flourish on `perfect` — both arms up, gold confetti
 
 ### 4c.5 Rank-up
-- [ ] 5. `setXp(xp)` **once at lesson start** (silent); never pass `xp` to `present()`
-      mid-lesson, so no threshold detection and no mid-lesson fanfare *(§9)*
-- [ ] 5. Rank-up celebrated **on the Results screen**, together with the stage
-      crossing and building unlock — one event, not three
-- [ ] `lastTier` persisted so each threshold fires exactly once
+- [x] 5. `setXp(xp)` **once at lesson start** (silent); `present()` never takes XP, so
+      there is no threshold detection and no mid-lesson fanfare *(§9)*
+- [x] 5. Rank-up celebrated **on the Results screen**, on the unlock card itself,
+      together with the stage crossing and the building — one event, not three
+- [x] `lastTier` is **not** persisted, and does not need to be: `rankUp(before, after)`
+      derives the crossing from the XP either side of the lesson, exactly as
+      `unlockedBy` does for buildings. A derived answer fires once and cannot be lost
+      to a botched write
+- [x] Every rank threshold **is** a building's XP, by construction — so the rank-up
+      always has a building to ride on. Tested, because the next XP retune could
+      quietly break it
 
 ### 4c.6 Invariants
-- [ ] `Math.random()` is **correct** in the coach (variety) and **banned** in the city
-      art (determinism) — don't "fix" either to match the other *(§4)*
-- [ ] `prefers-reduced-motion` → static sprite, wait bar still counts; **no
-      `setTimeout` render loop** — render once, animate the bar in CSS *(§8)*
-- [ ] Text, not speech, for v1 — `speechSynthesis` is a Later item and the coach must
-      be fully useful silent
+- [x] `Math.random()` is **correct** in the coach (variety) and **banned** in the city
+      art (determinism) — don't "fix" either to match the other *(§4)*. Every draw
+      takes its randomness as an argument, so the tests pin it and the app does not
+- [x] `prefers-reduced-motion` → static sprite, **no render loop at all**: one paint
+      is the whole picture, and a test proves no pixel depends on the clock. The
+      demo's 200 ms `setTimeout` loop is gone *(§8)*
+- [x] Text, not speech, for v1 — `speechSynthesis` is a Later item and the coach is
+      fully useful silent
 
 ---
 
@@ -731,7 +814,7 @@ Spec: [plan-roma-updates.md](plan-roma-updates.md) §14 · demo:
 - [ ] Roma extras: choice at some unlocks, nameplate mode, export the city as a PNG
       (`toBlob()` on the full scene), manual day/night toggle in the full-screen view
       only *(tap-a-building was here and is now Phase 4b.6 — it was asked for)*
-- [ ] Coach extras *(only if the parked Phase 4c is ever picked up)*: read the motto
+- [ ] Coach extras: read the motto
       aloud in `nl-BE` **on the reveal only**; a paste-in box so she can add her own
       mottos; bake the busts with `toDataURL()` if six characters ever cost more per
       frame than they are worth *(measure first)*
