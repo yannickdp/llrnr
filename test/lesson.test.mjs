@@ -110,9 +110,10 @@ test('"Ken ik dit al?" skips straight to the ladder\'s one real, hidden test', (
   l.next(START);
   l.acknowledge(START, { known: true });
 
-  /* No 5-second gimme, and no multiple-choice first contact either — the
-     next question is the ladder's last, typed step. */
-  const step = l.next(START + MICRO_STEPS_MS.at(-1));
+  /* On the spot — the ladder's shortest gap, not its longest — and no
+     multiple-choice first contact either: the next question is the ladder's
+     last, typed step. */
+  const step = l.next(START + MICRO_STEPS_MS[0]);
   assert.equal(step.kind, 'ask');
   assert.equal(step.mode, 'typed');
   assert.equal(step.card.micro, MICRO_STEPS_MS.length - 1);
@@ -123,9 +124,9 @@ test('a correct fast-tracked answer graduates the word on the spot', () => {
   l.next(START);
   l.acknowledge(START, { known: true });
 
-  const step = l.next(START + MICRO_STEPS_MS.at(-1));
+  const step = l.next(START + MICRO_STEPS_MS[0]);
   const right = step.direction === 'fwd' ? step.word.translations[0] : step.word.term;
-  const result = l.answer(right, START + MICRO_STEPS_MS.at(-1));
+  const result = l.answer(right, START + MICRO_STEPS_MS[0]);
 
   assert.equal(result.outcome, 'graduated');
   assert.equal(result.grade, 'correct');
@@ -270,6 +271,38 @@ test('a full ten-minute lesson introduces 8-10 new words', () => {
   assert.equal(results.presented, presented);
   assert.equal(results.correct, results.answered, 'every answer was right');
   assert.equal(results.dropped, 0);
+});
+
+test('a lesson full of "Ken ik dit al?" introduces well past the newPerLesson budget', () => {
+  /* Every word is claimed known and answered right first try, so each one
+     clears the ladder in seconds instead of occupying a slot for the whole
+     lesson. newPerLesson is a pace target now, not a hard total \u2014 capacity
+     freeing up that fast should let far more than 8 words through. */
+  const words = new Map(
+    parseList(
+      Array.from({ length: 40 }, (_, i) => `term${i} | vorm${i} | vertaling${i}`).join(NEWLINE),
+      { listId: 'test' },
+    ).words.map(w => [w.id, w]),
+  );
+  const l = createLesson({ words, minutes: 10, newPerLesson: 8, now: START, random: () => 0.5 });
+
+  let t = START;
+  let presented = 0;
+  for (let i = 0; i < 4000; i++) {
+    const step = l.next(t);
+    if (step.kind === 'done') break;
+    if (step.kind === 'wait') { t = step.untilMs; continue; }
+    if (step.kind === 'present') {
+      l.acknowledge(t, { known: true });
+      presented++;
+      continue;
+    }
+    const right = step.direction === 'fwd' ? step.word.translations[0] : step.word.term;
+    l.answer(right, t);
+    t += 1 * S;
+  }
+
+  assert.ok(presented > 8, `${presented} new words, expected more than the old fixed budget`);
 });
 
 test('nothing graduates inside a ten-minute lesson, because the ladder is longer', () => {

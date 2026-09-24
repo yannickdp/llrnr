@@ -41,6 +41,35 @@ test('a different word is wrong', () => {
   assert.equal(grade('vader'), 'wrong');
 });
 
+/* ============================================================== articles == */
+
+test('"de" or "het" is never mandatory', () => {
+  const w = word('familia | familiae, v. | het gezin');
+  assert.equal(grade('gezin', w), 'correct');
+  assert.equal(grade('het gezin', w), 'correct');
+});
+
+test('typing the article when the data has none still counts', () => {
+  const w = word('laetus | ~a, ~um | vrolijk');
+  assert.equal(grade('vrolijk', w), 'correct');
+});
+
+test('the article is stripped from every alternative, not just the first', () => {
+  const w = word('caput | capit-is, o. | het hoofd; het hoofdstuk');
+  assert.equal(grade('hoofd', w), 'correct');
+  assert.equal(grade('hoofdstuk', w), 'correct');
+});
+
+test('dropping the article never turns a wrong answer into a near miss it is not', () => {
+  const w = word('familia | familiae, v. | het gezin');
+  assert.equal(grade('gezn', w), 'almost', 'still a one-letter slip once the article is gone');
+  assert.equal(grade('keuken', w), 'wrong');
+});
+
+test('the article never matters on the Latin side', () => {
+  assert.equal(grade('de mater', word(), 'rev'), 'wrong');
+});
+
 /* ============================================================= almost ==== */
 
 test('one letter out is almost', () => {

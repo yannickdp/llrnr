@@ -15,6 +15,15 @@ import { normalize } from './parse.js';
  */
 export const MIN_ALMOST_LENGTH = 4;
 
+/** A leading "de" or "het" is never what she is tested on — "gezin" and "het
+ *  gezin" both count, so an accepted Dutch phrase is checked with its article
+ *  stripped as well as with it. */
+const ARTICLE_RE = /^(?:de|het)\s+(.+)$/;
+
+function stripArticle(s) {
+  return s.replace(ARTICLE_RE, '$1');
+}
+
 /** What she has to produce for a word, in one direction. */
 export function expectedFor(word, direction) {
   return direction === 'fwd' ? word.translations : [word.term];
@@ -82,10 +91,19 @@ export function check({ typed, word, direction, pool = null }) {
     }
   }
 
-  if (accepted.includes(answer)) return 'correct';
+  /* "de"/"het" is never what she is tested on: an accepted Dutch phrase is
+     checked with its article stripped as well as with it, and so is what she
+     typed — either side may or may not carry one. */
+  const answerForms = direction === 'fwd' ? [answer, stripArticle(answer)] : [answer];
+  const acceptedForms = direction === 'fwd'
+    ? accepted.flatMap(a => [a, stripArticle(a)])
+    : accepted;
+
+  if (acceptedForms.some(a => answerForms.includes(a))) return 'correct';
 
   /* One letter out on a word long enough for that to be a slip of the thumb. */
-  if (accepted.some(a => a.length >= MIN_ALMOST_LENGTH && withinOneEdit(answer, a))) {
+  if (acceptedForms.some(a => a.length >= MIN_ALMOST_LENGTH
+    && answerForms.some(ans => withinOneEdit(ans, a)))) {
     return 'almost';
   }
 

@@ -268,6 +268,16 @@ Cap the review load (~40 items per lesson) and order candidates by *lowest box f
 then most overdue* — rescue the shaky words before polishing the solid ones. Never
 show a wall of 300 due cards; it is the fastest way to make her quit.
 
+**8–10 is a pace, not a ceiling.** That figure assumes every new word occupies a
+ladder slot for close to the whole lesson, which is what caps how many can overlap.
+Placement (§2.7) breaks that assumption on purpose — a word fast-tracked by "Ken ik
+dit al?" and answered right clears its slot in seconds, not minutes. So the engine
+does not stop introducing at a fixed count; it keeps going as long as a slot is free
+and unseen words remain, and only the ladder's own concurrency limit and the corpus
+size hold it back. A lesson full of words she already knows can therefore introduce
+well past 10 — which is correct, because none of that budget is being spent proving
+things she has not, in fact, learned here.
+
 ### 2.6 Test-date mode
 
 The feature no off-the-shelf algorithm provides, and the one that matters most for

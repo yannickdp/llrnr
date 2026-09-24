@@ -15,8 +15,10 @@
        term | form | translation
        term | translation            <- two fields: no grammar form
 
-   `|` separates fields, `/` separates alternative translations, `#` starts a
-   comment and the first `#` line is the chapter title. */
+   `|` separates fields, `/` and `;` both separate alternative translations
+   within the last field, `#` starts a comment and the first `#` line is the
+   chapter title. A parenthesised prefix stuck directly to a word — "(na)denken"
+   — is shorthand for two of those alternatives, with and without the prefix. */
 
 /* ============================================================ hashing ==== */
 
@@ -56,6 +58,17 @@ export function normalize(str) {
 /** The first word of a grammar form: "libera, liberum" -> "libera". */
 function firstWord(form) {
   return normalize(form).match(/[\p{L}\p{N}]+/u)?.[0] ?? '';
+}
+
+/**
+ * "(na)denken" is two accepted answers, not one: the combined word and the
+ * bare word with the parenthesised prefix dropped. Only fires when the
+ * parenthesis sits directly against the next word — "(bijwoord)" alone, with
+ * nothing following, is a grammar note rather than an optional prefix.
+ */
+function expandOptionalPrefix(piece) {
+  const m = piece.match(/^\(([^()]+)\)(\S.*)$/);
+  return m ? [m[1] + m[2], m[2]] : [piece];
 }
 
 /**
@@ -164,7 +177,10 @@ export function parseList(text, { collidingTerms = new Set(), listId = null } = 
       continue;
     }
 
-    const translations = translation.split('/').map(t => t.trim()).filter(Boolean);
+    const translations = translation.split(/[/;]/)
+      .map(t => t.trim())
+      .filter(Boolean)
+      .flatMap(expandOptionalPrefix);
     if (!translations.length) {
       rejects.push({
         line, text: raw, code: 'no-translation',

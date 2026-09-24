@@ -47,6 +47,28 @@ test('/ splits alternatives and the full field stays as the canonical answer', (
   assert.equal(w.answer, 'moeder / mama');
 });
 
+test('; splits alternatives the same way / does', () => {
+  const w = one('familia | familiae, v. | het gezin; het personeel');
+  assert.deepEqual(w.translations, ['het gezin', 'het personeel']);
+  assert.equal(w.answer, 'het gezin; het personeel');
+});
+
+test('a parenthesised prefix stuck to a word accepts both forms', () => {
+  const w = one('cogitare | cogito | (na)denken');
+  assert.deepEqual(w.translations, ['nadenken', 'denken']);
+  assert.equal(w.answer, '(na)denken');
+});
+
+test('a parenthesised prefix combines with other alternatives', () => {
+  const w = one('spectare | specto | (be)kijken; op het oog hebben');
+  assert.deepEqual(w.translations, ['bekijken', 'kijken', 'op het oog hebben']);
+});
+
+test('a bare parenthesised note with nothing following is left alone', () => {
+  const w = one('cur | (bijwoord)');
+  assert.deepEqual(w.translations, ['(bijwoord)']);
+});
+
 test('columns padded for readability parse the same as loose typing', () => {
   const padded = parseList('pater    | patris, m.   | vader');
   const loose = parseList('pater|patris, m.|vader');

@@ -38,7 +38,10 @@ export const REVIEW_CAP = 40;
  * @param {Map<string,object>} opts.cards     progress: id -> card (mutated in place)
  * @param {'fwd'|'rev'|'both'} [opts.direction]
  * @param {number} [opts.minutes]             the time box
- * @param {number} [opts.newPerLesson]
+ * @param {number} [opts.newPerLesson]        pace target: how new-word intros are
+ *        spread across the time box. Not a hard total — capacity (maxInFlight)
+ *        and the corpus are what actually stop it, so a session where "Ken ik dit
+ *        al?" clears words out of the ladder quickly can introduce more than this.
  * @param {number} [opts.maxInFlight]         ladders running at once
  * @param {number} [opts.now]
  * @param {() => number} [opts.random]        injected so tests are deterministic
@@ -77,7 +80,6 @@ export function createLesson({
      ladders overlap instead of all starting at once. */
   const newGapMs = (minutes * MINUTE) / Math.max(1, newPerLesson);
 
-  let introduced = 0;
   let lastNewAt = -Infinity;
   let asked = 0;
   let current = null;
@@ -154,7 +156,10 @@ export function createLesson({
 
   function canIntroduce(t) {
     if (focus.size) return false;
-    if (introduced >= newPerLesson || !unseen().length) return false;
+    /* No hard total here: capacity (maxInFlight) and running out of unseen
+       words are what actually stop introductions. A fixed count would waste
+       the room a fast-graduating "Ken ik dit al?" word frees up. */
+    if (!unseen().length) return false;
     if (inFlight() >= maxInFlight) return false;
     /* Wait out the pacing gap, unless there is genuinely nothing else to do. */
     return inFlight() === 0 || t - lastNewAt >= newGapMs;
@@ -171,7 +176,7 @@ export function createLesson({
   /** When the next new word may be introduced, or Infinity if none is left. */
   function nextIntroAt() {
     if (focus.size) return Infinity;
-    if (introduced >= newPerLesson || !unseen().length) return Infinity;
+    if (!unseen().length) return Infinity;
     if (inFlight() >= maxInFlight) return Infinity;
     return lastNewAt + newGapMs;
   }
@@ -283,7 +288,6 @@ export function createLesson({
     /* A word fast-tracked this way skips the gentle multiple-choice first
        contact too: she asked for a real check, not a recognise-among-four. */
     if (!known) firstContact.add(id);
-    introduced++;
     lastNewAt = t;
     tally.presented++;
     current = null;

@@ -156,14 +156,17 @@ const clone = card => ({
  *   word. Correct there graduates it immediately, exactly as clearing the
  *   whole ladder would; wrong resets it to step 1 like any other ladder miss.
  *   No separate bookkeeping, because none is needed: the evidence is the
- *   ordinary ladder's own.
+ *   ordinary ladder's own. The *wait* before that test is the ladder's
+ *   shortest gap, not its longest: TODO §2.5 calls for "on the spot, no
+ *   anticipation gap", and the whole point of the claim is skipping the
+ *   ten-minute climb, not just relabelling it.
  */
 export function present(card, { now = Date.now(), known = false } = {}) {
   const next = clone(card);
   next.phase = 'acquire';
   next.micro = known ? MICRO_STEPS_MS.length - 1 : 0;
   next.seen++;
-  next.dueAt = iso(now + MICRO_STEPS_MS[next.micro]);
+  next.dueAt = iso(now + (known ? MICRO_STEPS_MS[0] : MICRO_STEPS_MS[next.micro]));
   return { card: next, outcome: 'presented' };
 }
 

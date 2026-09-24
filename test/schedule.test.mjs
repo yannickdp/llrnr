@@ -100,13 +100,15 @@ test('an almost in acquire repeats the same step', () => {
 
 /* ===================================================== placement (2.7) === */
 
-test('"Ken ik dit al?" drops a new word onto the ladder\'s last step', () => {
+test('"Ken ik dit al?" drops a new word onto the ladder\'s last step, with the shortest wait', () => {
   const clock = fakeClock();
   const { card } = present(newCard(word, { now: clock.now }), { now: clock.now, known: true });
 
   assert.equal(card.phase, 'acquire');
   assert.equal(card.micro, MICRO_STEPS_MS.length - 1);
-  assert.equal(Date.parse(card.dueAt) - clock.now, MICRO_STEPS_MS.at(-1));
+  /* On the spot, not a twelve-minute wait relabelled: the check is the
+     ladder's shortest gap even though it grades as the ladder's last step. */
+  assert.equal(Date.parse(card.dueAt) - clock.now, MICRO_STEPS_MS[0]);
 });
 
 test('a correct fast-tracked check graduates immediately, like clearing the whole ladder', () => {
