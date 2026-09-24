@@ -8,6 +8,7 @@
     { "id": "latin-1.5", "file": "1.5.txt", "rev": 1 },
     { "id": "latin-1.6", "file": "1.6.txt", "rev": 1 },
     { "id": "latin-1.7", "file": "1.7.txt", "rev": 1 },
-    { "id": "latin-1.8", "file": "1.8.txt", "rev": 1 }
+    { "id": "latin-1.8", "file": "1.8.txt", "rev": 1 },
+    { "id": "latin-1.9", "file": "1.9.txt", "rev": 1 }
   ]
 }
