@@ -11,6 +11,10 @@ slip behind Phase 4.
 supposed to decide it. See its own note: the test still has to be run, and the answer
 it gives is now "keep it or take it out" rather than "build it or don't".
 
+**Phase 5 (accounts and sync) is planned, not started** — see
+[PLAN-SYNC.md](PLAN-SYNC.md). Its free-tier research has a date on it and rots fast;
+re-check before building.
+
 **Standing rule — the app speaks Dutch.** Every user-visible string is Dutch: screens,
 buttons, badge names, the readiness panel, error messages and the parser's
 rejected-line reasons. Code stays English (identifiers, card fields, comments, these
@@ -803,6 +807,199 @@ Spec: [plan-roma-updates.md](plan-roma-updates.md) §14 · demo:
 
 ---
 
+## Phase 5 — accounts and sync — **planned, not started**
+
+> Full plan: [PLAN-SYNC.md](PLAN-SYNC.md). Everything llrnr knows lives in two
+> `localStorage` keys in one browser on one phone; this gives it an account and a
+> server copy.
+>
+> **The decision that makes it small:** the server is a *replica*, not the source of
+> truth. `localStorage` stays where the app reads and writes. The service worker exists
+> so the app works in the car, on the train and at school, and an app that needs the
+> network to ask a question would be worse than the one that exists today. So a free
+> backend that sleeps for a minute is fine, the API is seven endpoints, a failed sync
+> is invisible, and if the free tier is cancelled the app is exactly what it is now.
+>
+> **Settled:** Postgres, and a username and password with no social login — her school
+> runs on Microsoft, so Google would have been a button for an account she does not
+> use, and Entra is not worth a tenant and a client secret for one user.
+>
+> **Her class is in scope too, and that is a different project.** The moment another
+> family's child has an account, GDPR's household exemption is gone and there is a data
+> controller, who is you. **Belgium sets the digital age of consent at 13** and these
+> children are twelve, so each account needs the parent's permission first. See 5.8 —
+> it is gated on her own account having run for a term, not on the code being ready.
+>
+> **Still open before building:** does she ever actually use a second device? If not
+> this is backup, and export/import is already backup.
+
+### 5.1 The seam, client only
+- [ ] `rev` (bumped in `save()`) and `syncedRev` on the profile, with a `MIGRATIONS`
+      step — the hook in `store.js` has been waiting since Phase 2.1 and this is the
+      first thing to use it
+- [ ] `js/sync/client.js` with the whole surface — `push`, `pull`, `status` — against a
+      stub. No backend and no account yet
+- [ ] The wire format is `exportBackup()`'s object **verbatim**. It is already the
+      payload, the validator (`inspectBackup`) and the are-you-sure summary, and it is
+      already tested. A second wire format would mean two schemas to migrate in step
+- [ ] **No import step, and nothing to import.** The first `PUT /profile` pushes
+      whatever `localStorage` holds, by the same code path as every later push — so a
+      carried-over profile and a clean slate cost the same, which is nothing. Every
+      classmate's account is empty by construction: no profile row until their first
+      push
+- [ ] **Reset once, deliberately, before the first sync.** She has never run a real
+      lesson *(1.2 and 1.5 are still open)*, so what is in that browser is practice
+      against the stand-in list — and at first sync it would become her permanent
+      record, arriving with a city and a coach rank earned on words she is not tested
+      on. `store.reset()` already exists
+- [ ] *Stopping here leaves nothing visible — but the riskiest schema change is done
+      and everything after it is additive*
+
+### 5.2 The API, on your laptop
+- [ ] FastAPI + SQLAlchemy, SQLite locally, auth stubbed to a fixed user
+- [ ] Seven endpoints and no more: `POST /auth/login`, `/auth/refresh`, `/auth/logout`,
+      `GET /me`, `DELETE /me`, `GET /profile`, `PUT /profile`. **No `/auth/register`** —
+      accounts come from a management command, see 5.3
+- [ ] `users` / `profiles` / `profile_snapshots`, **per-user from the first migration**
+      even though there is one user — a retrofit later would touch every row
+- [ ] **The server never parses a card.** Boxes, clean days and XP live in
+      `schedule.js` and `gamify.js`; a server that re-implemented any of it would be a
+      second scheduler drifting out of step with the first
+- [ ] `pytest`: a stale `baseRev` is a 409, an overwrite writes a snapshot *first*, a
+      bad envelope is a 422
+- [ ] `profile_snapshots` capped at the last 50 per user, pruned on write — the
+      server-side half of `store.js`'s never-destroy discipline
+
+### 5.3 Login — a username and a password
+- [ ] `argon2-cffi`, Argon2id at the library's defaults. Never anything else
+- [ ] **Username, not email.** With no reset mail and no verification mail, an address
+      is a form field and a piece of a child's personal data, and buys nothing
+- [ ] Ten characters minimum, **no composition rules and no expiry** — both make
+      passwords worse, and this one goes in a password manager
+- [ ] **A nickname, not a real name** — *Vossie*, not *Marie D.* Costs nothing, and it
+      is the single biggest lever on everything in 5.8: nicknames, password hashes and
+      Latin scores is about as harmless as a database of children gets
+- [ ] **No public registration endpoint.** One-time **invite codes** from `admin
+      invite`. No sign-up form means no sign-up abuse, no email verification, no CAPTCHA
+      and no bot floods — and an invite scales to a class without becoming one
+- [ ] **A recovery code, shown once at sign-up**, resetting the password with no email
+      in the loop. Print it, put it in the back of the Latin book. Build it *before* the
+      class arrives: one user forgetting a password is a terminal command, twenty-five
+      eleven-year-olds forgetting theirs in a fortnight is a support desk
+- [ ] `admin reset-password <name>` stays as the last resort
+- [ ] **Rate-limit `/auth/login`** — the one exposed endpoint, and all that stands
+      between a guessed password and a school year of practice. Backoff per username,
+      lockout after ten failures in five minutes
+- [ ] Short-lived access token + a refresh token measured in **months**, renewed on
+      use. Re-entering a password before every session is the friction that kills the
+      daily habit the whole app exists to build
+- [ ] **Bearer token in `localStorage`, not a cookie.** Cross-site cookies would need
+      `SameSite=None; Secure`, and Safari caps script-writable cross-site cookie
+      lifetime at seven days — she would be logged out weekly, on the browser this app
+      targets
+- [ ] A test asserting **no `innerHTML` anywhere in `js/`**. That is what makes the
+      token choice above honest, and `ui.js` already claims it in its opening comment
+- [ ] ~~Google sign-in~~ — **dropped**: her school runs on Microsoft, so it would be a
+      button for an account she does not use
+- [ ] ~~Facebook login~~ — **rejected**, and not on effort: Meta's own minimum age is
+      13 and she is twelve, so it is a button she cannot legitimately press. Serving
+      anyone beyond test users also needs Advanced Access, which means App Review and
+      **business verification** — company documents, for a family homework app
+- [ ] ~~Microsoft Entra~~ — the only provider that would actually fit, and **not worth
+      it for one user**: a tenant, an app registration, a secret to rotate, and a school
+      administrator who can switch third-party sign-in off for the whole tenant on any
+      given Tuesday. A password this app owns cannot be revoked by someone else's
+      policy. Kept on the Later list
+
+### 5.4 Deploy
+- [ ] Neon project (Postgres): 0.5 GB, 100 CU-hours/month, not deleted for inactivity —
+      computes suspend after 5 min and wake on demand
+- [ ] Render free web service for the API: 750 instance-hours/month, deploys from
+      GitHub, no card to start. Spins down after 15 min, ~1 min cold start — harmless,
+      because sync is a background retry and nothing waits for it
+- [ ] CORS pinned to the Pages origin, secrets in environment variables
+- [ ] **EU region on both** — Neon and Render each offer Frankfurt. One dropdown at
+      creation, and the international-transfer question never arises. It cannot be
+      changed later without a migration
+- [ ] **Re-check every free tier first.** The plan's numbers were true on 9 September
+      2026 and free tiers rot: Heroku's is gone, Railway's is gone, PlanetScale's free
+      MySQL is gone, PythonAnywhere's free MySQL is gone
+- [x] **Postgres, settled.** Free MySQL is the scarcer thing now and Neon's free plan
+      is the most durable of what is left; nothing here needs more than four verbs and a
+      JSON column. *(If ever reopened: TiDB Cloud Starter is MySQL wire compatible with
+      5 GiB free, Aiven has a free 1 GB MySQL, and SQLAlchemy makes either a connection
+      string.)*
+
+### 5.5 Sync, in the app
+- [ ] Push after a lesson and on Settings-save; pull on boot; retry with backoff
+- [ ] **Never block anything.** A lesson must never wait on a request, and every
+      feature must work with the API unreachable
+- [ ] A test that runs the whole lesson flow with `fetch` stubbed to reject
+- [ ] A quiet line on Settings — *laatst gesynchroniseerd om 18:42*, or *niet
+      verbonden* without an alarm
+- [ ] *Stopping here is the feature; everything below is polish and safety*
+
+### 5.6 The conflict question
+- [ ] Last write wins on `rev` — **not** a merge and not a CRDT
+- [ ] On a 409 the client does not guess: both sides summarised with the same
+      `inspectBackup()` preview the restore screen already renders, in Dutch, two
+      buttons. The case that makes it worth asking is real — phone offline all day,
+      laptop used that evening, and neither copy is wrong
+
+### 5.7 Account deletion and the privacy note
+- [ ] `DELETE /me` removes everything, snapshots included
+- [ ] A plain-Dutch note on Settings saying what is stored and where
+- [ ] **No analytics, no third-party scripts, no tracking.** These are children's
+      homework records: a nickname, a password hash and a progress blob. No email, no
+      real name, no school, no class — and with social login dropped, no identity
+      provider is told any of them exists
+- [ ] Export/import stays. It is the escape hatch that depends on nobody
+
+### 5.8 Her class — **gated on a term of real use, not on the code**
+- [ ] **Do not open this until 5.1–5.7 have run for a term on her account alone.** The
+      first open question is whether sync is worth having at all; that costs nothing to
+      answer with one user and a great deal to answer with twenty-six
+- [ ] **Parental permission per child, before the account exists.** Belgium's digital
+      age of consent is 13 *(Art. 7, Data Protection Act of 30 July 2018)* and these
+      children are twelve, so they cannot consent for themselves. The Belgian DPA has
+      applied exactly this to a school tool — APD/GBA 31/2020, Smartschool
+- [ ] One page of Dutch for parents: what is stored, where, who can see it, how to have
+      it deleted. Not a lawyer's document. The no-email/no-real-name decisions in 5.3
+      are what keep it to one page
+- [ ] **A backup you control** — a nightly `pg_dump` to a machine at home.
+      `profile_snapshots` protects against a bad write, not against a free tier being
+      cancelled at a fortnight's notice. This has to exist *before* other people's
+      children depend on it
+- [ ] Retention: delete an account not opened in six months. Nobody is served by
+      keeping a child's homework record forever
+- [ ] `DELETE /me` was a nicety in 5.7 and is now somebody else's right — make it work
+      and make it easy to ask for
+- [ ] The free tiers need no change: 25 children under a megabyte each is ~25 MB against
+      Neon's 500 MB, and a class practising four evenings a week is nothing against
+      Render's 750 hours
+- [ ] The one feature the class actually buys: **shared word lists**, which already
+      work — chapters committed to `data/` are shared by construction. That is TODO 1.2's
+      outstanding item anyway
+- [ ] ~~Leaderboard, class ranking, comparing~~ — **rejected**, and this is the one that
+      would be tempting. The reward layer is deliberately private and takes nothing away
+      *(PLAN-ROMA §11)*. A child who is bottom of a ranking learns she is bottom of the
+      class and stops opening the app — and she is exactly the child who needs it
+- [ ] ~~Teacher view, parent dashboard~~ — **rejected**: it turns a practice tool into a
+      monitoring tool, and a child who knows her mistakes are watched stops guessing,
+      which is the behaviour spaced repetition runs on
+
+### 5.9 The alternative, if the Python backend is not the point
+- [x] **Weaker now, and decided against.** Supabase's pull was that OAuth became
+      configuration instead of code — and there is no OAuth any more. What is left to
+      avoid is a login route, a password hash and a management command, which is the
+      interesting part of building a backend rather than the tedious part. Its catch
+      also stands: free projects **pause after a week of inactivity** and need a manual
+      restore — never during term, certainly over the summer
+- [x] **Build the Python backend.** §1's architecture keeps the door open anyway: the
+      client talks to one module, so switching later is a rewrite of that module
+
+---
+
 ## Later, if wanted
 
 - [ ] "Test in 3 days, you are 12 words behind" push notification (installed PWA,
@@ -814,6 +1011,10 @@ Spec: [plan-roma-updates.md](plan-roma-updates.md) §14 · demo:
 - [ ] Roma extras: choice at some unlocks, nameplate mode, export the city as a PNG
       (`toBlob()` on the full scene), manual day/night toggle in the full-screen view
       only *(tap-a-building was here and is now Phase 4b.6 — it was asked for)*
+- [ ] **Microsoft Entra sign-in**, if a password ever becomes the friction that stops
+      her practising, or if this is ever used by more than one household. The school
+      already runs on Microsoft, so it is the only provider whose account she really
+      has *(PLAN-SYNC §4)*
 - [ ] Coach extras: read the motto
       aloud in `nl-BE` **on the reveal only**; a paste-in box so she can add her own
       mottos; bake the busts with `toDataURL()` if six characters ever cost more per

@@ -787,6 +787,14 @@ the coach stays rather than whether it gets built. Two rules it settled hold eit
 way, and are now guarded by tests rather than by intention — nothing is added to the
 anticipation gap (§2.3), and the Results screen owns every celebration (§5).
 
+**Phase 5 — accounts and sync** *(full plan: [PLAN-SYNC.md](PLAN-SYNC.md))*
+
+Everything the app knows lives in two `localStorage` keys in one browser. This gives it
+a Google account and a server copy — as a **replica**, never as the source of truth,
+because the offline promise in §1.4 and the service worker are not negotiable for a
+schoolbag app. That one decision is what keeps it to seven endpoints and a free tier
+that is allowed to fall asleep.
+
 **Later, if wanted**
 
 - A "test in 3 days, you are 12 words behind" notification — the one notification

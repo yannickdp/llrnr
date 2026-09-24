@@ -3,7 +3,9 @@
 A gamified Latin (and friends) vocabulary trainer, built as an installable PWA.
 No build step, no `npm install` — plain HTML, CSS and ES modules.
 
-- Design: [plans/PLAN.md](plans/PLAN.md) · the reward city: [plans/PLAN-ROMA.md](plans/PLAN-ROMA.md)
+- Design: [plans/PLAN.md](plans/PLAN.md) · the reward city:
+  [plans/PLAN-ROMA.md](plans/PLAN-ROMA.md) · accounts and sync, planned:
+  [plans/PLAN-SYNC.md](plans/PLAN-SYNC.md)
 - Progress: [plans/TODO.md](plans/TODO.md)
 
 ## Run it locally
