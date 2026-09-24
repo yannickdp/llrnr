@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   newCard, present, review, isDue, overdueBy, isOneWay, missingDirection,
-  trackPosition, studyDay, TRACK_STOPS,
+  trackPosition, studyDay, TRACK_STOPS, placementCheck,
   MICRO_STEPS_MS, BOX_DAYS, DAY_START_HOUR,
 } from '../js/schedule.js';
 
@@ -96,6 +96,56 @@ test('an almost in acquire repeats the same step', () => {
   assert.equal(after.micro, 1);
   assert.equal(Date.parse(after.dueAt) - clock.now, MICRO_STEPS_MS[1]);
   assert.equal(after.slips, 1);
+});
+
+/* ===================================================== placement (2.7) === */
+
+test('"Ken ik dit al?" drops a new word onto the ladder\'s last step', () => {
+  const clock = fakeClock();
+  const { card } = present(newCard(word, { now: clock.now }), { now: clock.now, known: true });
+
+  assert.equal(card.phase, 'acquire');
+  assert.equal(card.micro, MICRO_STEPS_MS.length - 1);
+  assert.equal(Date.parse(card.dueAt) - clock.now, MICRO_STEPS_MS.at(-1));
+});
+
+test('a correct fast-tracked check graduates immediately, like clearing the whole ladder', () => {
+  const clock = fakeClock();
+  let { card } = present(newCard(word, { now: clock.now }), { now: clock.now, known: true });
+
+  const { card: after, outcome } = answerWhenDue(card, 'correct', clock);
+  assert.equal(outcome, 'graduated');
+  assert.equal(after.phase, 'retain');
+  assert.equal(after.box, 1);
+});
+
+test('a wrong fast-tracked check resets to the ordinary ladder, no special penalty', () => {
+  const clock = fakeClock();
+  let { card } = present(newCard(word, { now: clock.now }), { now: clock.now, known: true });
+
+  const { card: after, outcome } = answerWhenDue(card, 'wrong', clock);
+  assert.equal(outcome, 'reset');
+  assert.equal(after.phase, 'acquire');
+  assert.equal(after.micro, 0);
+});
+
+test('the bulk placement check graduates a never-met word on one correct answer', () => {
+  const clock = fakeClock();
+  const result = placementCheck(word, { grade: 'correct', direction: 'fwd', now: clock.now });
+
+  assert.equal(result.outcome, 'graduated');
+  assert.equal(result.card.phase, 'retain');
+  assert.equal(result.card.box, 1);
+  assert.equal(clock.toDay(result.card.dueAt), '2026-09-05');
+  assert.deepEqual(result.card.dirOk, { fwd: true, rev: false }, 'only the tested direction is proven');
+  assert.equal(result.card.cleanDays.fwd.length, 1);
+});
+
+test('anything but a correct bulk placement answer leaves no trace', () => {
+  const clock = fakeClock();
+  for (const grade of ['almost', 'wrong']) {
+    assert.equal(placementCheck(word, { grade, direction: 'fwd', now: clock.now }), null);
+  }
 });
 
 /* ======================================================= the boxes ======= */

@@ -1,0 +1,18 @@
+# 1.3 — items 19-34
+
+fēmina   | fēminae, v.    | de vrouw
+canis    | can-is, m.     | de hond
+iuvenis  | iuven-is, m.   | de jongeman
+mercātor | mercātōr-is, m.| de handelaar
+mīles    | milit-is, m.   | de soldaat
+senātor  | senātōr-is, m. | de senator
+nox      | noct-is, v.    | de nacht
+caput    | capit-is, o.   | het hoofd; het hoofdstuk
+est      | (werkwoord)    | (hij, zij, het, er) is
+sunt     | (werkwoord)    | (zij, er) zijn
+ibi      | (bijwoord)     | daar
+saepe    | (bijwoord)     | dikwijls
+aut      | (voegwoord)    | of
+et       | (voegwoord)    | en; ook
+-que     | (voegwoord)    | en
+sed      | (voegwoord)    | maar

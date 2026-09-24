@@ -231,6 +231,14 @@
       <div id="lesson-body"></div>
     </section>
 
+    <!-- The bulk placement pass (PLAN 2.7): no ladder, no time box, so no
+         progress bar or clock either — just which word this is of how many. -->
+    <section class="screen screen-lesson" id="screen-placement" data-screen="placement" data-title="Snel testen" hidden>
+      <p class="caption" id="placement-progress"></p>
+      <!-- filled by ui.js: one question, then its reveal, per word -->
+      <div id="placement-body"></div>
+    </section>
+
     <section class="screen" id="screen-import" data-screen="import" data-title="Lijst toevoegen" hidden>
       <label class="field">
         <span>Titel (of laat leeg — de eerste #-regel telt ook)</span>

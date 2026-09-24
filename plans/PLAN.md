@@ -320,6 +320,82 @@ wants to see.
 After the test date passes, the words in scope return to normal retain intervals from
 whatever box they reached. Nothing is lost.
 
+### 2.7 Placement — she already knows some of this
+
+Everything above assumes a word starts at zero: nobody has met it, so it earns its
+way from a presentation card through the acquire ladder into retain box 1. That is
+the right default for an app introducing vocabulary for the first time — but she is
+not always meeting a word for the first time *here*. She sits in the classroom before
+she sits with the phone, and a chapter the app is about to "teach" her may already be
+half-known from the lesson at school.
+
+Dragging her through a five-second, twenty-five-second, two-minute, ten-minute ladder
+for a word she can already spell both ways is pure friction, and worse: it spends the
+session's new-word budget (§2.5, 8–10 a lesson) proving things that are already true,
+which slows down how fast she reaches the words that actually are new to her.
+
+**The fix is not a self-report toggle.** "I already know this" as an unverified tap
+would let a rushed or overconfident tap skip real work, and the whole readiness model
+stands on evidence that means something (§2.6). So placement is a *check*, not a
+claim: she says she thinks she knows a word, the app asks her to prove it right then,
+and only a correct answer changes anything. A wrong answer costs nothing — it just
+quietly becomes an ordinary new word, which is what it would have been anyway. There
+is no incentive to claim knowledge she does not have, because doing so never saves
+her anything.
+
+#### In the lesson, one word at a time
+
+The presentation card (§2.1: "see it, read its form, tap to continue") gets a second
+button next to the usual one:
+
+> **mater** — *matris, f.* — moeder
+>
+> [ Verder ]   [ Ken ik dit al? ]
+
+- **Verder** — the existing path: enters the acquire ladder at step 1, as today.
+- **Ken ik dit al?** — swaps the card for a real question on the spot, in whichever
+  direction the lesson is currently asking. No anticipation gap: the gap's whole job
+  is *training* retrieval under a short delay (§2.3), and there is nothing to train
+  in a check for knowledge that is claimed to already exist.
+  - **Correct, first try, no hint** — the ladder is skipped entirely. The card is
+    treated exactly as if it had cleared all four ladder steps: retain, box 1, due
+    tomorrow, `dirOk` set for the direction tested, the same 25 XP as any other
+    graduation (§3 — one reward ladder, no exception for a shortcut). It is not a
+    free pass: a clean, unhinted, first-attempt answer *is* the evidence the ladder
+    exists to collect, just gathered in one attempt instead of four.
+  - **Anything else** — no penalty, no note kept. The card resets to an ordinary
+    presentation and re-enters the ladder at step 1, exactly the "Verder" path. She
+    is not told she guessed wrong; the button simply did nothing extra.
+- Because only one direction was tested, a word placed this way is **one-way** the
+  moment it lands in retain — the existing marker and fix-it button (§2.4) already
+  cover exactly this case, so nothing new is needed there.
+
+#### For a whole chapter, before the first lesson touches it
+
+One word at a time is fine for the handful of new words a normal lesson introduces,
+but it does not scale to "she already knows most of chapter 6 from school, and the
+app has not shown her a single word of it yet." At 8–10 new words a lesson, placing a
+40-word chapter one presentation card at a time would take four or five sessions —
+exactly the delay this feature exists to remove.
+
+So the Words screen (§5) gets a second entry point per chapter that still has
+untouched `new` cards: **Snel testen wat ze al kent** ("quickly test what she already
+knows"). It is a single pass through that chapter's `new` words only —
+
+- No presentation card, no ladder, no time box: this is a check, not a lesson.
+- Every word gets one question, in whichever direction Both mode would currently
+  pick for it (§2.4 — new to both sides, so it just alternates).
+- **Correct** → straight to retain box 1, same as the in-lesson version above.
+- **Anything else** → left exactly as `new`, to be met properly in a normal lesson
+  later. Nothing is recorded either way; a miss here is not a strike against her.
+- She can stop at any point — a partial pass through the chapter is still useful,
+  and nothing about it is graded or timed.
+
+This reuses the same scheduling primitives as a normal lesson (`review()`, the
+existing forgiving matching in `answer.js`) rather than inventing a parallel path —
+the only things that change are which cards are offered and what a wrong answer does
+to them.
+
 ---
 
 ## 3. Gamification
@@ -553,6 +629,10 @@ Notes on the shape:
   card above is the common case — she recognises `mater` but cannot yet produce it.
 - `lastDirection` is only the pre-selected default on the lesson-start picker, not a
   constraint on anything.
+- **Placement (§2.7) adds no field of its own.** A card that skipped the acquire
+  ladder by a verified "Ken ik dit al?" looks identical to one that graduated the
+  ordinary way — same `phase: 'retain'`, `box: 1`, `dirOk`, one `cleanDays` entry.
+  The evidence already on the card is the whole record; there is nothing left to mark.
 - `stage` and `roma.unlocked` are both derived from `xp` and stored only as a cache,
   so that "what is new since she last looked?" is answerable via `roma.seenXp`. If a
   cache ever disagrees with `xp`, **`xp` wins** — a botched write must never cost her
@@ -642,7 +722,9 @@ malformed list is the single most maddening bug this app could have.
 3. **Lesson** — lesson time remaining, a small marker showing which way round the
    current question is, the prompt, the anticipation ring (empty and silent), the
    answer field, then the reveal with the grammar form and any other accepted
-   translations. No back button mid-lesson, just an X that asks to confirm.
+   translations. No back button mid-lesson, just an X that asks to confirm. A
+   presentation card carries a second button, **Ken ik dit al?**, for a word she
+   already knows from somewhere other than this app (§2.7).
 4. **Results** — words graduated, boxes climbed, XP, badge popups, and the words
    that dropped back. During a test run-up, the change in readiness ("+4 test-ready
    today") is the top line. **This screen owns every celebration** — building unlocks
@@ -651,7 +733,10 @@ malformed list is the single most maddening bug this app could have.
 5. **Words** — chapters, each showing how its words spread across new → learned plus
    a **one-way** count with a button that starts a lesson in the missing direction; a
    toggle for which chapters are in the pool; and **Add list**: paste the text of a
-   new chapter, check the parsed preview, save. No laptop needed.
+   new chapter, check the parsed preview, save. No laptop needed. A chapter with
+   untouched `new` cards also gets **Snel testen wat ze al kent**, the bulk placement
+   pass of §2.7 — for the chapter she already half-knows from school before the app
+   has introduced a word of it.
 6. **Tests** — add or edit a test (title, date, chapters in scope), and see the
    readiness panel with its per-direction breakdown and the daily-minutes estimate.
 7. **Settings** — lesson length, new words per lesson, anticipation gap, default

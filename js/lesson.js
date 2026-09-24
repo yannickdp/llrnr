@@ -15,7 +15,7 @@
    the 2-minute and 10-minute gaps in one word's ladder are filled with quick
    reviews of other words, and with new words being introduced. */
 
-import { isDue, newCard, overdueBy, present, review } from './schedule.js';
+import { isDue, newCard, overdueBy, placementCheck, present, review } from './schedule.js';
 import { check, expectedFor, promptFor, withinOneEdit } from './answer.js';
 import { normalize } from './parse.js';
 import { byWeakestFirst, compress, inScope } from './cram.js';
@@ -264,15 +264,25 @@ export function createLesson({
 
   /* ----------------------------------------------------------- moving --- */
 
-  /** She has read the presentation card and tapped on. */
-  function acknowledge(t = Date.now()) {
+  /** She has read the presentation card and tapped on.
+   *
+   * @param {number} [t]
+   * @param {object} [opts]
+   * @param {boolean} [opts.known]  she tapped "Ken ik dit al?" instead of
+   *   "Verder" (PLAN section 2.7) — fast-tracked onto the ladder's last step
+   *   rather than its first, so the one real test it still has to pass is
+   *   moments away instead of twelve minutes away.
+   */
+  function acknowledge(t = Date.now(), { known = false } = {}) {
     if (current?.kind !== 'present') throw new Error('nothing to acknowledge');
 
     const { id, word } = current;
-    const { card } = present(newCard(word, { now: t }), { now: t });
+    const { card } = present(newCard(word, { now: t }), { now: t, known });
     cards.set(id, card);
 
-    firstContact.add(id);
+    /* A word fast-tracked this way skips the gentle multiple-choice first
+       contact too: she asked for a real check, not a recognise-among-four. */
+    if (!known) firstContact.add(id);
     introduced++;
     lastNewAt = t;
     tally.presented++;
@@ -358,6 +368,83 @@ export function createLesson({
     }),
     /* Exposed for the UI and the tests; never written to from outside. */
     cards,
+  };
+}
+
+/**
+ * The bulk placement pass (PLAN section 2.7): one question per untouched word
+ * in a single chapter, no presentation card, no ladder, no time box. It exists
+ * for "she already knows most of this chapter from school, and a normal
+ * lesson's newPerLesson budget would take four or five sessions to reach it
+ * all" — the per-word "Ken ik dit al?" above cannot get there fast enough on
+ * its own.
+ *
+ * Direction alternates rather than picking the weaker side, because there is
+ * no evidence yet to weigh — every word here is equally untested both ways.
+ *
+ * @param {object} opts
+ * @param {Map<string,object>} opts.words   the corpus: id -> word
+ * @param {Map<string,object>} opts.cards   progress: id -> card (mutated in place)
+ * @param {string} opts.listId              the chapter to check
+ * @param {number} [opts.now]
+ */
+export function createPlacementRound({ words, cards = new Map(), listId, now = Date.now() } = {}) {
+  const queue = [...words.entries()]
+    .filter(([id, word]) => !cards.has(id) && word.lists.includes(listId))
+    .map(([id]) => id);
+
+  let index = 0;
+  let current = null;
+  const tally = { asked: 0, graduated: 0, graduatedWords: [] };
+
+  function next() {
+    if (index >= queue.length) { current = { kind: 'done' }; return current; }
+
+    const id = queue[index];
+    const word = words.get(id);
+    const direction = index % 2 === 0 ? 'fwd' : 'rev';
+    current = { kind: 'ask', id, word, direction, prompt: promptFor(word, direction) };
+    return current;
+  }
+
+  /**
+   * Grade one attempt. A correct one graduates the word straight into retain,
+   * box 1 — the same reward a cleared ladder pays. Anything else leaves no
+   * trace at all: the word is still exactly `new` afterwards.
+   */
+  function answer(typed, t = Date.now()) {
+    if (current?.kind !== 'ask') throw new Error('nothing to answer');
+    const { id, word, direction } = current;
+
+    const grade = check({ typed, word, direction, pool: words });
+    const result = placementCheck(word, { grade, direction, now: t });
+    if (result) {
+      cards.set(id, result.card);
+      tally.graduated++;
+      tally.graduatedWords.push(word.term);
+    }
+    tally.asked++;
+    index++;
+    current = null;
+
+    return {
+      grade,
+      known: Boolean(result),
+      term: word.term,
+      form: word.form,
+      answer: direction === 'fwd' ? word.answer : word.term,
+      alternatives: direction === 'fwd' ? word.translations : [word.term],
+      typed,
+    };
+  }
+
+  return {
+    next, answer,
+    get current() { return current; },
+    get isFinished() { return index >= queue.length; },
+    get total() { return queue.length; },
+    get askedCount() { return tally.asked; },
+    results: () => ({ ...tally }),
   };
 }
 

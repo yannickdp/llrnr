@@ -194,6 +194,23 @@ screen inherits this without saying so again.
       mid-session
 - [x] A card whose chapter has left `index.json` is skipped, not crashed on
 
+### 2.5 Placement — she already knows some of this *(PLAN §2.7, not started)*
+- [ ] `schedule.js`: a verified-known path that skips the acquire ladder — same
+      outcome as clearing it (`retain`, box 1, due tomorrow, `dirOk` set for the
+      direction tested), no new card field
+- [ ] Presentation card gets a second button, **Ken ik dit al?**, that asks a real
+      question on the spot (no anticipation gap) instead of entering the ladder
+- [ ] Correct, first try, no hint → skip the ladder, pay the same 25 XP as any other
+      graduation; anything else → silently becomes an ordinary presentation, no note
+      kept, no penalty
+- [ ] `lesson.js`: a bulk placement pass over one chapter's `new` cards only — no
+      presentation, no ladder, no time box, one question per word
+- [ ] Words screen: **Snel testen wat ze al kent** button on a chapter that still has
+      untouched `new` cards, only shown while any exist
+- [ ] Tests: a placement hit lands identically to a graduated ladder card; a miss
+      leaves the card exactly as `new`; one-way marker appears when only one
+      direction has been placement-checked
+
 ---
 
 ## Phase 3 — it is useful for school *(the differentiator — do not defer)*

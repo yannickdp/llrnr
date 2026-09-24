@@ -7,7 +7,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createLesson, REVIEW_CAP } from '../js/lesson.js';
+import { createLesson, createPlacementRound, REVIEW_CAP } from '../js/lesson.js';
 import { parseList } from '../js/parse.js';
 import { MICRO_STEPS_MS } from '../js/schedule.js';
 
@@ -101,6 +101,34 @@ test('a wrong multiple-choice answer still costs nothing lasting', () => {
 
   assert.equal(result.grade, 'wrong');
   assert.equal(result.outcome, 'reset');
+});
+
+/* ==================================================== placement (2.7) ==== */
+
+test('"Ken ik dit al?" skips straight to the ladder\'s one real, hidden test', () => {
+  const l = lesson({ minutes: 15 });
+  l.next(START);
+  l.acknowledge(START, { known: true });
+
+  /* No 5-second gimme, and no multiple-choice first contact either — the
+     next question is the ladder's last, typed step. */
+  const step = l.next(START + MICRO_STEPS_MS.at(-1));
+  assert.equal(step.kind, 'ask');
+  assert.equal(step.mode, 'typed');
+  assert.equal(step.card.micro, MICRO_STEPS_MS.length - 1);
+});
+
+test('a correct fast-tracked answer graduates the word on the spot', () => {
+  const l = lesson({ minutes: 15 });
+  l.next(START);
+  l.acknowledge(START, { known: true });
+
+  const step = l.next(START + MICRO_STEPS_MS.at(-1));
+  const right = step.direction === 'fwd' ? step.word.translations[0] : step.word.term;
+  const result = l.answer(right, START + MICRO_STEPS_MS.at(-1));
+
+  assert.equal(result.outcome, 'graduated');
+  assert.equal(result.grade, 'correct');
 });
 
 /* ======================================================== priority ====== */
@@ -907,3 +935,76 @@ test('every option offered is gradeable, right or wrong', () => {
     }
   }
 });
+
+/* ================================================ bulk placement (2.7) === */
+
+test('a placement round only offers a chapter\'s untouched words', () => {
+  const words = corpus();
+  const [seenId] = [...words.keys()];
+  const cards = new Map([[seenId, {
+    term: words.get(seenId).term, lists: [], phase: 'retain', micro: 0, box: 1,
+    dueAt: new Date(START + 24 * 60 * MIN).toISOString(),
+    cleanDays: { fwd: [], rev: [] }, lastSlip: { fwd: null, rev: null },
+    seen: 1, correct: 1, slips: 0, dirOk: { fwd: true, rev: false },
+  }]]);
+
+  const round = createPlacementRound({ words, cards, listId: 'test', now: START });
+  assert.equal(round.total, words.size - 1, 'the word already met has nothing left to place');
+});
+
+test('a correct answer graduates the word straight into retain, box 1', () => {
+  const words = corpus();
+  const cards = new Map();
+  const round = createPlacementRound({ words, cards, listId: 'test', now: START });
+
+  const step = round.next();
+  const right = step.direction === 'fwd' ? step.word.translations[0] : step.word.term;
+  const result = round.answer(right, START);
+
+  assert.equal(result.known, true);
+  const card = cards.get(step.id);
+  assert.equal(card.phase, 'retain');
+  assert.equal(card.box, 1);
+  assert.equal(round.results().graduated, 1);
+});
+
+test('anything else leaves the word exactly as new — no card at all', () => {
+  const words = corpus();
+  const cards = new Map();
+  const round = createPlacementRound({ words, cards, listId: 'test', now: START });
+
+  const step = round.next();
+  const result = round.answer('volslagen onzin', START);
+
+  assert.equal(result.known, false);
+  assert.equal(cards.has(step.id), false, 'a miss keeps no trace whatsoever');
+  assert.equal(round.results().graduated, 0);
+});
+
+test('direction alternates, since nothing is proven either way yet', () => {
+  const words = corpus();
+  const round = createPlacementRound({ words, cards: new Map(), listId: 'test', now: START });
+
+  const seen = [];
+  for (let i = 0; i < 4; i++) {
+    const step = round.next();
+    seen.push(step.direction);
+    round.answer('', START);
+  }
+  assert.deepEqual(seen, ['fwd', 'rev', 'fwd', 'rev']);
+});
+
+test('a placement round ends once every untouched word has been asked', () => {
+  const words = corpus();
+  const round = createPlacementRound({ words, cards: new Map(), listId: 'test', now: START });
+
+  let asked = 0;
+  while (!round.isFinished) {
+    round.next();
+    round.answer('', START);
+    asked++;
+  }
+  assert.equal(asked, words.size);
+  assert.equal(round.next().kind, 'done');
+});
+

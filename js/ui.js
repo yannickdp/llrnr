@@ -650,7 +650,17 @@ export function runLesson(lesson, { anticipationSeconds = 4, coach = null, onFin
       tick();
     }, { once: true });
 
-    body.replaceChildren(card, go);
+    /* A word she already knows from somewhere other than this app (school,
+       usually): skip the ladder's escalating repeats and drop it onto its one
+       real, hidden test instead — a few minutes away rather than twelve.
+       PLAN section 2.7. */
+    const known = el('button', 'btn btn-small', 'Ken ik dit al?');
+    known.addEventListener('click', () => {
+      lesson.acknowledge(Date.now(), { known: true });
+      tick();
+    }, { once: true });
+
+    body.replaceChildren(card, go, known);
   }
 
   function paintQuestion(step) {
@@ -844,6 +854,66 @@ export function runLesson(lesson, { anticipationSeconds = 4, coach = null, onFin
   frameLoop();
 
   return { stop };
+}
+
+/**
+ * Bind the bulk placement pass (PLAN section 2.7) to the DOM. Deliberately
+ * plainer than `runLesson`: no clock, no coach, no anticipation gap — this is
+ * a check, not a lesson, and every word gets exactly one question.
+ *
+ * @param {object} round  from createPlacementRound()
+ * @param {() => void} opts.onFinish
+ */
+export function runPlacementRound(round, { onFinish } = {}) {
+  const body = $('placement-body');
+  const progress = $('placement-progress');
+
+  function paintAsk(step) {
+    progress.textContent = `${round.askedCount + 1} van ${round.total}`;
+
+    const area = el('div', 'prompt-area');
+    area.append(el('p', 'direction-marker', DIRECTION_LABEL[step.direction]));
+    area.append(el('p', 'prompt', step.prompt));
+
+    const form = el('form', 'answer-form');
+    form.autocomplete = 'off';
+    const input = el('input', 'answer-input');
+    Object.assign(input, {
+      type: 'text', autocapitalize: 'off', autocorrect: 'off', spellcheck: false,
+      placeholder: step.direction === 'fwd' ? 'Typ de vertaling' : 'Typ het Latijnse woord',
+    });
+    input.setAttribute('aria-label', 'Jouw antwoord');
+    const submit = el('button', 'btn btn-primary', 'Nakijken');
+    submit.type = 'submit';
+    form.append(input, submit);
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      paintReveal(round.answer(input.value, Date.now()));
+    });
+
+    body.replaceChildren(area, form);
+    input.focus();
+  }
+
+  function paintReveal(reveal) {
+    const card = el('div', `card reveal reveal-${reveal.known ? 'correct' : 'wrong'}`);
+    card.append(el('p', 'eyebrow', reveal.known ? 'Ken je al!' : 'Nog niet'));
+    card.append(el('p', 'prompt reveal-answer', reveal.answer));
+    if (reveal.form) card.append(el('p', 'caption', reveal.form));
+
+    const go = el('button', 'btn btn-primary btn-lg', 'Verder');
+    go.addEventListener('click', tick, { once: true });
+    body.replaceChildren(card, go);
+    go.focus();
+  }
+
+  function tick() {
+    const step = round.next();
+    if (step.kind === 'done') { onFinish?.(); return; }
+    paintAsk(step);
+  }
+
+  tick();
 }
 
 /* ===================================================== the results ======= */

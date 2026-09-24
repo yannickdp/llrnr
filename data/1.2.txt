@@ -1,0 +1,20 @@
+# 1.2 — items 1-18
+
+amicus     | amici, m.       | de vriend
+deus       | dei, m.         | de god
+dominus    | domini, m.      | de meester
+equus      | equi, m.        | het paard
+filius     | filii, m.       | de zoon
+servus     | servi, m.       | de slaaf
+aqua       | aquae, v.       | het water
+familia    | familiae, v.    | het gezin; het personeel
+via        | viae, v.        | de weg
+monumentum | monumenti, o.   | het monument; het aandenken
+templum    | templi, o.      | de tempel
+vinum      | vini, o.        | de wijn
+pater      | patr-is, m.     | de vader
+senex      | sen-is, m.      | de oude man
+virgo      | virgin-is, v.   | de maagd; het meisje
+flumen     | flumin-is, o.   | de rivier
+vox        | voc-is, v.      | de stem; het woord
+sidus      | sider-is, o.    | de ster; het sterrenbeeld

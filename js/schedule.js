@@ -148,13 +148,22 @@ const clone = card => ({
  * and taps on. New material is introduced, not tested, so this is ungraded —
  * the multiple-choice first contact in the lesson loop deliberately carries no
  * scheduling weight either way. The word then enters the ladder at step 1.
+ *
+ * @param {boolean} [opts.known]  she claims to already know this one (PLAN
+ *   section 2.7, "Ken ik dit al?"). Rather than trust the claim, the ladder's
+ *   escalating repeats are skipped and the word is dropped straight onto the
+ *   *last* step — its one real, hidden, typed test, same as for any other
+ *   word. Correct there graduates it immediately, exactly as clearing the
+ *   whole ladder would; wrong resets it to step 1 like any other ladder miss.
+ *   No separate bookkeeping, because none is needed: the evidence is the
+ *   ordinary ladder's own.
  */
-export function present(card, { now = Date.now() } = {}) {
+export function present(card, { now = Date.now(), known = false } = {}) {
   const next = clone(card);
   next.phase = 'acquire';
-  next.micro = 0;
+  next.micro = known ? MICRO_STEPS_MS.length - 1 : 0;
   next.seen++;
-  next.dueAt = iso(now + MICRO_STEPS_MS[0]);
+  next.dueAt = iso(now + MICRO_STEPS_MS[next.micro]);
   return { card: next, outcome: 'presented' };
 }
 
@@ -314,3 +323,40 @@ function retain(next, grade, now, capInterval) {
   next.dueAt = null;
   return { card: next, outcome: 'learned' };
 }
+
+/* --- placement: a one-shot check against a word she has never met here --- */
+
+/**
+ * The bulk placement check (PLAN section 2.7, "Snel testen wat ze al kent"):
+ * a word she has never met *in this app*, asked once, with no ladder and no
+ * reveal beforehand to prove anything against — she either produces it or she
+ * does not.
+ *
+ * A correct answer is worth exactly what clearing the acquire ladder is
+ * worth — retain, box 1, due tomorrow, the same evidence recorded the same
+ * way — because that is what it is: a genuine first recall, just gathered
+ * outside a lesson. Anything else hands back `null`: no card, no note kept,
+ * the word stays exactly `new`.
+ *
+ * @param {object} word
+ * @param {object} opts
+ * @param {'correct'|'almost'|'wrong'} opts.grade
+ * @param {'fwd'|'rev'} opts.direction
+ * @param {number} [opts.now]
+ * @param {(ms: number, card: object) => number} [opts.capInterval]
+ * @returns {{card: object, outcome: 'graduated'}|null}
+ */
+export function placementCheck(word, { grade, direction, now = Date.now(), capInterval = null } = {}) {
+  if (grade !== 'correct') return null;
+
+  const next = newCard(word, { now });
+  next.seen = 1;
+  next.correct = 1;
+  next.touchedOn = studyDay(now);
+  recordEvidence(next, grade, direction, false, now);
+  next.phase = 'retain';
+  next.box = 1;
+  next.dueAt = dueInDays(now, BOX_DAYS[0], next, capInterval);
+  return { card: next, outcome: 'graduated' };
+}
+

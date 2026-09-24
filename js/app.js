@@ -9,23 +9,23 @@
 
 import { loadCorpus } from './lists.js';
 import { parseList } from './parse.js';
-import { createLesson } from './lesson.js';
+import { createLesson, createPlacementRound } from './lesson.js';
 import { exportBackup, inspectBackup, openStore } from './store.js';
 import { isDue, isOneWay, missingDirection } from './schedule.js';
 import { activeTest, makeTest, readiness } from './cram.js';
-import { awardLesson, goalMetToday, newBadges, stageFor, STAGES } from './gamify.js';
+import { awardLesson, goalMetToday, newBadges, stageFor, xpForResults, STAGES } from './gamify.js';
 import { createCoach } from './coach/coach.js';
 import { cityProgress, markSeen, nextAt, reconcile, unlockedBy } from './roma/roma.js';
 import { setSoundEnabled } from './sound.js';
 import {
   $, DIRECTION_LABEL, cityUnlockMoment, cityVisible, closeCityView, el, formatDay,
   importPreview, openCityView, paintCity, paintHome, paintResults, plural,
-  progressTrack, readinessPanel, runLesson,
+  progressTrack, readinessPanel, runLesson, runPlacementRound,
 } from './ui.js';
 
 const TABS = ['home', 'words', 'tests', 'settings'];
 const DIRECTIONS = ['fwd', 'rev', 'both'];
-const MODAL = ['start', 'lesson', 'results', 'import'];
+const MODAL = ['start', 'lesson', 'results', 'import', 'placement'];
 
 const screens = new Map(
   [...document.querySelectorAll('[data-screen]')].map(el => [el.dataset.screen, el])
@@ -106,6 +106,12 @@ document.addEventListener('click', e => {
   const removeId = e.target.closest('[data-remove-test]')?.dataset.removeTest;
   if (removeId) {
     removeTest(removeId);
+    return;
+  }
+
+  const placementId = e.target.closest('[data-placement]')?.dataset.placement;
+  if (placementId) {
+    startPlacement(placementId);
     return;
   }
 
@@ -223,6 +229,15 @@ function chapterCard(list) {
     practise.dataset.practise = worst;
     practise.dataset.focus = missing[worst].join(' ');
     card.append(practise);
+  }
+
+  /* A chapter she may already half-know from school before the app has
+     introduced a word of it (PLAN 2.7) — only shown while that is still true. */
+  const untouched = list.words.filter(word => !store.cards.has(word.id)).length;
+  if (untouched) {
+    const quick = el('button', 'btn btn-small', 'Snel testen wat ze al kent');
+    quick.dataset.placement = list.id;
+    card.append(quick);
   }
 
   const notes = el('div', 'tags');
@@ -611,6 +626,54 @@ function finishLesson(lesson, test, readyBefore) {
     store.progress.roma = markSeen(store.progress.roma, store.progress.xp);
     store.save();
   });
+}
+
+/* -------------------------------------------------------- placement --- */
+
+/**
+ * The bulk placement pass (PLAN section 2.7): quickly check what she already
+ * knows in one chapter, before a normal lesson has introduced any of it.
+ */
+function startPlacement(listId) {
+  if (!corpus?.words.size) return;
+
+  const round = createPlacementRound({ words: activeWords(), cards: store.cards, listId, now: Date.now() });
+  if (!round.total) return;
+
+  show('placement');
+  runPlacementRound(round, {
+    onFinish: () => {
+      setExitGuard(null);
+      finishPlacement(round);
+      closeModal();
+    },
+  });
+
+  /* Nothing is lost by stopping partway — a partial pass is still useful — so
+     unlike a real lesson, the X here never asks first. */
+  setExitGuard(() => {
+    finishPlacement(round);
+    return true;
+  });
+}
+
+/**
+ * Whatever graduated pays the same XP a normal graduation would (PLAN section
+ * 2.7 — "one reward ladder, no exception for a shortcut"), with none of a real
+ * lesson's flat finishing bonus, since this was never a lesson.
+ */
+function finishPlacement(round) {
+  const results = round.results();
+  if (results.graduated) {
+    const gained = xpForResults({ graduated: results.graduated, promoted: 0, learned: 0, answered: 0 });
+    store.progress.xp += gained;
+    const { changed: _drift, ...city } = reconcile(store.progress.roma, store.progress.xp);
+    store.progress.roma = city;
+    store.save();
+  }
+
+  renderChapters();
+  refreshHome();
 }
 
 /**
