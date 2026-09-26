@@ -358,7 +358,9 @@ export function createCoach({
       const node = el('div', `coach coach-${mood}`);
       const canvas = el('canvas', 'coach-bust');
       canvas.setAttribute('aria-hidden', 'true');
-      node.append(canvas, bubble(RANKS[rankIndex], message));
+      /* The label names whoever is actually drawn, not her current overall
+         rank — `character` can be a lower rank from the pool (see castFor). */
+      node.append(canvas, bubble(RANKS[TYPES.indexOf(character)], message));
 
       /* Deferred: the canvas has to be in the document before it can be sized
          against the device pixel ratio, and the caller has not appended it
