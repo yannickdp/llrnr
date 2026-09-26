@@ -278,20 +278,35 @@ function renderChapters() {
       continue;
     }
 
+    const groupLists = [];
+    const body = el('div', 'stack chapter-group-body');
+    while (i < lists.length && lists[i].group === groupId) {
+      groupLists.push(lists[i]);
+      body.append(chapterCard(lists[i]));
+      i++;
+    }
+
+    const included = groupLists.filter(list => !isExcluded(list.id)).length;
+    const toggle = el('input');
+    toggle.type = 'checkbox';
+    toggle.checked = included === groupLists.length;
+    toggle.indeterminate = included > 0 && included < groupLists.length;
+    /* The click, not just the change, must not reach <summary> — that is what
+       expands and collapses the group, and checking a box is not that. */
+    toggle.addEventListener('click', e => e.stopPropagation());
+    toggle.addEventListener('change', () => toggleGroup(groupId, toggle.checked));
+
+    const summary = el('summary');
+    summary.append(toggle, el('span', 'chapter-title', groupTitle(groupId)));
+
     const details = el('details', 'chapter-group');
     details.open = !collapsedGroups.has(groupId);
-    details.append(el('summary', null, groupTitle(groupId)));
+    details.append(summary, body);
     details.addEventListener('toggle', () => {
       if (details.open) collapsedGroups.delete(groupId);
       else collapsedGroups.add(groupId);
     });
 
-    const body = el('div', 'stack chapter-group-body');
-    while (i < lists.length && lists[i].group === groupId) {
-      body.append(chapterCard(lists[i]));
-      i++;
-    }
-    details.append(body);
     nodes.push(details);
   }
   nodes.push(el('p', 'caption', `${corpus.words.size} woorden in totaal`));
@@ -416,6 +431,21 @@ function toggleList(listId, include) {
   const excluded = new Set(store.settings.excludedLists);
   if (include) excluded.delete(listId);
   else excluded.add(listId);
+  store.settings.excludedLists = [...excluded];
+  store.save();
+
+  renderChapters();
+  refreshHome();
+}
+
+/** The caput header's checkbox: every list in the group, on or off in one go. */
+function toggleGroup(groupId, include) {
+  const excluded = new Set(store.settings.excludedLists);
+  for (const list of corpus.lists) {
+    if (list.group !== groupId) continue;
+    if (include) excluded.delete(list.id);
+    else excluded.add(list.id);
+  }
   store.settings.excludedLists = [...excluded];
   store.save();
 
