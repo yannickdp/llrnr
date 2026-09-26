@@ -473,6 +473,41 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 
 .chapter-title { font-weight: 600; }
 
+/* A "Caput" folder on the Words screen: a native <details> so expand/collapse
+   costs no script beyond remembering which ones she closed (app.js). */
+.chapter-group {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.chapter-group > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: var(--pad);
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  font-size: var(--t-caption);
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+.chapter-group > summary::-webkit-details-marker { display: none; }
+
+.chapter-group > summary::before {
+  content: '▸';
+  color: var(--fg-faint);
+  transition: transform .15s ease;
+}
+
+.chapter-group[open] > summary::before { transform: rotate(90deg); }
+.chapter-group[open] > summary { border-block-end: 1px solid var(--line); }
+
+.chapter-group-body { padding: var(--pad); }
+
 .tags { display: flex; flex-direction: column; gap: 6px; margin-block-start: 10px; }
 
 .tag {

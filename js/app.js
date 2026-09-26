@@ -252,12 +252,51 @@ function chapterCard(list) {
   return card;
 }
 
+/** A group id from index.json's `groups`, resolved to its title (or itself). */
+function groupTitle(id) {
+  return corpus.groups.find(g => g.id === id)?.title ?? id;
+}
+
+/* Which chapter groups she has folded shut, remembered across re-renders
+   (a lesson, a toggle, a reset all call renderChapters() again) since a
+   <details> rebuilt from scratch would otherwise forget she closed it. */
+const collapsedGroups = new Set();
+
 function renderChapters() {
   if (!corpus) return;
-  $('chapter-list').replaceChildren(
-    ...corpus.lists.map(chapterCard),
-    el('p', 'caption', `${corpus.words.size} woorden in totaal`),
-  );
+
+  /* One <details> per run of same-group lists, in index.json's order — never
+     one for an ungrouped list, so a lone chapter (no folder yet) renders
+     exactly as it always has, with nothing to expand or collapse. */
+  const nodes = [];
+  const lists = corpus.lists;
+  for (let i = 0; i < lists.length;) {
+    const groupId = lists[i].group;
+    if (!groupId) {
+      nodes.push(chapterCard(lists[i]));
+      i++;
+      continue;
+    }
+
+    const details = el('details', 'chapter-group');
+    details.open = !collapsedGroups.has(groupId);
+    details.append(el('summary', null, groupTitle(groupId)));
+    details.addEventListener('toggle', () => {
+      if (details.open) collapsedGroups.delete(groupId);
+      else collapsedGroups.add(groupId);
+    });
+
+    const body = el('div', 'stack chapter-group-body');
+    while (i < lists.length && lists[i].group === groupId) {
+      body.append(chapterCard(lists[i]));
+      i++;
+    }
+    details.append(body);
+    nodes.push(details);
+  }
+  nodes.push(el('p', 'caption', `${corpus.words.size} woorden in totaal`));
+
+  $('chapter-list').replaceChildren(...nodes);
 }
 
 /* ---------------------------------------------------------- importing --- */

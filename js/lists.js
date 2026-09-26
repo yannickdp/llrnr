@@ -42,11 +42,14 @@ async function fetchText(base, list) {
 /**
  * Load and parse every committed list.
  *
- * @returns {Promise<{lists: Array<object>, byId: Map<string, object>, words: Map<string, object>}>}
+ * @returns {Promise<{lists: Array<object>, byId: Map<string, object>, words: Map<string, object>, groups: Array<object>}>}
  *   `lists` keeps each chapter's title, words, rejects and warnings for the
  *   import preview; `words` is the merged corpus keyed by card ID, where a word
  *   appearing in several chapters is one entry whose `lists` names them all and
- *   whose accepted translations are the union across them.
+ *   whose accepted translations are the union across them. `groups` is
+ *   `index.json`'s `groups` array (chapter folders like "Caput 1"), passed
+ *   through so the Woorden screen can label a list's group without a second
+ *   fetch of `index.json`.
  */
 export async function loadCorpus(base = BASE, { pasted = [] } = {}) {
   const index = await loadIndex(base);
@@ -117,5 +120,10 @@ export async function loadCorpus(base = BASE, { pasted = [] } = {}) {
     }
   }
 
-  return { lists, byId: new Map(lists.map(l => [l.id, l])), words };
+  return {
+    lists,
+    byId: new Map(lists.map(l => [l.id, l])),
+    words,
+    groups: index.groups ?? [],
+  };
 }
