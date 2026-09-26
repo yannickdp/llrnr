@@ -497,6 +497,10 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
 
 .chapter-group > summary::-webkit-details-marker { display: none; }
 
+/* Without this it inherits the generic `input { inline-size: 100% }` rule
+   above and swells to fill the row, shoving the title off to the far end. */
+.chapter-group > summary input { inline-size: 20px; block-size: 20px; padding: 0; flex: none; }
+
 .chapter-group > summary::before {
   content: '▸';
   color: var(--fg-faint);
