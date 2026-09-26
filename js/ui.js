@@ -14,6 +14,7 @@ import { createScene, hitTest, toScene } from './roma/render.js';
 import { mayShow, moodFor } from './coach/coach.js';
 import { SCENE } from './roma/catalogue.js';
 import { entryFor } from './roma/roma.js';
+import { paintIcon } from './roma/icons.js';
 
 export const el = (tag, className, text) => {
   const node = document.createElement(tag);
@@ -929,6 +930,23 @@ export function runPlacementRound(round, { onFinish } = {}) {
 
 export const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
+/**
+ * A results-screen card fronted by a small pixel-art icon, so "XP", "learned"
+ * and "a badge" read apart at a glance instead of as one column of text.
+ *
+ * @param {keyof import('./roma/icons.js').ICONS} iconId
+ * @param {string} extraClass  e.g. 'badge', appended alongside the layout class
+ */
+function iconCard(iconId, extraClass, ...children) {
+  const card = el('div', `card card-icon-row${extraClass ? ` ${extraClass}` : ''}`);
+  const canvas = el('canvas', 'pixel-icon roma-canvas');
+  paintIcon(canvas, iconId);
+  const text = el('div', 'card-text');
+  text.append(...children);
+  card.append(canvas, text);
+  return card;
+}
+
 export function paintResults(results, { test = null, gained = 0, award = null, badges = [] } = {}) {
   const host = $('results-body');
   const lines = [];
@@ -938,83 +956,76 @@ export function paintResults(results, { test = null, gained = 0, award = null, b
   if (badges.length) {
     fanfare();
     for (const badge of badges) {
-      const card = el('div', 'card badge');
-      card.append(el('p', 'eyebrow', 'Nieuwe badge'));
-      card.append(el('p', 'badge-name', badge.name));
-      card.append(el('p', 'caption', badge.why));
-      cards.push(card);
+      cards.push(iconCard('badge', 'badge',
+        el('p', 'eyebrow', 'Nieuwe badge'),
+        el('p', 'badge-name', badge.name),
+        el('p', 'caption', badge.why)));
     }
   }
 
   if (award?.gained) {
-    lines.push([`+${award.gained} XP`, award.doubled ? 'eerste les van vandaag — dubbel' : '']);
+    lines.push(['xp', `+${award.gained} XP`, award.doubled ? 'eerste les van vandaag — dubbel' : '']);
   }
 
   /* During a run-up the change in readiness is the top line: progress toward
      Friday is what she cares about that week, not the abstract totals. */
   if (test && gained > 0) {
-    lines.push([`+${gained} klaar voor de toets`, test.title || '']);
+    lines.push(['testReady', `+${gained} klaar voor de toets`, test.title || '']);
   }
 
   if (results.learned) {
-    lines.push([plural(results.learned, 'woord helemaal gekend', 'woorden helemaal gekend'),
+    lines.push(['learned', plural(results.learned, 'woord helemaal gekend', 'woorden helemaal gekend'),
       results.learnedWords.join(', ')]);
   }
   if (results.graduated) {
-    lines.push([plural(results.graduated, 'woord geleerd', 'woorden geleerd'),
+    lines.push(['graduated', plural(results.graduated, 'woord geleerd', 'woorden geleerd'),
       results.graduatedWords.join(', ')]);
   }
   if (results.promoted) {
-    lines.push([plural(results.promoted, 'woord een doosje omhoog', 'woorden een doosje omhoog'), '']);
+    lines.push(['promoted',
+      plural(results.promoted, 'woord een doosje omhoog', 'woorden een doosje omhoog'), '']);
   }
   if (results.presented) {
-    lines.push([plural(results.presented, 'nieuw woord gezien', 'nieuwe woorden gezien'), '']);
+    lines.push(['presented', plural(results.presented, 'nieuw woord gezien', 'nieuwe woorden gezien'), '']);
   }
-  lines.push([`${results.correct} van de ${results.answered} juist`, '']);
+  lines.push(['correct', `${results.correct} van de ${results.answered} juist`, '']);
 
-  cards.push(...lines.map(([title, detail]) => {
-    const card = el('div', 'card');
-    card.append(el('p', 'result-line', title));
-    if (detail) card.append(el('p', 'caption', detail));
-    return card;
-  }));
+  cards.push(...lines.map(([iconId, title, detail]) => iconCard(iconId, null,
+    el('p', 'result-line', title),
+    ...(detail ? [el('p', 'caption', detail)] : []))));
 
   if (results.parked) {
-    const card = el('div', 'card');
-    card.append(el('p', 'result-line',
-      plural(results.parked, 'woord ken je maar één richting', 'woorden ken je maar één richting')));
-    card.append(el('p', 'caption',
-      'Ze blijven af en toe terugkomen tot je ze ook de andere kant op kent.'));
-    cards.push(card);
+    cards.push(iconCard('parked', null,
+      el('p', 'result-line',
+        plural(results.parked, 'woord ken je maar één richting', 'woorden ken je maar één richting')),
+      el('p', 'caption',
+        'Ze blijven af en toe terugkomen tot je ze ook de andere kant op kent.')));
   }
 
   /* A count, never a list. After a holiday the honest answer is "hundreds",
      and hundreds of words on a results screen is what makes her stop. */
   if (award?.extended) {
-    const card = el('div', 'card');
-    card.append(el('p', 'result-line',
-      award.streak.current === 1
-        ? 'Nieuwe reeks begonnen'
-        : `${award.streak.current} dagen op rij`));
-    if (award.frozen) {
-      card.append(el('p', 'caption', 'Gisteren overgeslagen — dat mag één keer per week.'));
-    }
-    cards.push(card);
+    cards.push(iconCard('streak', null,
+      el('p', 'result-line',
+        award.streak.current === 1
+          ? 'Nieuwe reeks begonnen'
+          : `${award.streak.current} dagen op rij`),
+      ...(award.frozen
+        ? [el('p', 'caption', 'Gisteren overgeslagen — dat mag één keer per week.')]
+        : [])));
   }
 
   if (results.heldBack) {
-    const card = el('div', 'card');
-    card.append(el('p', 'result-line', `Nog ${results.heldBack} woorden te herhalen`));
-    card.append(el('p', 'caption', 'Die komen de volgende lessen aan de beurt.'));
-    cards.push(card);
+    cards.push(iconCard('heldBack', null,
+      el('p', 'result-line', `Nog ${results.heldBack} woorden te herhalen`),
+      el('p', 'caption', 'Die komen de volgende lessen aan de beurt.')));
   }
 
   if (results.droppedWords.length) {
-    const card = el('div', 'card');
-    card.append(el('p', 'result-line', 'Even teruggevallen'));
-    card.append(el('p', 'caption', results.droppedWords.join(', ')));
-    card.append(el('p', 'caption', 'Die komen vanzelf terug — dat hoort erbij.'));
-    cards.push(card);
+    cards.push(iconCard('dropped', null,
+      el('p', 'result-line', 'Even teruggevallen'),
+      el('p', 'caption', results.droppedWords.join(', ')),
+      el('p', 'caption', 'Die komen vanzelf terug — dat hoort erbij.')));
   }
 
   host.replaceChildren(...cards);

@@ -308,6 +308,26 @@ input:focus-visible, textarea:focus-visible, button:focus-visible {
   border-radius: var(--radius);
 }
 
+/* A results-screen card fronted by a small pixel-art icon (js/roma/icons.js) —
+   the same crisp-at-any-scale canvas the city uses, just 12 logical pixels
+   instead of a building's dozens. */
+.card-icon-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.card-icon-row .pixel-icon {
+  flex: none;
+}
+
+.card-icon-row .card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
 /* The city fills this edge to edge, so the canvas sets the height and there is
    nothing else inside the frame — the building count used to sit in here and
    read as part of the picture rather than as a label on it. The aspect-ratio
