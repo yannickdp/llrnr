@@ -205,7 +205,7 @@ screen inherits this without saying so again.
       kept, no penalty
 - [ ] `lesson.js`: a bulk placement pass over one chapter's `new` cards only — no
       presentation, no ladder, no time box, one question per word
-- [ ] Words screen: **Snel testen wat ze al kent** button on a chapter that still has
+- [ ] Words screen: **Snel testen wat ik al ken** button on a chapter that still has
       untouched `new` cards, only shown while any exist
 - [ ] Tests: a placement hit lands identically to a graduated ladder card; a miss
       leaves the card exactly as `new`; one-way marker appears when only one

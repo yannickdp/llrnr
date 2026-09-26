@@ -389,7 +389,7 @@ app has not shown her a single word of it yet." At 8–10 new words a lesson, pl
 exactly the delay this feature exists to remove.
 
 So the Words screen (§5) gets a second entry point per chapter that still has
-untouched `new` cards: **Snel testen wat ze al kent** ("quickly test what she already
+untouched `new` cards: **Snel testen wat ik al ken** ("quickly test what she already
 knows"). It is a single pass through that chapter's `new` words only —
 
 - No presentation card, no ladder, no time box: this is a check, not a lesson.
@@ -744,7 +744,7 @@ malformed list is the single most maddening bug this app could have.
    a **one-way** count with a button that starts a lesson in the missing direction; a
    toggle for which chapters are in the pool; and **Add list**: paste the text of a
    new chapter, check the parsed preview, save. No laptop needed. A chapter with
-   untouched `new` cards also gets **Snel testen wat ze al kent**, the bulk placement
+   untouched `new` cards also gets **Snel testen wat ik al ken**, the bulk placement
    pass of §2.7 — for the chapter she already half-knows from school before the app
    has introduced a word of it.
 6. **Tests** — add or edit a test (title, date, chapters in scope), and see the

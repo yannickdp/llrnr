@@ -330,7 +330,7 @@ function retain(next, grade, now, capInterval) {
 /* --- placement: a one-shot check against a word she has never met here --- */
 
 /**
- * The bulk placement check (PLAN section 2.7, "Snel testen wat ze al kent"):
+ * The bulk placement check (PLAN section 2.7, "Snel testen wat ik al ken"):
  * a word she has never met *in this app*, asked once, with no ladder and no
  * reveal beforehand to prove anything against — she either produces it or she
  * does not.

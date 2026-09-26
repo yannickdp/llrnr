@@ -235,7 +235,7 @@ function chapterCard(list) {
      introduced a word of it (PLAN 2.7) — only shown while that is still true. */
   const untouched = list.words.filter(word => !store.cards.has(word.id)).length;
   if (untouched) {
-    const quick = el('button', 'btn btn-small', 'Snel testen wat ze al kent');
+    const quick = el('button', 'btn btn-small', 'Snel testen wat ik al ken');
     quick.dataset.placement = list.id;
     card.append(quick);
   }
