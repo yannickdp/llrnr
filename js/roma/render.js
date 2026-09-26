@@ -612,10 +612,10 @@ export function hitTest(x, y, ids = null) {
  * @param {number} where.pan      the view's pan, in logical pixels
  * @returns {{x: number, y: number}}
  */
-export function toScene({ clientX, clientY, scale, pan }) {
+export function toScene({ clientX, clientY, scale, pan, panY = 0 }) {
   return {
     x: Math.floor(clientX / scale) + pan,
-    y: Math.floor(clientY / scale),
+    y: Math.floor(clientY / scale) + panY,
   };
 }
 
@@ -702,9 +702,16 @@ export function drawScaffold(g, entry, progress) {
  * @returns {object} the view
  */
 export function createScene(canvas, {
-  view, fill, scale, cssWidth, motion = true, night = isNight(), maxScale = 4,
+  view, fill, scale, cssWidth, cssHeight, motion = true, night = isNight(), maxScale = 4,
 } = {}) {
   const dpr = globalThis.devicePixelRatio || 1;
+
+  /* Vertical windowing is opt-in via `cssHeight` — every existing caller
+     (the Home hero, the card views) always sees the whole SCENE.h and never
+     passes it, so they keep showing the full height exactly as before. Only
+     the full-screen city, where a zoom can make the scene physically taller
+     than the phone has room for, asks for this. */
+  const windowsHeight = cssHeight !== undefined;
 
   /* Three ways to size a view, and which one applies is settled here once.
    *
@@ -722,21 +729,24 @@ export function createScene(canvas, {
    */
   const fixedView = view !== undefined;
   let room = cssWidth ?? canvas.clientWidth ?? SCENE.w;
+  let roomH = cssHeight ?? SCENE.h;
   let viewW = SCENE.w;
+  let viewH = SCENE.h;
   let chosen = 1;
 
   const measure = () => {
     if (fixedView) {
       viewW = Math.min(view, SCENE.w);
       chosen = scale ?? chooseScale(viewW, room);
-      return;
+    } else {
+      chosen = scale ?? chooseScale(fill ?? SCENE.w, room);
+      viewW = Math.min(SCENE.w, Math.max(1, Math.floor(room / chosen)));
     }
-    chosen = scale ?? chooseScale(fill ?? SCENE.w, room);
-    viewW = Math.min(SCENE.w, Math.max(1, Math.floor(room / chosen)));
+    viewH = windowsHeight ? Math.min(SCENE.h, Math.max(1, Math.floor(roomH / chosen))) : SCENE.h;
   };
 
   measure();
-  let ctx = fitCanvas(canvas, { w: viewW, h: SCENE.h, scale: chosen, dpr });
+  let ctx = fitCanvas(canvas, { w: viewW, h: viewH, scale: chosen, dpr });
 
   const smoke = smokeField();
   let cache = null;         // the whole scene, as an offscreen canvas
@@ -747,11 +757,14 @@ export function createScene(canvas, {
   let learned = 0;
   let live = null;          // {id, progress} drawn per frame, not cached
   let panX = 0;
-  let panTarget = 0;
+  let panTargetX = 0;
+  let panY = 0;
+  let panTargetY = 0;
   let running = false;
   let last = 0;
 
   const clampPan = x => Math.min(Math.max(0, SCENE.w - viewW), Math.max(0, x));
+  const clampPanY = y => Math.min(Math.max(0, SCENE.h - viewH), Math.max(0, y));
 
   /** Repaint the static layer. Called on unlock, not per frame. */
   function invalidate() {
@@ -785,18 +798,19 @@ export function createScene(canvas, {
   /** Blit the visible slice of the cache, then paint what moves. */
   function paint(t) {
     const sliceX = Math.round(panX * chosen * dpr);
+    const sliceY = Math.round(panY * chosen * dpr);
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (cache) {
-      ctx.drawImage(cache, sliceX, 0, canvas.width, canvas.height,
+      ctx.drawImage(cache, sliceX, sliceY, canvas.width, canvas.height,
         0, 0, canvas.width, canvas.height);
     }
     ctx.restore();
 
     /* Everything after this is in scene coordinates, shifted by the pan. */
     ctx.save();
-    ctx.translate(-panX * chosen, 0);
+    ctx.translate(-panX * chosen, -panY * chosen);
     const g = painter(ctx, chosen);
 
     /* The building being revealed is drawn here rather than cached, because it
@@ -844,7 +858,9 @@ export function createScene(canvas, {
     get scale() { return chosen; },
     get lights() { return lights; },
     get pan() { return panX; },
+    get panY() { return panY; },
     get viewWidth() { return viewW; },
+    get viewHeight() { return viewH; },
 
     get maxScale() { return maxScale; },
 
@@ -857,20 +873,27 @@ export function createScene(canvas, {
      * canvas that never quite reaches the edges afterwards.
      *
      * @param {number} nextCssWidth
+     * @param {number} [nextCssHeight]
      * @returns {boolean} whether anything actually changed
      */
-    refit(nextCssWidth) {
-      if (!(nextCssWidth > 0) || nextCssWidth === room) return false;
-      room = nextCssWidth;
+    refit(nextCssWidth, nextCssHeight) {
+      const sameWidth = !(nextCssWidth > 0) || nextCssWidth === room;
+      const sameHeight = nextCssHeight === undefined || nextCssHeight === roomH;
+      if (sameWidth && sameHeight) return false;
+      if (nextCssWidth > 0) room = nextCssWidth;
+      if (nextCssHeight !== undefined) roomH = nextCssHeight;
 
       const wasScale = chosen;
       const wasView = viewW;
+      const wasViewH = viewH;
       measure();
-      if (chosen === wasScale && viewW === wasView) return false;
+      if (chosen === wasScale && viewW === wasView && viewH === wasViewH) return false;
 
-      ctx = fitCanvas(canvas, { w: viewW, h: SCENE.h, scale: chosen, dpr });
+      ctx = fitCanvas(canvas, { w: viewW, h: viewH, scale: chosen, dpr });
       panX = clampPan(panX);
-      panTarget = panX;
+      panTargetX = panX;
+      panY = clampPanY(panY);
+      panTargetY = panY;
       invalidate();
       paint(0);
       return true;
@@ -903,14 +926,17 @@ export function createScene(canvas, {
       /* Keep whatever was in the middle of the window in the middle of it,
          so zooming does not throw her back to the left edge of the city. */
       const centre = panX + viewW / 2;
+      const centreY = panY + viewH / 2;
 
       chosen = want;
       scale = want;
       measure();
-      ctx = fitCanvas(canvas, { w: viewW, h: SCENE.h, scale: chosen, dpr });
+      ctx = fitCanvas(canvas, { w: viewW, h: viewH, scale: chosen, dpr });
 
       panX = clampPan(Math.round(centre - viewW / 2));
-      panTarget = panX;
+      panTargetX = panX;
+      panY = clampPanY(Math.round(centreY - viewH / 2));
+      panTargetY = panY;
       invalidate();
       paint(0);
       return chosen;
@@ -946,14 +972,26 @@ export function createScene(canvas, {
       paint(0);
     },
 
-    /** Move the window. Clamped, so it can be handed a raw building x. */
-    panTo(x, { animate = false } = {}) {
-      panTarget = clampPan(x);
+    /**
+     * Move the window. Clamped, so it can be handed a raw building x.
+     *
+     * `y` is optional — leaving it out keeps whatever the vertical pan
+     * already was, which is what `focus()` wants (it only knows a building's
+     * x). It can be a number, or (like the old signature) the options object.
+     */
+    panTo(x, yOrOptions, maybeOptions) {
+      const ySupplied = typeof yOrOptions === 'number';
+      const options = (ySupplied ? maybeOptions : yOrOptions) ?? {};
+      const { animate = false } = options;
+
+      panTargetX = clampPan(x);
+      panTargetY = clampPanY(ySupplied ? yOrOptions : panTargetY);
       if (!animate || !motion) {
-        panX = panTarget;
+        panX = panTargetX;
+        panY = panTargetY;
         paint(0);
       }
-      return panTarget;
+      return panTargetX;
     },
 
     /** Centre the window on a slot, which is what a caller actually wants. */
@@ -1032,8 +1070,10 @@ export function createScene(canvas, {
         last = now;
         smoke.update(dt, lights.emitters);
         /* Ease toward the pan target, so a jump to a new building glides. */
-        if (Math.abs(panTarget - panX) > 0.4) panX += (panTarget - panX) * 0.12;
-        else panX = panTarget;
+        if (Math.abs(panTargetX - panX) > 0.4) panX += (panTargetX - panX) * 0.12;
+        else panX = panTargetX;
+        if (Math.abs(panTargetY - panY) > 0.4) panY += (panTargetY - panY) * 0.12;
+        else panY = panTargetY;
         paint(now / 1000);
         requestAnimationFrame(tick);
       };

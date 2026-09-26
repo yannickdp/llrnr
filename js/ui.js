@@ -242,7 +242,9 @@ let bigCity = { unlocked: [], stage: 0, learned: 0 };
 function wireCityGestures(canvas, view) {
   const pointers = new Map();
   let panFrom = 0;
+  let panFromY = 0;
   let startX = 0;
+  let startY = 0;
   let pinchFrom = 0;
   let moved = 0;
   let live = 1;
@@ -258,7 +260,9 @@ function wireCityGestures(canvas, view) {
     moved = 0;
     if (pointers.size === 1) {
       startX = event.clientX;
+      startY = event.clientY;
       panFrom = view.pan;
+      panFromY = view.panY;
     } else if (pointers.size === 2) {
       pinchFrom = spread();
     }
@@ -271,7 +275,10 @@ function wireCityGestures(canvas, view) {
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
     if (pointers.size === 1) {
-      view.panTo(panFrom - (event.clientX - startX) / view.scale);
+      view.panTo(
+        panFrom - (event.clientX - startX) / view.scale,
+        panFromY - (event.clientY - startY) / view.scale,
+      );
     } else if (pointers.size === 2 && pinchFrom > 8) {
       /* Live, on the compositor. Clamped to the steps either side of where we
          are, so the preview never promises a zoom the snap cannot deliver. */
@@ -302,6 +309,7 @@ function wireCityGestures(canvas, view) {
         clientY: event.clientY - box.top,
         scale: view.scale,
         pan: view.pan,
+        panY: view.panY,
       });
       showBuilding(hitTest(where.x, where.y, bigCity.unlocked));
     }
@@ -358,13 +366,14 @@ export function openCityView(city = bigCity) {
   if (!bigView) {
     bigView = createScene(canvas, {
       cssWidth: $('city-stage').clientWidth,
+      cssHeight: $('city-stage').clientHeight,
       scale: 2,
       motion: !REDUCED(),
     });
     wireCityGestures(canvas, bigView);
     if (typeof ResizeObserver === 'function') {
       new ResizeObserver(() => {
-        if (bigView.refit($('city-stage').clientWidth)) paintCityControls(bigView);
+        if (bigView.refit($('city-stage').clientWidth, $('city-stage').clientHeight)) paintCityControls(bigView);
       }).observe($('city-stage'));
     }
     $('city-in').addEventListener('click', () => {
