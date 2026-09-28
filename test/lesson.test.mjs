@@ -201,6 +201,37 @@ test('a lesson with no words at all finishes rather than hanging', () => {
   assert.equal(l.next(START).kind, 'done');
 });
 
+test('no new words to introduce, but a review due soon: the lesson waits for it rather than quitting', () => {
+  const words = corpus();
+  const [id] = words.keys();
+  const cards = new Map([[id, {
+    term: words.get(id).term, lists: [], phase: 'retain', micro: 0, box: 2,
+    /* Not due yet, but well inside the ten-minute lesson. */
+    dueAt: new Date(START + 2 * MIN).toISOString(),
+    cleanDays: { fwd: [], rev: [] }, seen: 4, correct: 4, slips: 0,
+    dirOk: { fwd: true, rev: true },
+  }]]);
+  /* Every other word already has a card too, so there is nothing left to
+     introduce — the bug only shows once new words can no longer paper over it. */
+  for (const wordId of words.keys()) {
+    if (wordId === id) continue;
+    cards.set(wordId, {
+      term: words.get(wordId).term, lists: [], phase: 'learned', micro: 0, box: 5,
+      dueAt: null,
+      cleanDays: { fwd: [], rev: [] }, seen: 4, correct: 4, slips: 0,
+      dirOk: { fwd: true, rev: true },
+    });
+  }
+
+  const l = createLesson({ words, cards, now: START, minutes: 10 });
+  assert.equal(l.next(START).kind, 'wait', 'should wait for the review, not finish early');
+  assert.equal(l.isFinished, false);
+
+  const step = l.next(START + 3 * MIN);
+  assert.equal(step.kind, 'ask');
+  assert.equal(step.id, id);
+});
+
 /* ================================================ pacing of new words === */
 
 test('new words are spread through the lesson, not dealt out at the start', () => {

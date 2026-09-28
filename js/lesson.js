@@ -109,18 +109,26 @@ export function createLesson({
    * start. Lowest box first, then most overdue: a box-1 word she nearly lost is
    * worth more than a box-5 word she is merely due to see again.
    *
+   * Candidates are anything due by the *end* of the lesson, not only at the
+   * moment it starts — otherwise a review due two minutes from now (well
+   * inside a ten-minute lesson) is invisible to `reviewSet` forever, and with
+   * no new words left to introduce either, the lesson finds nothing to wait
+   * for and quits on the spot instead of waiting those two minutes. Not-yet-due
+   * cards still sort behind already-overdue ones of the same box, since
+   * `overdueBy(now)` is negative for them.
+   *
    * Only day-scale reviews are capped. Micro-ladder repeats are the current
    * session's own work and are always served, or the ladder would break.
    */
   function selectReviews(t) {
     const due = [...cards.entries()]
       .filter(([, c]) => c.phase === 'retain' && isDue(c, t))
-      .sort(([, a], [, b]) => (a.box - b.box) || (overdueBy(b, t) - overdueBy(a, t)));
+      .sort(([, a], [, b]) => (a.box - b.box) || (overdueBy(b, now) - overdueBy(a, now)));
 
     return { chosen: new Set(due.slice(0, reviewCap).map(([id]) => id)), total: due.length };
   }
 
-  const { chosen: reviewSet, total: dueAtStart } = selectReviews(now);
+  const { chosen: reviewSet, total: dueAtStart } = selectReviews(endsAt);
 
   function servable(id, card, t) {
     if (focus.has(id)) return true;
