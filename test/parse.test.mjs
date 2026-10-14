@@ -169,6 +169,18 @@ test('fnv1a is deterministic and 32-bit', () => {
   assert.notEqual(fnv1a('mater'), fnv1a('pater'));
 });
 
+test('card ids are pinned: her saved progress is keyed by them', () => {
+  /* Every card in localStorage and in every backup is stored under this id.
+     A change to normalize(), fnv1a() or cardId() that moves these values does
+     not fail loudly anywhere else — every word just quietly becomes new again.
+     If this test breaks on purpose, it needs a store migration alongside. */
+  assert.equal(cardId('amare'), 'hdf87e3cb');
+  assert.equal(cardId('Rōma'), 'h3801afa8');
+  assert.equal(cardId('  Puella '), 'hd1620730');
+  assert.equal(cardId('liber', 'libri, m.', true), 'ha2d44109');
+  assert.equal(cardId('liber', 'libera, liberum', true), 'hf1691dee');
+});
+
 test('ids survive reordering, realigning and inserting lines', () => {
   const a = parseList('pater | patris, m. | vader\nmater | matris, f. | moeder');
   const b = parseList('mater|matris, f.|moeder\nnovus | nova | nieuw\npater   | patris, m. | vader');

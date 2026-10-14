@@ -99,7 +99,9 @@ test('the rank ladder is the city stages, not a second ladder of its own', () =>
     0, CATALOGUE[0].xp, STAGE_XP[1], STAGE_XP[2], STAGE_XP[3], STAGE_XP[4],
   ]);
   assert.equal(RANK_XP.length, RANKS.length);
-  assert.equal(RANKS.length, TYPES.length);
+  /* Same order, not just same length: the bubble finds a character's rank by
+     RANKS[TYPES.indexOf(character)], so a swap would put the wrong name on a bust. */
+  assert.deepEqual(RANKS.map(r => r.id), [...TYPES]);
 
   for (let i = 1; i < RANK_XP.length; i++) {
     assert.ok(RANK_XP[i] > RANK_XP[i - 1], `rank ${i} does not cost more than ${i - 1}`);
