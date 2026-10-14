@@ -1,0 +1,17 @@
+# 2.3 — items 146-160
+
+abesse   | absum         | afwezig zijn; verwijderd zijn
+adesse   | adsum         | aanwezig zijn; helpen
+superesse | supersum      | overblijven
+posse    | possum        | kunnen
+calidus  | ~a, ~um       | warm
+certus   | ~a, ~um       | zeker
+dignus   | ~a, ~um       | waardig; passend
+fessus   | ~a, ~um       | vermoeid
+frigidus | ~a, ~um       | koud; koel
+Graecus  | ~a, ~um       | Grieks
+grātus   | ~a, ~um       | dankbaar; aangenaam
+iūcundus | ~a, ~um       | aangenaam
+iustus   | ~a, ~um       | rechtvaardig
+sānus    | ~a, ~um       | gezond
+dolēre   | doleō         | lijden; wenen (om)

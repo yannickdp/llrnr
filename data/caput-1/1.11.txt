@@ -1,0 +1,6 @@
+# 1.11 — items 115-118
+
+bonus   | ~a, ~um     | goed
+īrātus  | ~a, ~um     | woedend
+stultus | ~a, ~um     | dwaas
+bene    | (bijwoord)  | goed

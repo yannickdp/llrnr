@@ -1,7 +1,8 @@
 {
   "version": 1,
   "groups": [
-    { "id": "caput-1", "title": "Caput 1" }
+        { "id": "caput-1", "title": "Caput 1" },
+        { "id": "caput-2", "title": "Caput 2 Thermae" }
   ],
   "lists": [
     { "id": "latin-ch01", "file": "latin-chapter-01.txt", "rev": 1 },
@@ -13,6 +14,12 @@
     { "id": "latin-1.7", "file": "caput-1/1.7.txt", "rev": 1, "group": "caput-1" },
     { "id": "latin-1.8", "file": "caput-1/1.8.txt", "rev": 1, "group": "caput-1" },
     { "id": "latin-1.9", "file": "caput-1/1.9.txt", "rev": 1, "group": "caput-1" },
-    { "id": "latin-1.10", "file": "caput-1/1.10.txt", "rev": 1, "group": "caput-1" }
+    { "id": "latin-1.10", "file": "caput-1/1.10.txt", "rev": 1, "group": "caput-1" },
+    { "id": "latin-1.11", "file": "1.11.txt", "rev": 1, "group": "caput-1" },
+    { "id": "latin-2.2", "file": "caput-2-Thermae/2.2.txt", "rev": 1, "group": "caput-2" },
+    { "id": "latin-2.3", "file": "caput-2-Thermae/2.3.txt", "rev": 1, "group": "caput-2" },
+    { "id": "latin-2.4", "file": "caput-2-Thermae/2.4.txt", "rev": 1, "group": "caput-2" },
+    { "id": "latin-2.7", "file": "caput-2-Thermae/2.7.txt", "rev": 1, "group": "caput-2" },
+    { "id": "latin-2.8", "file": "caput-2-Thermae/2.8.txt", "rev": 1, "group": "caput-2" }
   ]
 }
