@@ -15,7 +15,7 @@
     { "id": "latin-1.8", "file": "caput-1/1.8.txt", "rev": 1, "group": "caput-1" },
     { "id": "latin-1.9", "file": "caput-1/1.9.txt", "rev": 1, "group": "caput-1" },
     { "id": "latin-1.10", "file": "caput-1/1.10.txt", "rev": 1, "group": "caput-1" },
-    { "id": "latin-1.11", "file": "1.11.txt", "rev": 1, "group": "caput-1" },
+    { "id": "latin-1.11", "file": "caput-1/1.11.txt", "rev": 1, "group": "caput-1" },
     { "id": "latin-2.2", "file": "caput-2-Thermae/2.2.txt", "rev": 1, "group": "caput-2" },
     { "id": "latin-2.3", "file": "caput-2-Thermae/2.3.txt", "rev": 1, "group": "caput-2" },
     { "id": "latin-2.4", "file": "caput-2-Thermae/2.4.txt", "rev": 1, "group": "caput-2" },
